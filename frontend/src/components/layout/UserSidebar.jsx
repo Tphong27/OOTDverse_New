@@ -7,9 +7,9 @@ import {
   Sparkles,
   Users,
   ShoppingBag,
-  Heart,
   BarChart3,
   LogOut,
+  ChevronRight,
 } from "lucide-react";
 
 export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
@@ -18,7 +18,7 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
   const menuItems = [
     { id: "overview", icon: Home, label: "Tổng quan", path: "/user/dashboard" },
     { id: "wardrobe", icon: Shirt, label: "Tủ đồ", path: "/wardrobe/wardrobe" },
-    { id: "builder", icon: Sparkles, label: "Mix đồ AI", path: "/outfit/page" }, // Link tới trang AI
+    { id: "builder", icon: Sparkles, label: "Mix đồ AI", path: "/outfit/page" },
     {
       id: "community",
       icon: Users,
@@ -36,23 +36,23 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
 
   return (
     <>
-      {/* Overlay cho mobile */}
+      {/* Overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-20 lg:hidden"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-20 lg:hidden animate-fade-in"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       <aside
-        className={`fixed top-0 left-0 z-30 h-full w-72 bg-white border-r border-purple-100 shadow-xl transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static ${
+        className={`fixed top-0 left-0 z-30 h-full w-72 bg-white border-r border-purple-100 shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Logo Area */}
-        <div className="h-16 flex items-center px-8 border-b border-purple-50">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:shadow-purple-200 transition-all">
+        {/* Logo Area with gradient */}
+        <div className="h-16 flex items-center px-6 border-b border-purple-50 bg-gradient-to-r from-purple-50 to-pink-50">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:shadow-purple-300 group-hover:scale-110 transition-all">
               O
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
@@ -62,8 +62,8 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
         </div>
 
         {/* Menu Items */}
-        <nav className="p-4 space-y-2 mt-4">
-          <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+        <nav className="p-4 space-y-1 mt-2">
+          <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
             Menu chính
           </p>
           {menuItems.map((item) => {
@@ -77,32 +77,50 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
                 onClick={() =>
                   window.innerWidth < 1024 && setIsSidebarOpen(false)
                 }
-                className={`flex items-center space-x-3 px-4 py-3.5 rounded-xl font-medium transition-all duration-200 group relative ${
+                className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-medium transition-all duration-200 group relative ${
                   isActive
-                    ? "bg-purple-50 text-purple-700 shadow-sm"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-purple-600"
+                    ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-200"
+                    : "text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700"
                 }`}
               >
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-purple-600 rounded-r-full" />
-                )}
-                <Icon
-                  className={`w-5 h-5 transition-colors ${
+                <div className="flex items-center gap-3">
+                  <Icon
+                    className={`w-5 h-5 transition-transform group-hover:scale-110 ${
+                      isActive
+                        ? "text-white"
+                        : "text-gray-400 group-hover:text-purple-600"
+                    }`}
+                  />
+                  <span>{item.label}</span>
+                </div>
+                <ChevronRight
+                  className={`w-4 h-4 transition-all ${
                     isActive
-                      ? "text-purple-600"
-                      : "text-gray-400 group-hover:text-purple-500"
+                      ? "opacity-100 translate-x-0"
+                      : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
                   }`}
                 />
-                <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Footer Sidebar */}
-        <div className="absolute bottom-0 w-full p-4 border-t border-purple-50">
-          <button className="flex items-center space-x-3 px-4 py-3 w-full rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors">
-            <LogOut className="w-5 h-5" />
+        {/* Upgrade Card */}
+        <div className="absolute bottom-20 left-4 right-4 bg-gradient-to-br from-purple-600 to-pink-500 rounded-2xl p-5 text-white">
+          <Sparkles className="w-8 h-8 mb-3 animate-pulse" />
+          <h3 className="font-bold text-lg mb-1">Nâng cấp Premium</h3>
+          <p className="text-white/80 text-sm mb-4">
+            Trải nghiệm đầy đủ tính năng AI
+          </p>
+          <button className="w-full bg-white text-purple-600 py-2 rounded-xl font-semibold hover:bg-purple-50 transition-colors">
+            Nâng cấp ngay
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div className="absolute bottom-0 w-full p-4 border-t border-purple-50 bg-gray-50">
+          <button className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all font-medium group">
+            <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span>Đăng xuất</span>
           </button>
         </div>

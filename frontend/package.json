@@ -11,7 +11,7 @@
   "dependencies": {
     "@banuba/webar": "^1.17.6",
     "@google/model-viewer": "^4.1.0",
-    "axios": "^1.6.0",
+    "axios": "^1.13.2",
     "lucide-react": "^0.292.0",
     "next": "14.2.3",
     "react": "^18.2.0",

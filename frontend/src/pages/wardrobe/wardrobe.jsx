@@ -1,5 +1,6 @@
 import LayoutUser from "@/components/layout/LayoutUser";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Filter,
   Plus,
@@ -95,10 +96,14 @@ export default function Wardrobe() {
                 yêu thích
               </p>
             </div>
-            <button className="bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold hover:bg-purple-50 transition-all shadow-lg hover:shadow-xl flex items-center gap-2 group">
+            {/* 2. Thay button bằng Link */}
+            <Link
+              href="/wardrobe/form"
+              className="bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold hover:bg-purple-50 transition-all shadow-lg hover:shadow-xl flex items-center gap-2 group"
+            >
               <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
               Thêm món đồ mới
-            </button>
+            </Link>
           </div>
         </div>
 

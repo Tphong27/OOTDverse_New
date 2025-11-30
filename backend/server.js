@@ -23,8 +23,13 @@ mongoose
   .catch((err) => console.error("❌ Lỗi kết nối DB:", err));
 
 // 3. Routes
-const wardrobeRoutes = require("./routes/wardrobeRoutes"); // Import route
-app.use("/api/wardrobe", wardrobeRoutes); // Đăng ký route
+// Import route
+const wardrobeRoutes = require("./routes/wardrobeRoutes");
+const settingRoutes = require("./routes/settingRoutes"); 
+
+// Đăng ký route
+app.use("/api/wardrobe", wardrobeRoutes); 
+app.use("/api/setting", settingRoutes); 
 
 // 4. Start Server
 app.listen(PORT, () => {

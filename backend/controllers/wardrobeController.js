@@ -1,4 +1,3 @@
-// backend/controllers/wardrobeController.js
 const Item = require("../models/Item");
 
 // 1. Lấy danh sách tất cả món đồ

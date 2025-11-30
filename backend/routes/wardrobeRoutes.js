@@ -1,4 +1,3 @@
-// backend/routes/wardrobeRoutes.js
 const express = require("express");
 const router = express.Router();
 const { getItems, createItem } = require("../controllers/wardrobeController");

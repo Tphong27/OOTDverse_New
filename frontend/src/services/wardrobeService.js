@@ -1,8 +1,8 @@
-// frontend/src/services/wardrobeService.js
 import axios from "axios";
 
 // Địa chỉ của Backend Server
-const API_URL = "http://localhost:5000/api/wardrobe";
+// const API_URL = "http://localhost:5000/api/wardrobe";
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/wardrobe`;
 
 // 1. Hàm lấy danh sách đồ
 export const getWardrobeItems = async () => {

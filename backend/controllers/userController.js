@@ -5,6 +5,8 @@ const { OAuth2Client } = require("google-auth-library");
 // Lấy Client ID từ biến môi trường (Bạn cần thêm vào file .env backend)
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const { sendLoginSuccessEmail } = require("../services/emailService");
+
 // 1. Đăng ký tài khoản mới
 exports.register = async (req, res) => {
   try {
@@ -102,32 +104,32 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// --- THÊM HÀM MỚI ---
+// 5. Đăng nhập bằng Google (Đã sửa đổi logic gửi email)
 exports.googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
 
-    // 1. Xác thực token với Google Cloud
+    // Xác thực token với Google Cloud
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
     const payload = ticket.getPayload();
-
     const { email, name, picture } = payload;
 
-    // 2. Kiểm tra User trong DB
     let user = await User.findOne({ email });
+    let isNewUser = false; // Biến cờ để đánh dấu người dùng mới
 
     if (user) {
-      // User đã tồn tại -> Cập nhật avatar nếu chưa có
+      // Người dùng cũ: Chỉ cập nhật avatar nếu chưa có
       if (!user.avatar) {
         user.avatar = picture;
         await user.save();
       }
     } else {
-      // User chưa tồn tại -> Tạo mới
-      // Tạo mật khẩu ngẫu nhiên để bypass validate (hoặc để trống nếu schema cho phép)
+      // Người dùng mới: Tạo tài khoản
+      isNewUser = true; // Đánh dấu là người dùng mới
+
       const randomPassword =
         Math.random().toString(36).slice(-8) +
         Math.random().toString(36).slice(-8);
@@ -143,7 +145,17 @@ exports.googleLogin = async (req, res) => {
       await user.save();
     }
 
-    // 3. Trả về kết quả giống như hàm login thường
+    // --- LOGIC GỬI EMAIL ĐƯỢC SỬA ĐỔI ---
+    // Chỉ gửi email nếu là người dùng mới (isNewUser = true)
+    if (isNewUser) {
+      // Bạn có thể đổi tên hàm thành sendWelcomeEmail cho phù hợp hơn
+      // Hoặc vẫn dùng sendLoginSuccessEmail nhưng đổi nội dung template email
+      sendLoginSuccessEmail(user.email, user.fullName, req)
+        .then(() => console.log(`Welcome email sent to ${user.email}`))
+        .catch((err) => console.error("Failed to send welcome email:", err));
+    }
+
+    // Trả về kết quả cho Frontend
     res.json({
       success: true,
       user: {

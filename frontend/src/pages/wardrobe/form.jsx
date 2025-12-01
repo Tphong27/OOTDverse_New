@@ -2,69 +2,90 @@
 import LayoutUser from "@/components/layout/LayoutUser";
 import { useState } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
-import { useRouter } from "next/router"; // Dùng router để chuyển trang
-import { createWardrobeItem } from "@/services/wardrobeService"; // Import service gọi API
+import { useRouter } from "next/router";
+import { createWardrobeItem } from "@/services/wardrobeService";
 
 export default function AddItemForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null); // Lưu chuỗi Base64 ảnh
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  // State kiểm soát việc nhập thương hiệu tùy chỉnh
+  const [isCustomBrand, setIsCustomBrand] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
-    category: "Áo", // Giá trị mặc định
+    category: "Áo",
     brand: "",
-    color: "", // Backend chưa lưu cái này, nhưng cứ để UI nhập cho đẹp
+    color: "",
     season: "",
   });
 
   const categories = ["Áo", "Quần", "Váy", "Giày", "Túi xách", "Phụ kiện"];
 
-  // 1. Xử lý khi chọn ảnh: Chuyển file thành Base64
+  // Danh sách thương hiệu mẫu
+  const popularBrands = [
+    "Zara",
+    "H&M",
+    "Uniqlo",
+    "Nike",
+    "Adidas",
+    "Gucci",
+    "Louis Vuitton",
+    "Chanel",
+    "Dior",
+    "Hermès",
+  ];
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Kiểm tra kích thước file (ví dụ giới hạn 2MB để tránh Mongo bị đầy)
       if (file.size > 2 * 1024 * 1024) {
         alert("File ảnh quá lớn! Vui lòng chọn ảnh dưới 2MB.");
         return;
       }
-
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result); // Chuỗi Base64 dài ngoằng
-      };
+      reader.onloadend = () => setSelectedImage(reader.result);
       reader.readAsDataURL(file);
     }
   };
 
-  // 2. Xử lý khi bấm nút "Lưu"
+  // Xử lý thay đổi dropdown thương hiệu
+  const handleBrandChange = (e) => {
+    const value = e.target.value;
+    if (value === "other") {
+      setIsCustomBrand(true);
+      setFormData({ ...formData, brand: "" }); // Reset để người dùng nhập
+    } else {
+      setIsCustomBrand(false);
+      setFormData({ ...formData, brand: value });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Validate cơ bản
     if (!formData.name || !selectedImage) {
       alert("Vui lòng nhập tên món đồ và chọn ảnh!");
+      return;
+    }
+
+    // Nếu đang chọn custom brand mà chưa nhập -> báo lỗi
+    if (isCustomBrand && !formData.brand.trim()) {
+      alert("Vui lòng nhập tên thương hiệu mới!");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Chuẩn bị cục dữ liệu đúng chuẩn Backend yêu cầu (xem file Item.js)
       const payload = {
         name: formData.name,
         category: formData.category,
         brand: formData.brand,
-        imageUrl: selectedImage, // Backend đang chờ field tên là 'imageUrl'
+        imageUrl: selectedImage,
       };
 
-      console.log("Đang gửi dữ liệu...", payload); // Log để debug nếu cần
-
-      // Gọi API
       await createWardrobeItem(payload);
-
-      // Thành công -> Quay về trang danh sách
       alert("Thêm món đồ thành công! 🎉");
       router.push("/wardrobe/wardrobe");
     } catch (error) {
@@ -172,15 +193,39 @@ export default function AddItemForm() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Thương hiệu
                 </label>
-                <input
-                  type="text"
-                  placeholder="Uniqlo, Zara..."
-                  value={formData.brand}
-                  onChange={(e) =>
-                    setFormData({ ...formData, brand: e.target.value })
-                  }
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none transition-all"
-                />
+                {/* Dropdown chọn thương hiệu */}
+                <select
+                  value={isCustomBrand ? "other" : formData.brand}
+                  onChange={handleBrandChange}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none transition-all mb-2"
+                >
+                  <option value="">-- Chọn thương hiệu --</option>
+                  {popularBrands.map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  ))}
+                  <option
+                    value="other"
+                    className="font-semibold text-purple-600"
+                  >
+                    + Thêm thương hiệu mới
+                  </option>
+                </select>
+
+                {/* Ô nhập nếu chọn "Thêm thương hiệu mới" */}
+                {isCustomBrand && (
+                  <input
+                    type="text"
+                    placeholder="Nhập tên thương hiệu..."
+                    value={formData.brand}
+                    onChange={(e) =>
+                      setFormData({ ...formData, brand: e.target.value })
+                    }
+                    className="w-full px-4 py-2.5 rounded-lg border border-purple-300 bg-purple-50 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none transition-all animate-fade-in-up"
+                    autoFocus
+                  />
+                )}
               </div>
             </div>
           </div>

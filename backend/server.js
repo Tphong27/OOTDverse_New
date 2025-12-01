@@ -2,8 +2,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-// require("dotenv").config();
-require("dotenv").config({ path: "./backend/.env" });
+require("dotenv").config();
+//require("dotenv").config({ path: "./backend/.env" });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,11 +25,11 @@ mongoose
 // 3. Routes
 // Import route
 const wardrobeRoutes = require("./routes/wardrobeRoutes");
-const settingRoutes = require("./routes/settingRoutes"); 
+const settingRoutes = require("./routes/settingRoutes");
 
 // Đăng ký route
-app.use("/api/wardrobe", wardrobeRoutes); 
-app.use("/api/setting", settingRoutes); 
+app.use("/api/wardrobe", wardrobeRoutes);
+app.use("/api/setting", settingRoutes);
 
 // 4. Start Server
 app.listen(PORT, () => {

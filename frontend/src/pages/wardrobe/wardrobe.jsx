@@ -20,55 +20,70 @@ export default function Wardrobe() {
   const [viewMode, setViewMode] = useState("grid");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Cập nhật danh mục để khớp với dữ liệu tiếng Việt trong Database
   const categories = [
     { id: "all", label: "Tất cả", count: items.length },
     {
-      id: "tops",
+      id: "Áo",
       label: "Áo",
-      count: items.filter((i) => i.category === "tops").length,
+      count: items.filter((i) => i.category === "Áo").length,
     },
     {
-      id: "bottoms",
+      id: "Quần",
       label: "Quần",
-      count: items.filter((i) => i.category === "bottoms").length,
+      count: items.filter((i) => i.category === "Quần").length,
     },
     {
-      id: "dresses",
+      id: "Váy",
       label: "Váy",
-      count: items.filter((i) => i.category === "dresses").length,
+      count: items.filter((i) => i.category === "Váy").length,
     },
     {
-      id: "outerwear",
-      label: "Áo khoác",
-      count: items.filter((i) => i.category === "outerwear").length,
-    },
-    {
-      id: "shoes",
+      id: "Giày",
       label: "Giày",
-      count: items.filter((i) => i.category === "shoes").length,
+      count: items.filter((i) => i.category === "Giày").length,
     },
     {
-      id: "accessories",
+      id: "Túi xách",
+      label: "Túi xách",
+      count: items.filter((i) => i.category === "Túi xách").length,
+    },
+    {
+      id: "Phụ kiện",
       label: "Phụ kiện",
-      count: items.filter((i) => i.category === "accessories").length,
+      count: items.filter((i) => i.category === "Phụ kiện").length,
+    },
+    // Thêm mục Áo khoác nếu muốn hỗ trợ sau này (hiện tại form chưa có)
+    {
+      id: "Áo khoác",
+      label: "Áo khoác",
+      count: items.filter((i) => i.category === "Áo khoác").length,
     },
   ];
 
   useEffect(() => {
     const fetchItems = async () => {
-      const data = await getWardrobeItems();
-      setItems(data);
-      setLoading(false);
+      try {
+        const data = await getWardrobeItems();
+        setItems(data);
+      } catch (error) {
+        console.error("Lỗi tải dữ liệu:", error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchItems();
   }, []);
 
   const filteredItems = items.filter((item) => {
+    // Logic lọc: Nếu chọn "all" thì lấy hết, ngược lại so sánh chính xác chuỗi tiếng Việt
     const matchCategory =
       selectedCategory === "all" || item.category === selectedCategory;
+
     const matchSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.brand?.toLowerCase().includes(searchQuery.toLowerCase());
+
     return matchCategory && matchSearch;
   });
 
@@ -96,7 +111,6 @@ export default function Wardrobe() {
                 yêu thích
               </p>
             </div>
-            {/* 2. Thay button bằng Link */}
             <Link
               href="/wardrobe/form"
               className="bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold hover:bg-purple-50 transition-all shadow-lg hover:shadow-xl flex items-center gap-2 group"

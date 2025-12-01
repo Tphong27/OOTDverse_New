@@ -123,3 +123,8 @@ export const getOccasions = async () => {
 export const getWeatherTypes = async () => {
   return getSettingsByType('weather');
 };
+
+// 15. Helper: Lấy tất cả roles
+export const getRoles = async () => {
+  return getSettingsByType('role');
+};

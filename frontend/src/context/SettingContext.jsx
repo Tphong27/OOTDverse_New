@@ -29,6 +29,7 @@ export function SettingProvider({ children }) {
   const [styles, setStyles] = useState([]);
   const [occasions, setOccasions] = useState([]);
   const [weatherTypes, setWeatherTypes] = useState([]);
+  const [roles, setRoles] = useState([]);
   
   // State loading
   const [loading, setLoading] = useState(true);
@@ -45,8 +46,8 @@ export function SettingProvider({ children }) {
       setLoading(true);
       setError(null);
       
-      // Load tất cả settings active
-      const allSettings = await getSettings({ status: 'Active' });
+      // Load TẤT CẢ settings
+      const allSettings = await getSettings();
       setSettings(allSettings);
       
       // Phân loại settings theo type
@@ -56,6 +57,7 @@ export function SettingProvider({ children }) {
       setStyles(allSettings.filter(s => s.type === 'style'));
       setOccasions(allSettings.filter(s => s.type === 'occasion'));
       setWeatherTypes(allSettings.filter(s => s.type === 'weather'));
+      setRoles(allSettings.filter(s => s.type === 'role'));
       
     } catch (err) {
       console.error("Lỗi load settings:", err);
@@ -89,6 +91,9 @@ export function SettingProvider({ children }) {
           break;
         case 'weather':
           setWeatherTypes(data);
+          break;
+        case 'role':
+          setRoles(data);
           break;
       }
       
@@ -205,6 +210,9 @@ export function SettingProvider({ children }) {
       case 'weather':
         updateState(setWeatherTypes);
         break;
+      case 'role':
+        updateState(setRoles);
+        break;
     }
   };
 
@@ -217,6 +225,7 @@ export function SettingProvider({ children }) {
       case 'style': return styles;
       case 'occasion': return occasions;
       case 'weather': return weatherTypes;
+      case 'role': return roles;
       default: return [];
     }
   };
@@ -232,6 +241,7 @@ export function SettingProvider({ children }) {
         styles,
         occasions,
         weatherTypes,
+        roles,
         loading,
         error,
         

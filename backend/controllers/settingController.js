@@ -53,16 +53,10 @@ exports.getSettingById = async (req, res) => {
 // 4. Tạo setting mới
 exports.createSetting = async (req, res) => {
   try {
-    // DEBUG: Log data nhận được
-    console.log("📥 Data nhận từ frontend:", req.body);
-    
     const newSetting = new Setting(req.body);
     const savedSetting = await newSetting.save();
-    
-    console.log("✅ Lưu thành công:", savedSetting);
     res.status(201).json(savedSetting);
   } catch (err) {
-    console.error("❌ Lỗi validation:", err.message);
     res.status(400).json({ error: err.message });
   }
 };

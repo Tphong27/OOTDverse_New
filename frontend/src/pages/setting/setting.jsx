@@ -16,6 +16,7 @@ import {
   Shirt,
   Star,
   AlertCircle,
+  User,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -35,6 +36,7 @@ export default function SettingsPage() {
   } = useSettings();
 
   const [selectedType, setSelectedType] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all"); // ← THÊM state filter status
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -42,7 +44,7 @@ export default function SettingsPage() {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 3; // Mỗi trang 3 items
+  const itemsPerPage = 5;
 
   // Form state
   const [formData, setFormData] = useState({
@@ -63,15 +65,17 @@ export default function SettingsPage() {
     { id: "weather", label: "Thời tiết", icon: Cloud, count: weatherTypes.length },
     { id: "style", label: "Phong cách", icon: Shirt, count: styles.length },
     { id: "occasion", label: "Dịp", icon: Star, count: occasions.length },
+    { id: "role", label: "Vai trò", icon: User, count: settings.filter(s => s.type === 'role').length },
   ];
 
   // Filter settings
   const filteredSettings = settings.filter((setting) => {
     const matchType = selectedType === "all" || setting.type === selectedType;
+    const matchStatus = selectedStatus === "all" || setting.status === selectedStatus;
     const matchSearch =
       setting.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       setting.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchType && matchSearch;
+    return matchType && matchStatus && matchSearch;
   });
 
   // Pagination logic
@@ -83,15 +87,11 @@ export default function SettingsPage() {
   // Reset về trang 1 khi filter thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedType, searchQuery]);
+  }, [selectedType, selectedStatus, searchQuery]);
 
   // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // DEBUG: Xem dữ liệu trước khi gửi
-    console.log("📤 Data gửi đi:", formData);
-    
     try {
       if (editMode && currentSetting) {
         await editSetting(currentSetting._id, formData);
@@ -101,8 +101,7 @@ export default function SettingsPage() {
       resetForm();
       setShowModal(false);
     } catch (error) {
-      console.error("❌ Lỗi chi tiết:", error);
-      console.error("📥 Response:", error.response?.data);
+      alert("Lỗi: " + (error.response?.data?.error || error.message));
     }
   };
 
@@ -179,15 +178,31 @@ export default function SettingsPage() {
 
         {/* Search Bar */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm setting..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-            />
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm setting..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="lg:w-48">
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white"
+              >
+                <option value="all">Tất cả trạng thái</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -450,6 +465,7 @@ export default function SettingsPage() {
                   <option value="occasion">Dịp (Occasion)</option>
                   <option value="material">Chất liệu (Material)</option>
                   <option value="category">Danh mục (Category)</option>
+                  <option value="role">Vai trò (Role)</option>
                 </select>
               </div>
 

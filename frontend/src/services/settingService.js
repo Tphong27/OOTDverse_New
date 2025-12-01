@@ -94,42 +94,53 @@ export const getSettingTypes = async () => {
   }
 };
 
-// 9. Helper: Lấy tất cả brands
+// 9. Lấy danh sách types với count (MỚI - cho dynamic categories)
+export const getTypesWithCount = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/types-with-count`);
+    return response.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy types with count:", error);
+    return [];
+  }
+};
+
+// 10. Helper: Lấy tất cả brands
 export const getBrands = async () => {
   return getSettingsByType("brand");
 };
 
-// 10. Helper: Lấy tất cả colors
+// 11. Helper: Lấy tất cả colors
 export const getColors = async () => {
   return getSettingsByType("color");
 };
 
-// 11. Helper: Lấy tất cả seasons
+// 12. Helper: Lấy tất cả seasons
 export const getSeasons = async () => {
   return getSettingsByType("season");
 };
 
-// 12. Helper: Lấy tất cả styles
+// 13. Helper: Lấy tất cả styles
 export const getStyles = async () => {
   return getSettingsByType("style");
 };
 
-// 13. Helper: Lấy tất cả occasions
+// 14. Helper: Lấy tất cả occasions
 export const getOccasions = async () => {
   return getSettingsByType("occasion");
 };
 
-// 14. Helper: Lấy tất cả weather types
+// 15. Helper: Lấy tất cả weather types
 export const getWeatherTypes = async () => {
   return getSettingsByType("weather");
 };
 
-// Helper: Lấy tất cả categories
+// 16. Helper: Lấy tất cả categories
 export const getCategories = async () => {
   return getSettingsByType("category");
 };
 
-// 15. Helper: Lấy tất cả roles
+// 17. Helper: Lấy tất cả roles
 export const getRoles = async () => {
   return getSettingsByType("role");
 };

@@ -5,7 +5,7 @@ const SettingSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
-  type: {     // enum: ['brand', 'color', 'season', 'weather', 'style', 'occasion', 'material', 'category']
+  type: {     // enum: ['brand', 'color', 'season', 'weather', 'style', 'occasion', 'material', 'category',...]
     type: String, 
     required: true
   },

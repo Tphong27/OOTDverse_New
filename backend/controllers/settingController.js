@@ -149,3 +149,52 @@ exports.getSettingTypes = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// 9. Lấy danh sách types với count (MỚI - cho dynamic categories)
+exports.getTypesWithCount = async (req, res) => {
+  try {
+    const pipeline = [
+      { $match: { status: 'Active' } }, // Chỉ lấy Active settings
+      { 
+        $group: { 
+          _id: "$type", 
+          count: { $sum: 1 }
+        } 
+      },
+      { $sort: { _id: 1 } }
+    ];
+    
+    const types = await Setting.aggregate(pipeline);
+    
+    // Format lại data với label tiếng Việt
+    const formattedTypes = types.map(t => ({
+      id: t._id,
+      label: formatTypeLabel(t._id),
+      count: t.count
+    }));
+    
+    res.json(formattedTypes);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Helper function: Format type label sang tiếng Việt
+function formatTypeLabel(type) {
+  const labels = {
+    'brand': 'Thương hiệu',
+    'color': 'Màu sắc',
+    'season': 'Mùa',
+    'weather': 'Thời tiết',
+    'style': 'Phong cách',
+    'occasion': 'Dịp',
+    'category': 'Danh mục',
+    'role': 'Vai trò',
+    'material': 'Chất liệu',
+    'size': 'Kích cỡ',
+    'fabric': 'Chất vải'
+  };
+  
+  // Nếu không có trong mapping, capitalize chữ cái đầu
+  return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
+}

@@ -8,13 +8,14 @@ import {
   deleteSetting,
   permanentDeleteSetting,
   getSettingTypes,
+  getTypesWithCount, // ← THÊM import
   getBrands,
   getColors,
   getSeasons,
   getStyles,
   getOccasions,
   getWeatherTypes,
-  getCategories, // ← THÊM
+  getCategories,
 } from "@/services/settingService";
 
 const SettingContext = createContext();
@@ -30,8 +31,11 @@ export function SettingProvider({ children }) {
   const [styles, setStyles] = useState([]);
   const [occasions, setOccasions] = useState([]);
   const [weatherTypes, setWeatherTypes] = useState([]);
-  const [categories, setCategories] = useState([]); // ← THÊM
+  const [categories, setCategories] = useState([]);
   const [roles, setRoles] = useState([]);
+
+  // State cho dynamic types (MỚI)
+  const [dynamicTypes, setDynamicTypes] = useState([]);
 
   // State loading
   const [loading, setLoading] = useState(true);
@@ -40,6 +44,7 @@ export function SettingProvider({ children }) {
   // Load tất cả settings khi app khởi động
   useEffect(() => {
     loadAllSettings();
+    loadDynamicTypes(); // ← Load dynamic types
   }, []);
 
   // Hàm load tất cả settings
@@ -59,13 +64,25 @@ export function SettingProvider({ children }) {
       setStyles(allSettings.filter((s) => s.type === "style"));
       setOccasions(allSettings.filter((s) => s.type === "occasion"));
       setWeatherTypes(allSettings.filter((s) => s.type === "weather"));
-      setCategories(allSettings.filter((s) => s.type === "category")); // ← THÊM
+      setCategories(allSettings.filter((s) => s.type === "category"));
       setRoles(allSettings.filter((s) => s.type === "role"));
     } catch (err) {
       console.error("Lỗi load settings:", err);
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Hàm load dynamic types với count (MỚI)
+  const loadDynamicTypes = async () => {
+    try {
+      const types = await getTypesWithCount();
+      setDynamicTypes(types);
+      return types;
+    } catch (err) {
+      console.error("Lỗi load dynamic types:", err);
+      return [];
     }
   };
 
@@ -120,6 +137,9 @@ export function SettingProvider({ children }) {
       // Cập nhật state phân loại
       updateCategorizedState(newSetting, "add");
 
+      // Reload dynamic types để cập nhật count (MỚI)
+      await loadDynamicTypes();
+
       return newSetting;
     } catch (err) {
       console.error("Lỗi thêm setting:", err);
@@ -140,6 +160,12 @@ export function SettingProvider({ children }) {
       // Cập nhật state phân loại
       updateCategorizedState(updatedSetting, "update", id);
 
+      // Reload dynamic types nếu type thay đổi (MỚI)
+      const oldSetting = settings.find(s => s._id === id);
+      if (oldSetting && oldSetting.type !== updatedSetting.type) {
+        await loadDynamicTypes();
+      }
+
       return updatedSetting;
     } catch (err) {
       console.error("Lỗi cập nhật setting:", err);
@@ -157,6 +183,9 @@ export function SettingProvider({ children }) {
 
       // Xóa khỏi state phân loại
       updateCategorizedState({ _id: id }, "remove");
+
+      // Reload dynamic types để cập nhật count
+      await loadDynamicTypes();
     } catch (err) {
       console.error("Lỗi xóa setting:", err);
       throw err;
@@ -171,6 +200,9 @@ export function SettingProvider({ children }) {
       // Xóa khỏi state
       setSettings((prev) => prev.filter((s) => s._id !== id));
       updateCategorizedState({ _id: id }, "remove");
+
+      // Reload dynamic types để cập nhật count (MỚI)
+      await loadDynamicTypes();
     } catch (err) {
       console.error("Lỗi xóa vĩnh viễn:", err);
       throw err;
@@ -259,12 +291,14 @@ export function SettingProvider({ children }) {
         weatherTypes,
         categories,
         roles,
+        dynamicTypes, // ← THÊM export
         loading,
         error,
 
         // Functions
         loadAllSettings,
         loadSettingsByType,
+        loadDynamicTypes, // ← THÊM export
         addSetting,
         editSetting,
         removeSetting,

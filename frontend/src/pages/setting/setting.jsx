@@ -18,6 +18,8 @@ import {
   AlertCircle,
   User,
   Grid3x3,
+  X,
+  Check,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -29,20 +31,27 @@ export default function SettingsPage() {
     styles,
     occasions,
     weatherTypes,
-    cateogries,
+    categories,
+    dynamicTypes, // ← Lấy từ context
     loading,
     addSetting,
     editSetting,
     removeSetting,
+    loadDynamicTypes, // ← Lấy function reload
     getByType,
   } = useSettings();
 
   const [selectedType, setSelectedType] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all"); // ← THÊM state filter status
+  const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentSetting, setCurrentSetting] = useState(null);
+
+  // State cho thêm type mới (MỚI)
+  const [isAddingNewType, setIsAddingNewType] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeLabel, setNewTypeLabel] = useState("");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -61,32 +70,35 @@ export default function SettingsPage() {
   // Validation errors
   const [errors, setErrors] = useState({});
 
-  // Categories với icons
-  const categories = [
-    { id: "all", label: "Tất cả", icon: SettingsIcon, count: settings.length },
-    { id: "brand", label: "Thương hiệu", icon: Tag, count: brands.length },
-    { id: "color", label: "Màu sắc", icon: Palette, count: colors.length },
-    { id: "season", label: "Mùa", icon: Calendar, count: seasons.length },
-    {
-      id: "weather",
-      label: "Thời tiết",
-      icon: Cloud,
-      count: weatherTypes.length,
+  // Default icon mapping cho các type
+  const typeIcons = {
+    brand: Tag,
+    color: Palette,
+    season: Calendar,
+    weather: Cloud,
+    style: Shirt,
+    occasion: Star,
+    category: Grid3x3,
+    role: User,
+    material: Sparkles,
+    size: Sparkles,
+    fabric: Sparkles,
+  };
+
+  // Build categories động từ dynamicTypes (MỚI - THAY THẾ hardcoded categories)
+  const categoriesFilter = [
+    { 
+      id: "all", 
+      label: "Tất cả", 
+      icon: SettingsIcon, 
+      count: settings.length 
     },
-    { id: "style", label: "Phong cách", icon: Shirt, count: styles.length },
-    { id: "occasion", label: "Dịp", icon: Star, count: occasions.length },
-    // {
-    //   id: "category",
-    //   label: "Danh mục",
-    //   icon: Grid3x3,
-    //   count: categories.length,
-    // }, // ← THÊM
-    {
-      id: "role",
-      label: "Vai trò",
-      icon: User,
-      count: settings.filter((s) => s.type === "role").length,
-    },
+    ...dynamicTypes.map(type => ({
+      id: type.id,
+      label: type.label,
+      icon: typeIcons[type.id] || SettingsIcon, // Fallback icon nếu không tìm thấy
+      count: type.count
+    }))
   ];
 
   // Filter settings
@@ -110,6 +122,13 @@ export default function SettingsPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedType, selectedStatus, searchQuery]);
+
+  // Set default type khi dynamicTypes load xong (MỚI)
+  useEffect(() => {
+    if (dynamicTypes.length > 0 && !formData.type) {
+      setFormData(prev => ({ ...prev, type: dynamicTypes[0].id }));
+    }
+  }, [dynamicTypes]);
 
   // Validate form
   const validateForm = () => {
@@ -156,6 +175,42 @@ export default function SettingsPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Handle thêm type mới (MỚI)
+  const handleAddNewType = () => {
+    if (!newTypeName.trim()) {
+      alert("Vui lòng nhập tên type!");
+      return;
+    }
+
+    // Validate: chỉ cho phép chữ thường và gạch dưới
+    const typeRegex = /^[a-z_]+$/;
+    if (!typeRegex.test(newTypeName)) {
+      alert("Type chỉ được chứa chữ thường (a-z) và gạch dưới (_)!");
+      return;
+    }
+
+    // Kiểm tra trùng lặp
+    const isDuplicate = dynamicTypes.some(
+      t => t.id.toLowerCase() === newTypeName.toLowerCase()
+    );
+    
+    if (isDuplicate) {
+      alert("Type này đã tồn tại!");
+      return;
+    }
+
+    // Set type mới vào form
+    setFormData({ 
+      ...formData, 
+      type: newTypeName.toLowerCase()
+    });
+    
+    // Reset state
+    setIsAddingNewType(false);
+    setNewTypeName("");
+    setNewTypeLabel("");
+  };
+
   // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -171,6 +226,10 @@ export default function SettingsPage() {
       } else {
         await addSetting(formData);
       }
+      
+      // Reload dynamic types sau khi thêm/sửa (MỚI)
+      await loadDynamicTypes();
+      
       resetForm();
       setShowModal(false);
     } catch (error) {
@@ -200,6 +259,7 @@ export default function SettingsPage() {
     if (confirm("Bạn có chắc muốn xóa setting này?")) {
       try {
         await removeSetting(id);
+        // Dynamic types sẽ tự reload trong removeSetting
       } catch (error) {
         console.error("Error:", error);
       }
@@ -210,7 +270,7 @@ export default function SettingsPage() {
   const resetForm = () => {
     setFormData({
       name: "",
-      type: "brand",
+      type: dynamicTypes[0]?.id || "brand", // ← Lấy type đầu tiên từ dynamic
       priority: 0,
       value: "",
       description: "",
@@ -218,7 +278,10 @@ export default function SettingsPage() {
     });
     setCurrentSetting(null);
     setEditMode(false);
-    setErrors({}); //Reset errors
+    setErrors({});
+    setIsAddingNewType(false);
+    setNewTypeName("");
+    setNewTypeLabel("");
   };
 
   // Open add modal
@@ -241,7 +304,7 @@ export default function SettingsPage() {
               <p className="text-white/90 text-lg">
                 {settings.length} settings •{" "}
                 {settings.filter((s) => s.status === "Active").length} active •{" "}
-                {categories.length} danh mục
+                {dynamicTypes.length} loại
               </p>
             </div>
             <button
@@ -284,9 +347,9 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Categories Filter */}
+        {/* Categories Filter - DYNAMIC */}
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          {categories.map((cat) => {
+          {categoriesFilter.map((cat) => {
             const Icon = cat.icon;
             return (
               <button
@@ -492,7 +555,6 @@ export default function SettingsPage() {
           </>
         )}
       </div>
-
       {/* Modal Add/Edit */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -538,7 +600,7 @@ export default function SettingsPage() {
                   value={formData.name}
                   onChange={(e) => {
                     setFormData({ ...formData, name: e.target.value });
-                    setErrors({ ...errors, name: null }); // Clear error khi gõ
+                    setErrors({ ...errors, name: null });
                   }}
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
                     errors.name
@@ -555,29 +617,140 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              {/* Type */}
+              {/* Type - DYNAMIC (MỚI) */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Loại <span className="text-red-500">*</span>
                 </label>
-                <select
-                  required
-                  value={formData.type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, type: e.target.value })
-                  }
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="brand">Thương hiệu (Brand)</option>
-                  <option value="color">Màu sắc (Color)</option>
-                  <option value="season">Mùa (Season)</option>
-                  <option value="weather">Thời tiết (Weather)</option>
-                  <option value="style">Phong cách (Style)</option>
-                  <option value="occasion">Dịp (Occasion)</option>
-                  <option value="material">Chất liệu (Material)</option>
-                  <option value="category">Danh mục (Category)</option>
-                  <option value="role">Vai trò (Role)</option>
-                </select>
+
+                {!isAddingNewType ? (
+                  <div className="space-y-2">
+                    <select
+                      required
+                      value={formData.type}
+                      onChange={(e) => {
+                        if (e.target.value === "add_new_type") {
+                          setIsAddingNewType(true);
+                        } else {
+                          setFormData({ ...formData, type: e.target.value });
+                        }
+                      }}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                    >
+                      {/* Dynamic types từ database */}
+                      {dynamicTypes.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.label} ({type.count} items)
+                        </option>
+                      ))}
+                      
+                      {/* Option thêm type mới */}
+                      <option 
+                        value="add_new_type"
+                        className="font-semibold text-purple-600 bg-purple-50"
+                      >
+                        ➕ Thêm loại mới
+                      </option>
+                    </select>
+                    
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      Chọn loại có sẵn hoặc tạo loại mới
+                    </p>
+                  </div>
+                ) : (
+                  // Form nhập type mới (MỚI)
+                  <div className="space-y-3">
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                      <p className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        Tạo loại setting mới
+                      </p>
+                      
+                      {/* Type ID (slug) */}
+                      <div className="mb-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          ID loại (slug) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newTypeName}
+                          onChange={(e) => {
+                            // Chỉ cho phép a-z và gạch dưới
+                            const value = e.target.value.toLowerCase().replace(/[^a-z_]/g, '');
+                            setNewTypeName(value);
+                          }}
+                          placeholder="VD: material, size, fabric"
+                          className="w-full px-3 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                          autoFocus
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Chỉ dùng chữ thường (a-z) và gạch dưới (_)
+                        </p>
+                      </div>
+
+                      {/* Type Label (optional - hiển thị) */}
+                      <div className="mb-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Tên hiển thị (tùy chọn)
+                        </label>
+                        <input
+                          type="text"
+                          value={newTypeLabel}
+                          onChange={(e) => setNewTypeLabel(e.target.value)}
+                          placeholder="VD: Chất liệu, Kích cỡ"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Để trống sẽ tự động tạo từ ID
+                        </p>
+                      </div>
+
+                      {/* Buttons */}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAddNewType}
+                          className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                        >
+                          <Check className="w-4 h-4" />
+                          Xác nhận
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddingNewType(false);
+                            setNewTypeName("");
+                            setNewTypeLabel("");
+                          }}
+                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                        >
+                          <X className="w-4 h-4" />
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Preview type mới */}
+                    {newTypeName && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-xs font-medium text-blue-900 mb-1">
+                          👁️ Preview:
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                            {newTypeName}
+                          </span>
+                          {newTypeLabel && (
+                            <span className="text-xs text-gray-600">
+                              → Hiển thị: "{newTypeLabel}"
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Priority & Status */}
@@ -621,7 +794,7 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, status: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -680,7 +853,7 @@ export default function SettingsPage() {
                     setErrors({ ...errors, description: null });
                   }}
                   rows={3}
-                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all resize-none ${
                     errors.description
                       ? "border-red-300 focus:ring-red-500"
                       : "border-gray-200 focus:ring-purple-500"
@@ -708,7 +881,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-4 border-t">
                 <button
                   type="button"
                   onClick={() => {
@@ -721,7 +894,12 @@ export default function SettingsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+                  disabled={isAddingNewType && !newTypeName.trim()}
+                  className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-all ${
+                    isAddingNewType && !newTypeName.trim()
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-gradient-to-r from-purple-600 to-pink-500 text-white hover:shadow-lg"
+                  }`}
                 >
                   {editMode ? "Cập nhật" : "Thêm mới"}
                 </button>
@@ -731,6 +909,7 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Custom Scrollbar CSS */}
       <style jsx>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;

@@ -24,3 +24,9 @@ export const getUserProfile = async (userId) => {
   });
   return response.data;
 };
+
+export const googleLoginUser = async (token) => {
+  // Gửi token Google về backend để verify
+  const response = await axios.post(`${API_URL}/google-login`, { token });
+  return response.data;
+};

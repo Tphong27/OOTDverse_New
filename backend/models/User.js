@@ -5,8 +5,11 @@ const UserSchema = new mongoose.Schema(
   {
     // 1. Thông tin đăng nhập
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    password: { type: String },
     fullName: { type: String, required: true },
+
+    // Thêm trường avatar
+    avatar: { type: String },
 
     // 2. Thông tin cơ bản
     age: { type: Number },

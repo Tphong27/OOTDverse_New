@@ -1,5 +1,9 @@
 // backend/controllers/userController.js
 const User = require("../models/User");
+const { OAuth2Client } = require("google-auth-library");
+
+// Lấy Client ID từ biến môi trường (Bạn cần thêm vào file .env backend)
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // 1. Đăng ký tài khoản mới
 exports.register = async (req, res) => {
@@ -95,5 +99,63 @@ exports.getProfile = async (req, res) => {
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+// --- THÊM HÀM MỚI ---
+exports.googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    // 1. Xác thực token với Google Cloud
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    const { email, name, picture } = payload;
+
+    // 2. Kiểm tra User trong DB
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // User đã tồn tại -> Cập nhật avatar nếu chưa có
+      if (!user.avatar) {
+        user.avatar = picture;
+        await user.save();
+      }
+    } else {
+      // User chưa tồn tại -> Tạo mới
+      // Tạo mật khẩu ngẫu nhiên để bypass validate (hoặc để trống nếu schema cho phép)
+      const randomPassword =
+        Math.random().toString(36).slice(-8) +
+        Math.random().toString(36).slice(-8);
+
+      user = new User({
+        email,
+        fullName: name,
+        password: randomPassword,
+        avatar: picture,
+        authType: "google",
+        hasProfile: false,
+      });
+      await user.save();
+    }
+
+    // 3. Trả về kết quả giống như hàm login thường
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        avatar: user.avatar,
+        hasProfile: !!user.height,
+      },
+    });
+  } catch (err) {
+    console.error("Google Login Error:", err);
+    res.status(400).json({ error: "Đăng nhập Google thất bại." });
   }
 };

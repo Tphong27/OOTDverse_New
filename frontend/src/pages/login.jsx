@@ -1,9 +1,9 @@
-// frontend/src/pages/login.jsx
 import { useState } from "react";
 import { Eye, EyeOff, Lock, Mail, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { loginUser } from "@/services/userService"; // Import service
+import { loginUser, googleLoginUser } from "@/services/userService"; // Import thêm googleLoginUser
+import { GoogleLogin } from "@react-oauth/google"; // Import Google Component
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  // Xử lý đăng nhập thường (Email/Password)
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -26,29 +27,44 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // 1. Gọi API đăng nhập
       const res = await loginUser({ email, password });
-
-      if (res.success) {
-        // 2. Lưu thông tin user (có thể lưu cả token nếu backend trả về JWT)
-        // Để đơn giản, ta lưu object user vào localStorage
-        if (typeof window !== "undefined") {
-          localStorage.setItem("currentUser", JSON.stringify(res.user));
-        }
-
-        // 3. Điều hướng thông minh
-        // Nếu backend trả về cờ hasProfile = false (chưa nhập số đo) -> qua trang profile
-        if (res.user.hasProfile === false) {
-          router.push("/user/profile");
-        } else {
-          router.push("/wardrobe/wardrobe"); // Hoặc /user/dashboard
-        }
-      }
+      handleAuthSuccess(res);
     } catch (err) {
       console.error("Login Error:", err);
       setError(err.response?.data?.error || "Email hoặc mật khẩu không đúng.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Xử lý đăng nhập Google
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setIsLoading(true);
+    setError("");
+    try {
+      // Gửi token Google về backend để xác thực
+      const res = await googleLoginUser(credentialResponse.credential);
+      handleAuthSuccess(res);
+    } catch (err) {
+      console.error("Google Login Error:", err);
+      setError("Đăng nhập bằng Google thất bại. Vui lòng thử lại.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Hàm xử lý chung khi đăng nhập thành công
+  const handleAuthSuccess = (res) => {
+    if (res.success) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("currentUser", JSON.stringify(res.user));
+      }
+
+      if (res.user.hasProfile === false) {
+        router.push("/user/profile");
+      } else {
+        router.push("/wardrobe/wardrobe");
+      }
     }
   };
 
@@ -149,27 +165,54 @@ export default function LoginPage() {
                 "Đăng nhập"
               )}
             </button>
-
-            {/* Register Link */}
-            <div className="text-center pt-4 border-t border-gray-100">
-              <p className="text-sm text-gray-600">
-                Chưa có tài khoản?{" "}
-                <Link
-                  href="/register"
-                  className="font-semibold text-gray-900 hover:text-purple-600"
-                >
-                  Đăng ký miễn phí
-                </Link>
-              </p>
-            </div>
           </form>
+
+          {/* Divider & Google Login */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">
+                Hoặc tiếp tục với
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-center w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                setError("Kết nối Google thất bại.");
+                console.log("Google Login Failed");
+              }}
+              useOneTap
+              theme="outline"
+              size="large"
+              width="350" // Đặt chiều rộng cụ thể hoặc dùng css
+              text="continue_with"
+              shape="pill"
+            />
+          </div>
+
+          {/* Register Link */}
+          <div className="text-center pt-4 border-t border-gray-100">
+            <p className="text-sm text-gray-600">
+              Chưa có tài khoản?{" "}
+              <Link
+                href="/register"
+                className="font-semibold text-gray-900 hover:text-purple-600"
+              >
+                Đăng ký miễn phí
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Right Side - Image */}
       <div className="hidden lg:block lg:w-1/2 bg-gray-50">
         <div className="h-full w-full relative">
-          {/* Bạn có thể thay ảnh khác ở đây */}
           <img
             src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1600"
             alt="Fashion background"

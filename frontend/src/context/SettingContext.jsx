@@ -13,7 +13,8 @@ import {
   getSeasons,
   getStyles,
   getOccasions,
-  getWeatherTypes
+  getWeatherTypes,
+  getCategories, // ← THÊM
 } from "@/services/settingService";
 
 const SettingContext = createContext();
@@ -21,7 +22,7 @@ const SettingContext = createContext();
 export function SettingProvider({ children }) {
   // State chính: Lưu tất cả settings
   const [settings, setSettings] = useState([]);
-  
+
   // State phân loại theo type (để truy cập nhanh)
   const [brands, setBrands] = useState([]);
   const [colors, setColors] = useState([]);
@@ -29,8 +30,9 @@ export function SettingProvider({ children }) {
   const [styles, setStyles] = useState([]);
   const [occasions, setOccasions] = useState([]);
   const [weatherTypes, setWeatherTypes] = useState([]);
+  const [categories, setCategories] = useState([]); // ← THÊM
   const [roles, setRoles] = useState([]);
-  
+
   // State loading
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,20 +47,20 @@ export function SettingProvider({ children }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Load TẤT CẢ settings
       const allSettings = await getSettings();
       setSettings(allSettings);
-      
+
       // Phân loại settings theo type
-      setBrands(allSettings.filter(s => s.type === 'brand'));
-      setColors(allSettings.filter(s => s.type === 'color'));
-      setSeasons(allSettings.filter(s => s.type === 'season'));
-      setStyles(allSettings.filter(s => s.type === 'style'));
-      setOccasions(allSettings.filter(s => s.type === 'occasion'));
-      setWeatherTypes(allSettings.filter(s => s.type === 'weather'));
-      setRoles(allSettings.filter(s => s.type === 'role'));
-      
+      setBrands(allSettings.filter((s) => s.type === "brand"));
+      setColors(allSettings.filter((s) => s.type === "color"));
+      setSeasons(allSettings.filter((s) => s.type === "season"));
+      setStyles(allSettings.filter((s) => s.type === "style"));
+      setOccasions(allSettings.filter((s) => s.type === "occasion"));
+      setWeatherTypes(allSettings.filter((s) => s.type === "weather"));
+      setCategories(allSettings.filter((s) => s.type === "category")); // ← THÊM
+      setRoles(allSettings.filter((s) => s.type === "role"));
     } catch (err) {
       console.error("Lỗi load settings:", err);
       setError(err.message);
@@ -71,32 +73,35 @@ export function SettingProvider({ children }) {
   const loadSettingsByType = async (type) => {
     try {
       const data = await getSettingsByType(type);
-      
+
       // Cập nhật state tương ứng
-      switch(type) {
-        case 'brand':
+      switch (type) {
+        case "brand":
           setBrands(data);
           break;
-        case 'color':
+        case "color":
           setColors(data);
           break;
-        case 'season':
+        case "season":
           setSeasons(data);
           break;
-        case 'style':
+        case "style":
           setStyles(data);
           break;
-        case 'occasion':
+        case "occasion":
           setOccasions(data);
           break;
-        case 'weather':
+        case "weather":
           setWeatherTypes(data);
           break;
-        case 'role':
+        case "category":
+          setCategories(data);
+          break;
+        case "role":
           setRoles(data);
           break;
       }
-      
+
       return data;
     } catch (err) {
       console.error(`Lỗi load ${type}:`, err);
@@ -108,13 +113,13 @@ export function SettingProvider({ children }) {
   const addSetting = async (settingData) => {
     try {
       const newSetting = await createSetting(settingData);
-      
+
       // Cập nhật state
-      setSettings(prev => [newSetting, ...prev]);
-      
+      setSettings((prev) => [newSetting, ...prev]);
+
       // Cập nhật state phân loại
-      updateCategorizedState(newSetting, 'add');
-      
+      updateCategorizedState(newSetting, "add");
+
       return newSetting;
     } catch (err) {
       console.error("Lỗi thêm setting:", err);
@@ -126,15 +131,15 @@ export function SettingProvider({ children }) {
   const editSetting = async (id, settingData) => {
     try {
       const updatedSetting = await updateSetting(id, settingData);
-      
+
       // Cập nhật state
-      setSettings(prev => 
-        prev.map(s => s._id === id ? updatedSetting : s)
+      setSettings((prev) =>
+        prev.map((s) => (s._id === id ? updatedSetting : s))
       );
-      
+
       // Cập nhật state phân loại
-      updateCategorizedState(updatedSetting, 'update', id);
-      
+      updateCategorizedState(updatedSetting, "update", id);
+
       return updatedSetting;
     } catch (err) {
       console.error("Lỗi cập nhật setting:", err);
@@ -146,13 +151,12 @@ export function SettingProvider({ children }) {
   const removeSetting = async (id) => {
     try {
       await deleteSetting(id);
-      
+
       // Xóa khỏi state (vì đã inactive)
-      setSettings(prev => prev.filter(s => s._id !== id));
-      
+      setSettings((prev) => prev.filter((s) => s._id !== id));
+
       // Xóa khỏi state phân loại
-      updateCategorizedState({ _id: id }, 'remove');
-      
+      updateCategorizedState({ _id: id }, "remove");
     } catch (err) {
       console.error("Lỗi xóa setting:", err);
       throw err;
@@ -163,11 +167,10 @@ export function SettingProvider({ children }) {
   const removeSettingPermanent = async (id) => {
     try {
       await permanentDeleteSetting(id);
-      
+
       // Xóa khỏi state
-      setSettings(prev => prev.filter(s => s._id !== id));
-      updateCategorizedState({ _id: id }, 'remove');
-      
+      setSettings((prev) => prev.filter((s) => s._id !== id));
+      updateCategorizedState({ _id: id }, "remove");
     } catch (err) {
       console.error("Lỗi xóa vĩnh viễn:", err);
       throw err;
@@ -177,40 +180,43 @@ export function SettingProvider({ children }) {
   // Helper: Cập nhật state phân loại
   const updateCategorizedState = (setting, action, oldId = null) => {
     const { type, _id } = setting;
-    
+
     const updateState = (setState) => {
-      setState(prev => {
-        if (action === 'add') {
+      setState((prev) => {
+        if (action === "add") {
           return [setting, ...prev];
-        } else if (action === 'update') {
-          return prev.map(s => s._id === oldId ? setting : s);
-        } else if (action === 'remove') {
-          return prev.filter(s => s._id !== _id);
+        } else if (action === "update") {
+          return prev.map((s) => (s._id === oldId ? setting : s));
+        } else if (action === "remove") {
+          return prev.filter((s) => s._id !== _id);
         }
         return prev;
       });
     };
 
-    switch(type) {
-      case 'brand':
+    switch (type) {
+      case "brand":
         updateState(setBrands);
         break;
-      case 'color':
+      case "color":
         updateState(setColors);
         break;
-      case 'season':
+      case "season":
         updateState(setSeasons);
         break;
-      case 'style':
+      case "style":
         updateState(setStyles);
         break;
-      case 'occasion':
+      case "occasion":
         updateState(setOccasions);
         break;
-      case 'weather':
+      case "weather":
         updateState(setWeatherTypes);
         break;
-      case 'role':
+      case "category":
+        updateState(setCategories);
+        break;
+      case "role":
         updateState(setRoles);
         break;
     }
@@ -218,15 +224,25 @@ export function SettingProvider({ children }) {
 
   // Helper: Lấy settings theo type từ state
   const getByType = (type) => {
-    switch(type) {
-      case 'brand': return brands;
-      case 'color': return colors;
-      case 'season': return seasons;
-      case 'style': return styles;
-      case 'occasion': return occasions;
-      case 'weather': return weatherTypes;
-      case 'role': return roles;
-      default: return [];
+    switch (type) {
+      case "brand":
+        return brands;
+      case "color":
+        return colors;
+      case "season":
+        return seasons;
+      case "style":
+        return styles;
+      case "occasion":
+        return occasions;
+      case "weather":
+        return weatherTypes;
+      case "category":
+        return categories;
+      case "role":
+        return roles;
+      default:
+        return [];
     }
   };
 
@@ -241,10 +257,11 @@ export function SettingProvider({ children }) {
         styles,
         occasions,
         weatherTypes,
+        categories,
         roles,
         loading,
         error,
-        
+
         // Functions
         loadAllSettings,
         loadSettingsByType,
@@ -252,7 +269,7 @@ export function SettingProvider({ children }) {
         editSetting,
         removeSetting,
         removeSettingPermanent,
-        getByType
+        getByType,
       }}
     >
       {children}

@@ -1,41 +1,61 @@
-// frontend/src/pages/wardrobe/form.jsx
 import LayoutUser from "@/components/layout/LayoutUser";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
 import { useRouter } from "next/router";
 import { createWardrobeItem } from "@/services/wardrobeService";
+import axios from "axios";
 
 export default function AddItemForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
 
-  // State kiểm soát việc nhập thương hiệu tùy chỉnh
+  // State chứa dữ liệu động từ API
+  const [dynamicCategories, setDynamicCategories] = useState([]);
+  const [dynamicBrands, setDynamicBrands] = useState([]);
+
+  // State kiểm soát nhập thương hiệu tùy chỉnh
   const [isCustomBrand, setIsCustomBrand] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
-    category: "Áo",
+    category: "",
     brand: "",
     color: "",
     season: "",
   });
 
-  const categories = ["Áo", "Quần", "Váy", "Giày", "Túi xách", "Phụ kiện"];
+  // Load Categories & Brands từ API khi trang tải
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const API_URL =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await axios.get(`${API_URL}/api/setting`);
+        const settings = res.data;
 
-  // Danh sách thương hiệu mẫu
-  const popularBrands = [
-    "Zara",
-    "H&M",
-    "Uniqlo",
-    "Nike",
-    "Adidas",
-    "Gucci",
-    "Louis Vuitton",
-    "Chanel",
-    "Dior",
-    "Hermès",
-  ];
+        // Lọc và SẮP XẾP theo createdAt từ cũ đến mới (ascending)
+        const categories = settings
+          .filter((s) => s.type === "category" && s.status === "Active")
+          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // ← CŨ → MỚI
+
+        const brands = settings
+          .filter((s) => s.type === "brand" && s.status === "Active")
+          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // ← CŨ → MỚI
+
+        setDynamicCategories(categories);
+        setDynamicBrands(brands);
+
+        // Set default category nếu có
+        if (categories.length > 0) {
+          setFormData((prev) => ({ ...prev, category: categories[0].name }));
+        }
+      } catch (error) {
+        console.error("Lỗi tải settings:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -50,12 +70,11 @@ export default function AddItemForm() {
     }
   };
 
-  // Xử lý thay đổi dropdown thương hiệu
   const handleBrandChange = (e) => {
     const value = e.target.value;
     if (value === "other") {
       setIsCustomBrand(true);
-      setFormData({ ...formData, brand: "" }); // Reset để người dùng nhập
+      setFormData({ ...formData, brand: "" });
     } else {
       setIsCustomBrand(false);
       setFormData({ ...formData, brand: value });
@@ -64,12 +83,24 @@ export default function AddItemForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // 1. Kiểm tra đăng nhập
+    const storedUser =
+      typeof window !== "undefined"
+        ? localStorage.getItem("currentUser")
+        : null;
+    if (!storedUser) {
+      alert("Bạn cần đăng nhập để thực hiện tính năng này!");
+      router.push("/login");
+      return;
+    }
+    const currentUser = JSON.parse(storedUser);
+
     if (!formData.name || !selectedImage) {
       alert("Vui lòng nhập tên món đồ và chọn ảnh!");
       return;
     }
 
-    // Nếu đang chọn custom brand mà chưa nhập -> báo lỗi
     if (isCustomBrand && !formData.brand.trim()) {
       alert("Vui lòng nhập tên thương hiệu mới!");
       return;
@@ -78,9 +109,11 @@ export default function AddItemForm() {
     setIsSubmitting(true);
 
     try {
+      // 2. Gửi kèm userId và dữ liệu
       const payload = {
+        userId: currentUser._id,
         name: formData.name,
-        category: formData.category,
+        category: formData.category || dynamicCategories[0]?.name,
         brand: formData.brand,
         imageUrl: selectedImage,
       };
@@ -107,12 +140,11 @@ export default function AddItemForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Khu vực Upload Ảnh */}
+          {/* Upload Ảnh */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <label className="block text-sm font-medium text-gray-700 mb-4">
               Hình ảnh trang phục <span className="text-red-500">*</span>
             </label>
-
             {!selectedImage ? (
               <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors group">
                 <div className="p-4 rounded-full bg-purple-50 group-hover:bg-purple-100 transition-colors mb-3">
@@ -120,9 +152,6 @@ export default function AddItemForm() {
                 </div>
                 <p className="text-sm font-medium text-gray-700">
                   Nhấn để tải ảnh lên
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  PNG, JPG tối đa 2MB
                 </p>
                 <input
                   type="file"
@@ -142,7 +171,7 @@ export default function AddItemForm() {
                   <button
                     type="button"
                     onClick={() => setSelectedImage(null)}
-                    className="p-2 bg-white text-red-600 rounded-full hover:bg-red-50 transition-colors"
+                    className="p-2 bg-white text-red-600 rounded-full hover:bg-red-50"
                   >
                     <X className="w-6 h-6" />
                   </button>
@@ -151,7 +180,7 @@ export default function AddItemForm() {
             )}
           </div>
 
-          {/* Khu vực Thông tin */}
+          {/* Thông tin */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -164,12 +193,13 @@ export default function AddItemForm() {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none transition-all"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
                 required
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Danh mục - Sắp xếp từ cũ đến mới */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Danh mục
@@ -179,30 +209,31 @@ export default function AddItemForm() {
                   onChange={(e) =>
                     setFormData({ ...formData, category: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
                 >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
+                  <option value="">-- Chọn danh mục --</option>
+                  {dynamicCategories.map((cat) => (
+                    <option key={cat._id} value={cat.name}>
+                      {cat.name}
                     </option>
                   ))}
                 </select>
               </div>
 
+              {/* Thương hiệu - Sắp xếp từ cũ đến mới */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Thương hiệu
                 </label>
-                {/* Dropdown chọn thương hiệu */}
                 <select
                   value={isCustomBrand ? "other" : formData.brand}
                   onChange={handleBrandChange}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none transition-all mb-2"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none mb-2"
                 >
                   <option value="">-- Chọn thương hiệu --</option>
-                  {popularBrands.map((brand) => (
-                    <option key={brand} value={brand}>
-                      {brand}
+                  {dynamicBrands.map((brand) => (
+                    <option key={brand._id} value={brand.name}>
+                      {brand.name}
                     </option>
                   ))}
                   <option
@@ -212,8 +243,6 @@ export default function AddItemForm() {
                     + Thêm thương hiệu mới
                   </option>
                 </select>
-
-                {/* Ô nhập nếu chọn "Thêm thương hiệu mới" */}
                 {isCustomBrand && (
                   <input
                     type="text"
@@ -222,7 +251,7 @@ export default function AddItemForm() {
                     onChange={(e) =>
                       setFormData({ ...formData, brand: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 rounded-lg border border-purple-300 bg-purple-50 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none transition-all animate-fade-in-up"
+                    className="w-full px-4 py-2.5 rounded-lg border border-purple-300 bg-purple-50 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none animate-fade-in-up"
                     autoFocus
                   />
                 )}
@@ -230,7 +259,6 @@ export default function AddItemForm() {
             </div>
           </div>
 
-          {/* Các nút bấm */}
           <div className="flex items-center gap-4 pt-4">
             <button
               type="button"
@@ -243,12 +271,11 @@ export default function AddItemForm() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-6 py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200 flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors shadow-lg flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Đang lưu...
+                  <Loader2 className="w-5 h-5 animate-spin" /> Đang lưu...
                 </>
               ) : (
                 "Thêm vào tủ đồ"

@@ -6,9 +6,9 @@ const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/setting`;
 export const getSettings = async (filters = {}) => {
   try {
     const params = new URLSearchParams();
-    if (filters.type) params.append('type', filters.type);
-    if (filters.status) params.append('status', filters.status);
-    
+    if (filters.type) params.append("type", filters.type);
+    if (filters.status) params.append("status", filters.status);
+
     const response = await axios.get(`${API_URL}?${params.toString()}`);
     return response.data;
   } catch (error) {
@@ -96,35 +96,40 @@ export const getSettingTypes = async () => {
 
 // 9. Helper: Lấy tất cả brands
 export const getBrands = async () => {
-  return getSettingsByType('brand');
+  return getSettingsByType("brand");
 };
 
 // 10. Helper: Lấy tất cả colors
 export const getColors = async () => {
-  return getSettingsByType('color');
+  return getSettingsByType("color");
 };
 
 // 11. Helper: Lấy tất cả seasons
 export const getSeasons = async () => {
-  return getSettingsByType('season');
+  return getSettingsByType("season");
 };
 
 // 12. Helper: Lấy tất cả styles
 export const getStyles = async () => {
-  return getSettingsByType('style');
+  return getSettingsByType("style");
 };
 
 // 13. Helper: Lấy tất cả occasions
 export const getOccasions = async () => {
-  return getSettingsByType('occasion');
+  return getSettingsByType("occasion");
 };
 
 // 14. Helper: Lấy tất cả weather types
 export const getWeatherTypes = async () => {
-  return getSettingsByType('weather');
+  return getSettingsByType("weather");
+};
+
+// Helper: Lấy tất cả categories
+export const getCategories = async () => {
+  return getSettingsByType("category");
 };
 
 // 15. Helper: Lấy tất cả roles
 export const getRoles = async () => {
-  return getSettingsByType('role');
+  return getSettingsByType("role");
 };

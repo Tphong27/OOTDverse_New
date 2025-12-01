@@ -10,8 +10,10 @@ import {
   Grid3x3,
   List,
   Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import { getWardrobeItems } from "@/services/wardrobeService";
+import axios from "axios"; // Cần import axios để gọi API setting
 
 export default function Wardrobe() {
   const [items, setItems] = useState([]);
@@ -20,63 +22,63 @@ export default function Wardrobe() {
   const [viewMode, setViewMode] = useState("grid");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Cập nhật danh mục để khớp với dữ liệu tiếng Việt trong Database
-  const categories = [
-    { id: "all", label: "Tất cả", count: items.length },
-    {
-      id: "Áo",
-      label: "Áo",
-      count: items.filter((i) => i.category === "Áo").length,
-    },
-    {
-      id: "Quần",
-      label: "Quần",
-      count: items.filter((i) => i.category === "Quần").length,
-    },
-    {
-      id: "Váy",
-      label: "Váy",
-      count: items.filter((i) => i.category === "Váy").length,
-    },
-    {
-      id: "Giày",
-      label: "Giày",
-      count: items.filter((i) => i.category === "Giày").length,
-    },
-    {
-      id: "Túi xách",
-      label: "Túi xách",
-      count: items.filter((i) => i.category === "Túi xách").length,
-    },
-    {
-      id: "Phụ kiện",
-      label: "Phụ kiện",
-      count: items.filter((i) => i.category === "Phụ kiện").length,
-    },
-    // Thêm mục Áo khoác nếu muốn hỗ trợ sau này (hiện tại form chưa có)
-    {
-      id: "Áo khoác",
-      label: "Áo khoác",
-      count: items.filter((i) => i.category === "Áo khoác").length,
-    },
-  ];
+  // State lưu danh mục lấy từ Admin Settings
+  const [dynamicCategories, setDynamicCategories] = useState([]);
 
   useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        const data = await getWardrobeItems();
-        setItems(data);
-      } catch (error) {
-        console.error("Lỗi tải dữ liệu:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchItems();
+    // 1. Lấy user từ localStorage
+    const storedUser =
+      typeof window !== "undefined"
+        ? localStorage.getItem("currentUser")
+        : null;
+
+    if (storedUser) {
+      const currentUser = JSON.parse(storedUser);
+
+      // 2. Gọi API song song: Lấy Tủ đồ & Lấy Settings
+      const fetchData = async () => {
+        try {
+          const API_URL =
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+          const [wardrobeRes, settingsRes] = await Promise.all([
+            getWardrobeItems(currentUser._id),
+            axios.get(`${API_URL}/api/setting`),
+          ]);
+
+          // Set items tủ đồ
+          setItems(wardrobeRes);
+
+          // Lọc lấy các setting là 'category' và đang Active để tạo Tabs
+          const categoriesFromDB = settingsRes.data
+            .filter((s) => s.type === "category" && s.status === "Active")
+            .sort((a, b) => (a.priority || 0) - (b.priority || 0)); // Sắp xếp theo ưu tiên
+
+          setDynamicCategories(categoriesFromDB);
+        } catch (error) {
+          console.error("Lỗi tải dữ liệu:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchData();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
+  // Tạo danh sách tabs: Tab "Tất cả" + Các danh mục từ DB
+  const categoryTabs = [
+    { id: "all", label: "Tất cả", count: items.length },
+    ...dynamicCategories.map((cat) => ({
+      id: cat.name, // Dùng tên làm ID lọc (vì Item đang lưu category dạng String)
+      label: cat.name,
+      count: items.filter((i) => i.category === cat.name).length,
+    })),
+  ];
+
+  // Logic lọc dữ liệu
   const filteredItems = items.filter((item) => {
-    // Logic lọc: Nếu chọn "all" thì lấy hết, ngược lại so sánh chính xác chuỗi tiếng Việt
     const matchCategory =
       selectedCategory === "all" || item.category === selectedCategory;
 
@@ -93,6 +95,7 @@ export default function Wardrobe() {
         item._id === id ? { ...item, favorite: !item.favorite } : item
       )
     );
+    // TODO: Gọi API cập nhật favorite lên server
   };
 
   return (
@@ -162,9 +165,9 @@ export default function Wardrobe() {
           </div>
         </div>
 
-        {/* Categories Filter */}
+        {/* Categories Filter (Dynamic) */}
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          {categories.map((cat) => (
+          {categoryTabs.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
@@ -192,16 +195,26 @@ export default function Wardrobe() {
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600"></div>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-12 h-12 text-gray-400" />
+          <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
+            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-12 h-12 text-gray-300" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               Không tìm thấy món đồ nào
             </h3>
-            <p className="text-gray-500">
-              Hãy thử thay đổi bộ lọc hoặc thêm món đồ mới!
+            <p className="text-gray-500 mb-6">
+              {searchQuery
+                ? `Không có kết quả nào cho "${searchQuery}"`
+                : "Tủ đồ của bạn đang trống hoặc chưa có món nào thuộc danh mục này."}
             </p>
+            {!searchQuery && (
+              <Link
+                href="/wardrobe/form"
+                className="inline-flex items-center gap-2 text-purple-600 font-semibold hover:text-purple-700 hover:underline"
+              >
+                <Plus className="w-5 h-5" /> Thêm món đồ ngay
+              </Link>
+            )}
           </div>
         ) : (
           <div
@@ -221,13 +234,13 @@ export default function Wardrobe() {
                 {/* Image */}
                 <div
                   className={`relative overflow-hidden ${
-                    viewMode === "list" ? "w-32 h-32" : "aspect-[3/4]"
+                    viewMode === "list" ? "w-40 h-40 shrink-0" : "aspect-[3/4]"
                   }`}
                 >
                   <img
                     src={
                       item.imageUrl ||
-                      "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400"
+                      "https://placehold.co/400x600?text=No+Image"
                     }
                     alt={item.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
@@ -239,7 +252,7 @@ export default function Wardrobe() {
                   {/* Favorite Button */}
                   <button
                     onClick={() => toggleFavorite(item._id)}
-                    className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all shadow-lg hover:scale-110"
+                    className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all shadow-lg hover:scale-110 z-10"
                   >
                     <Heart
                       className={`w-5 h-5 transition-colors ${
@@ -269,20 +282,26 @@ export default function Wardrobe() {
                       : ""
                   }`}
                 >
-                  <h3 className="font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-purple-600 transition-colors">
+                  <h3 className="font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-purple-600 transition-colors text-lg">
                     {item.name}
                   </h3>
-                  <p className="text-sm text-gray-500 mb-2">
-                    {item.brand || "No brand"}
+                  <p className="text-sm text-gray-500 mb-3 flex items-center gap-1">
+                    {item.brand ? (
+                      <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium text-gray-600">
+                        {item.brand}
+                      </span>
+                    ) : (
+                      "No brand"
+                    )}
                   </p>
 
                   {/* Tags */}
                   <div className="flex flex-wrap gap-1.5">
-                    <span className="px-2.5 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full">
+                    <span className="px-2.5 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full border border-purple-100">
                       {item.category}
                     </span>
                     {item.color && (
-                      <span className="px-2.5 py-1 bg-pink-50 text-pink-600 text-xs font-medium rounded-full">
+                      <span className="px-2.5 py-1 bg-pink-50 text-pink-600 text-xs font-medium rounded-full border border-pink-100">
                         {item.color}
                       </span>
                     )}

@@ -5,13 +5,15 @@ import axios from "axios";
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/wardrobe`;
 
 // 1. Hàm lấy danh sách đồ
-export const getWardrobeItems = async () => {
+export const getWardrobeItems = async (userId) => {
+  if (!userId) return [];
   try {
-    const response = await axios.get(API_URL);
-    return response.data; // Trả về danh sách món đồ
+    // Gửi userId lên URL: /api/wardrobe?userId=...
+    const response = await axios.get(API_URL, { params: { userId } });
+    return response.data;
   } catch (error) {
-    console.error("Lỗi khi lấy dữ liệu tủ đồ:", error);
-    return []; // Trả về mảng rỗng nếu lỗi
+    console.error("Lỗi lấy tủ đồ:", error);
+    return [];
   }
 };
 
@@ -21,7 +23,7 @@ export const createWardrobeItem = async (itemData) => {
     const response = await axios.post(API_URL, itemData);
     return response.data;
   } catch (error) {
-    console.error("Lỗi khi thêm món đồ:", error);
+    console.error("Lỗi thêm món đồ:", error);
     throw error;
   }
 };

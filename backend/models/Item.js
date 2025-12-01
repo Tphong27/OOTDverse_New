@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 
 const ItemSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+
   name: { type: String, required: true }, // Ví dụ: "Áo thun trắng"
   category: { type: String, required: true }, // Ví dụ: "Áo", "Quần"
   brand: String, // Ví dụ: "Zara"

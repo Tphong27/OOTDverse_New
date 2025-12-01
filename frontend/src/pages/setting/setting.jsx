@@ -17,6 +17,7 @@ import {
   Star,
   AlertCircle,
   User,
+  Grid3x3,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -28,6 +29,7 @@ export default function SettingsPage() {
     styles,
     occasions,
     weatherTypes,
+    cateogries,
     loading,
     addSetting,
     editSetting,
@@ -41,7 +43,7 @@ export default function SettingsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentSetting, setCurrentSetting] = useState(null);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 7;
@@ -55,7 +57,7 @@ export default function SettingsPage() {
     description: "",
     status: "Active",
   });
-  
+
   // Validation errors
   const [errors, setErrors] = useState({});
 
@@ -65,16 +67,33 @@ export default function SettingsPage() {
     { id: "brand", label: "Thương hiệu", icon: Tag, count: brands.length },
     { id: "color", label: "Màu sắc", icon: Palette, count: colors.length },
     { id: "season", label: "Mùa", icon: Calendar, count: seasons.length },
-    { id: "weather", label: "Thời tiết", icon: Cloud, count: weatherTypes.length },
+    {
+      id: "weather",
+      label: "Thời tiết",
+      icon: Cloud,
+      count: weatherTypes.length,
+    },
     { id: "style", label: "Phong cách", icon: Shirt, count: styles.length },
     { id: "occasion", label: "Dịp", icon: Star, count: occasions.length },
-    { id: "role", label: "Vai trò", icon: User, count: settings.filter(s => s.type === 'role').length },
+    // {
+    //   id: "category",
+    //   label: "Danh mục",
+    //   icon: Grid3x3,
+    //   count: categories.length,
+    // }, // ← THÊM
+    {
+      id: "role",
+      label: "Vai trò",
+      icon: User,
+      count: settings.filter((s) => s.type === "role").length,
+    },
   ];
 
   // Filter settings
   const filteredSettings = settings.filter((setting) => {
     const matchType = selectedType === "all" || setting.type === selectedType;
-    const matchStatus = selectedStatus === "all" || setting.status === selectedStatus;
+    const matchStatus =
+      selectedStatus === "all" || setting.status === selectedStatus;
     const matchSearch =
       setting.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       setting.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -95,7 +114,7 @@ export default function SettingsPage() {
   // Validate form
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Validate name
     if (!formData.name.trim()) {
       newErrors.name = "Tên không được để trống";
@@ -104,34 +123,35 @@ export default function SettingsPage() {
     } else if (formData.name.length > 100) {
       newErrors.name = "Tên không được quá 100 ký tự";
     }
-    
+
     // Validate duplicate name (chỉ khi create hoặc đổi tên)
-    const isDuplicate = settings.some(s => 
-      s.name.toLowerCase() === formData.name.toLowerCase() && 
-      s.type === formData.type &&
-      s._id !== currentSetting?._id
+    const isDuplicate = settings.some(
+      (s) =>
+        s.name.toLowerCase() === formData.name.toLowerCase() &&
+        s.type === formData.type &&
+        s._id !== currentSetting?._id
     );
     if (isDuplicate) {
       newErrors.name = `Setting "${formData.name}" đã tồn tại trong loại "${formData.type}"`;
     }
-    
+
     // Validate priority
     if (formData.priority < 0) {
       newErrors.priority = "Độ ưu tiên không được âm";
     } else if (formData.priority > 100) {
       newErrors.priority = "Độ ưu tiên không được quá 100";
     }
-    
+
     // Validate value length
     if (formData.value && formData.value.length > 500) {
       newErrors.value = "Giá trị không được quá 500 ký tự";
     }
-    
+
     // Validate description length
     if (formData.description && formData.description.length > 500) {
       newErrors.description = "Mô tả không được quá 500 ký tự";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -139,12 +159,12 @@ export default function SettingsPage() {
   // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate trước khi submit
     if (!validateForm()) {
       return;
     }
-    
+
     try {
       if (editMode && currentSetting) {
         await editSetting(currentSetting._id, formData);
@@ -219,7 +239,9 @@ export default function SettingsPage() {
                 Quản lý Settings
               </h1>
               <p className="text-white/90 text-lg">
-                {settings.length} settings • {settings.filter(s => s.status === 'Active').length} active
+                {settings.length} settings •{" "}
+                {settings.filter((s) => s.status === "Active").length} active •{" "}
+                {categories.length} danh mục
               </p>
             </div>
             <button
@@ -402,15 +424,24 @@ export default function SettingsPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                 <div className="text-sm text-gray-600">
-                  Hiển thị <span className="font-semibold">{startIndex + 1}</span> đến{" "}
-                  <span className="font-semibold">{Math.min(endIndex, filteredSettings.length)}</span> trong tổng số{" "}
-                  <span className="font-semibold">{filteredSettings.length}</span> kết quả
+                  Hiển thị{" "}
+                  <span className="font-semibold">{startIndex + 1}</span> đến{" "}
+                  <span className="font-semibold">
+                    {Math.min(endIndex, filteredSettings.length)}
+                  </span>{" "}
+                  trong tổng số{" "}
+                  <span className="font-semibold">
+                    {filteredSettings.length}
+                  </span>{" "}
+                  kết quả
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   {/* Previous Button */}
                   <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
                     disabled={currentPage === 1}
                     className={`px-4 py-2 rounded-lg font-medium transition-all ${
                       currentPage === 1
@@ -443,7 +474,9 @@ export default function SettingsPage() {
 
                   {/* Next Button */}
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    }
                     disabled={currentPage === totalPages}
                     className={`px-4 py-2 rounded-lg font-medium transition-all ${
                       currentPage === totalPages
@@ -508,9 +541,9 @@ export default function SettingsPage() {
                     setErrors({ ...errors, name: null }); // Clear error khi gõ
                   }}
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-                    errors.name 
-                      ? 'border-red-300 focus:ring-red-500' 
-                      : 'border-gray-200 focus:ring-purple-500'
+                    errors.name
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-gray-200 focus:ring-purple-500"
                   }`}
                   placeholder="VD: Zara, Màu đỏ, Mùa hè..."
                 />
@@ -557,13 +590,16 @@ export default function SettingsPage() {
                     type="number"
                     value={formData.priority}
                     onChange={(e) => {
-                      setFormData({ ...formData, priority: parseInt(e.target.value) || 0 });
+                      setFormData({
+                        ...formData,
+                        priority: parseInt(e.target.value) || 0,
+                      });
                       setErrors({ ...errors, priority: null });
                     }}
                     className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-                      errors.priority 
-                        ? 'border-red-300 focus:ring-red-500' 
-                        : 'border-gray-200 focus:ring-purple-500'
+                      errors.priority
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-200 focus:ring-purple-500"
                     }`}
                     placeholder="0-100"
                     min="0"
@@ -606,9 +642,9 @@ export default function SettingsPage() {
                     setErrors({ ...errors, value: null });
                   }}
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-                    errors.value 
-                      ? 'border-red-300 focus:ring-red-500' 
-                      : 'border-gray-200 focus:ring-purple-500'
+                    errors.value
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-gray-200 focus:ring-purple-500"
                   }`}
                   placeholder="Hex code, URL, hoặc dữ liệu khác..."
                   maxLength={500}
@@ -620,7 +656,13 @@ export default function SettingsPage() {
                       {errors.value}
                     </p>
                   )}
-                  <p className={`text-xs ${formData.value.length > 450 ? 'text-red-500' : 'text-gray-400'} ml-auto`}>
+                  <p
+                    className={`text-xs ${
+                      formData.value.length > 450
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    } ml-auto`}
+                  >
                     {formData.value.length}/500
                   </p>
                 </div>
@@ -639,9 +681,9 @@ export default function SettingsPage() {
                   }}
                   rows={3}
                   className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-                    errors.description 
-                      ? 'border-red-300 focus:ring-red-500' 
-                      : 'border-gray-200 focus:ring-purple-500'
+                    errors.description
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-gray-200 focus:ring-purple-500"
                   }`}
                   placeholder="Mô tả chi tiết về setting này..."
                   maxLength={500}
@@ -653,7 +695,13 @@ export default function SettingsPage() {
                       {errors.description}
                     </p>
                   )}
-                  <p className={`text-xs ${formData.description.length > 450 ? 'text-red-500' : 'text-gray-400'} ml-auto`}>
+                  <p
+                    className={`text-xs ${
+                      formData.description.length > 450
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    } ml-auto`}
+                  >
                     {formData.description.length}/500
                   </p>
                 </div>

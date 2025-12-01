@@ -32,12 +32,12 @@ export default function SettingsPage() {
     occasions,
     weatherTypes,
     categories,
-    dynamicTypes, // ← Lấy từ context
+    dynamicTypes,
     loading,
     addSetting,
     editSetting,
     removeSetting,
-    loadDynamicTypes, // ← Lấy function reload
+    loadDynamicTypes,
     getByType,
   } = useSettings();
 
@@ -55,7 +55,7 @@ export default function SettingsPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 7;
+  const itemsPerPage = 10;
 
   // Form state
   const [formData, setFormData] = useState({
@@ -304,7 +304,7 @@ export default function SettingsPage() {
               <p className="text-white/90 text-lg">
                 {settings.length} settings •{" "}
                 {settings.filter((s) => s.status === "Active").length} active •{" "}
-                {dynamicTypes.length} loại
+                {dynamicTypes.length} type
               </p>
             </div>
             <button

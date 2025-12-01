@@ -1,5 +1,5 @@
 // frontend/src/pages/_app.js
-import "@/styles/globals.css"; // <--- QUAN TRỌNG: Thêm dòng này!
+import "@/styles/globals.css";
 import Script from "next/script";
 import { WardrobeProvider } from "@/context/WardrobeContext";
 import { SettingProvider } from "@/context/SettingContext";
@@ -7,8 +7,19 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 
 export default function App({ Component, pageProps }) {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+  // --- KIỂM TRA DEBUG ---
+  // Mở Console trình duyệt (F12) xem dòng này có in ra mã ID không
+  if (typeof window !== "undefined") {
+    console.log("Google Client ID:", clientId);
+    if (!clientId) {
+      console.error(
+        "LỖI: Chưa đọc được NEXT_PUBLIC_GOOGLE_CLIENT_ID. Hãy kiểm tra file .env.local và khởi động lại server!"
+      );
+    }
+  }
+
   return (
-    // --- BẮT ĐẦU SỬA: Bọc toàn bộ app bằng GoogleOAuthProvider ---
     <GoogleOAuthProvider clientId={clientId}>
       <SettingProvider>
         <WardrobeProvider>
@@ -20,6 +31,5 @@ export default function App({ Component, pageProps }) {
         </WardrobeProvider>
       </SettingProvider>
     </GoogleOAuthProvider>
-    // --- KẾT THÚC SỬA ---
   );
 }

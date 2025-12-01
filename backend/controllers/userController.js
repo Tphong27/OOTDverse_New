@@ -61,12 +61,15 @@ exports.login = async (req, res) => {
 // 3. Cập nhật Hồ sơ Thời trang (Onboarding)
 exports.updateProfile = async (req, res) => {
   try {
-    const { userId, ...profileData } = req.body; // Lấy userId và các dữ liệu còn lại
+    const { userId, ...profileData } = req.body;
+
+    // Đánh dấu là đã có profile nếu cập nhật thành công
+    profileData.hasProfile = true;
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $set: profileData },
-      { new: true } // Trả về dữ liệu mới sau khi update
+      { new: true }
     );
 
     res.json({ success: true, user: updatedUser });
@@ -75,11 +78,19 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// 4. Lấy thông tin chi tiết user
+// 4. Lấy thông tin chi tiết user (Kèm thông tin Setting)
 exports.getProfile = async (req, res) => {
   try {
     const { userId } = req.query;
-    const user = await User.findById(userId);
+
+    // Populate để lấy chi tiết name, value từ bảng Setting dựa trên ID đã lưu
+    const user = await User.findById(userId)
+      .populate("favoriteStyles", "name value type")
+      .populate("favoriteBrands", "name value type")
+      .populate("favoriteColors", "name value type")
+      .populate("favoriteOccasions", "name value type")
+      .populate("avoidColors", "name value type");
+
     if (!user) return res.status(404).json({ error: "User not found" });
     res.json(user);
   } catch (err) {

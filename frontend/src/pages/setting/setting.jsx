@@ -44,7 +44,7 @@ export default function SettingsPage() {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 7;
 
   // Form state
   const [formData, setFormData] = useState({
@@ -55,6 +55,9 @@ export default function SettingsPage() {
     description: "",
     status: "Active",
   });
+  
+  // Validation errors
+  const [errors, setErrors] = useState({});
 
   // Categories với icons
   const categories = [
@@ -89,9 +92,59 @@ export default function SettingsPage() {
     setCurrentPage(1);
   }, [selectedType, selectedStatus, searchQuery]);
 
+  // Validate form
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Validate name
+    if (!formData.name.trim()) {
+      newErrors.name = "Tên không được để trống";
+    } else if (formData.name.length < 2) {
+      newErrors.name = "Tên phải có ít nhất 2 ký tự";
+    } else if (formData.name.length > 100) {
+      newErrors.name = "Tên không được quá 100 ký tự";
+    }
+    
+    // Validate duplicate name (chỉ khi create hoặc đổi tên)
+    const isDuplicate = settings.some(s => 
+      s.name.toLowerCase() === formData.name.toLowerCase() && 
+      s.type === formData.type &&
+      s._id !== currentSetting?._id
+    );
+    if (isDuplicate) {
+      newErrors.name = `Setting "${formData.name}" đã tồn tại trong loại "${formData.type}"`;
+    }
+    
+    // Validate priority
+    if (formData.priority < 0) {
+      newErrors.priority = "Độ ưu tiên không được âm";
+    } else if (formData.priority > 100) {
+      newErrors.priority = "Độ ưu tiên không được quá 100";
+    }
+    
+    // Validate value length
+    if (formData.value && formData.value.length > 500) {
+      newErrors.value = "Giá trị không được quá 500 ký tự";
+    }
+    
+    // Validate description length
+    if (formData.description && formData.description.length > 500) {
+      newErrors.description = "Mô tả không được quá 500 ký tự";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate trước khi submit
+    if (!validateForm()) {
+      return;
+    }
+    
     try {
       if (editMode && currentSetting) {
         await editSetting(currentSetting._id, formData);
@@ -101,7 +154,9 @@ export default function SettingsPage() {
       resetForm();
       setShowModal(false);
     } catch (error) {
-      alert("Lỗi: " + (error.response?.data?.error || error.message));
+      // Hiển thị lỗi từ backend
+      const errorMsg = error.response?.data?.error || error.message;
+      setErrors({ submit: errorMsg });
     }
   };
 
@@ -143,6 +198,7 @@ export default function SettingsPage() {
     });
     setCurrentSetting(null);
     setEditMode(false);
+    setErrors({}); //Reset errors
   };
 
   // Open add modal
@@ -427,6 +483,17 @@ export default function SettingsPage() {
 
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Error Alert */}
+              {errors.submit && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-800">Lỗi</p>
+                    <p className="text-sm text-red-700">{errors.submit}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Name */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -436,12 +503,23 @@ export default function SettingsPage() {
                   type="text"
                   required
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    setErrors({ ...errors, name: null }); // Clear error khi gõ
+                  }}
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+                    errors.name 
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-purple-500'
+                  }`}
                   placeholder="VD: Zara, Màu đỏ, Mùa hè..."
                 />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.name}
+                  </p>
+                )}
               </div>
 
               {/* Type */}
@@ -478,12 +556,25 @@ export default function SettingsPage() {
                   <input
                     type="number"
                     value={formData.priority}
-                    onChange={(e) =>
-                      setFormData({ ...formData, priority: parseInt(e.target.value) })
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="0"
+                    onChange={(e) => {
+                      setFormData({ ...formData, priority: parseInt(e.target.value) || 0 });
+                      setErrors({ ...errors, priority: null });
+                    }}
+                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+                      errors.priority 
+                        ? 'border-red-300 focus:ring-red-500' 
+                        : 'border-gray-200 focus:ring-purple-500'
+                    }`}
+                    placeholder="0-100"
+                    min="0"
+                    max="100"
                   />
+                  {errors.priority && (
+                    <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.priority}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -510,12 +601,29 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={formData.value}
-                  onChange={(e) =>
-                    setFormData({ ...formData, value: e.target.value })
-                  }
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  onChange={(e) => {
+                    setFormData({ ...formData, value: e.target.value });
+                    setErrors({ ...errors, value: null });
+                  }}
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+                    errors.value 
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-purple-500'
+                  }`}
                   placeholder="Hex code, URL, hoặc dữ liệu khác..."
+                  maxLength={500}
                 />
+                <div className="flex justify-between items-center mt-1">
+                  {errors.value && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.value}
+                    </p>
+                  )}
+                  <p className={`text-xs ${formData.value.length > 450 ? 'text-red-500' : 'text-gray-400'} ml-auto`}>
+                    {formData.value.length}/500
+                  </p>
+                </div>
               </div>
 
               {/* Description */}
@@ -525,13 +633,30 @@ export default function SettingsPage() {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, description: e.target.value });
+                    setErrors({ ...errors, description: null });
+                  }}
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+                    errors.description 
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-200 focus:ring-purple-500'
+                  }`}
                   placeholder="Mô tả chi tiết về setting này..."
+                  maxLength={500}
                 />
+                <div className="flex justify-between items-center mt-1">
+                  {errors.description && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.description}
+                    </p>
+                  )}
+                  <p className={`text-xs ${formData.description.length > 450 ? 'text-red-500' : 'text-gray-400'} ml-auto`}>
+                    {formData.description.length}/500
+                  </p>
+                </div>
               </div>
 
               {/* Actions */}

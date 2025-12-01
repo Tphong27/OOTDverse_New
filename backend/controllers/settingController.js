@@ -57,6 +57,19 @@ exports.createSetting = async (req, res) => {
     const savedSetting = await newSetting.save();
     res.status(201).json(savedSetting);
   } catch (err) {
+    // Xử lý lỗi duplicate key (name + type trùng)
+    if (err.code === 11000) {
+      return res.status(400).json({ 
+        error: `Setting "${req.body.name}" đã tồn tại trong loại "${req.body.type}"` 
+      });
+    }
+    
+    // Xử lý validation errors
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    
     res.status(400).json({ error: err.message });
   }
 };
@@ -76,6 +89,19 @@ exports.updateSetting = async (req, res) => {
     
     res.json(updatedSetting);
   } catch (err) {
+    // Xử lý lỗi duplicate key
+    if (err.code === 11000) {
+      return res.status(400).json({ 
+        error: `Setting "${req.body.name}" đã tồn tại trong loại "${req.body.type}"` 
+      });
+    }
+    
+    // Xử lý validation errors
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    
     res.status(400).json({ error: err.message });
   }
 };

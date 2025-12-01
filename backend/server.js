@@ -2,8 +2,11 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-require("dotenv").config();
-//require("dotenv").config({ path: "./backend/.env" });
+const path = require("path"); // <--- 1. Thêm dòng này
+
+// 2. Sửa dòng config dotenv này:
+// Nó sẽ luôn tìm file .env nằm cùng thư mục với file server.js
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,6 +33,9 @@ const settingRoutes = require("./routes/settingRoutes");
 // Đăng ký route
 app.use("/api/wardrobe", wardrobeRoutes);
 app.use("/api/setting", settingRoutes);
+
+const userRoutes = require("./routes/userRoutes"); // Import
+app.use("/api/users", userRoutes);
 
 // 4. Start Server
 app.listen(PORT, () => {

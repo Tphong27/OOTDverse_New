@@ -1,7 +1,7 @@
 // backend/controllers/userController.js
 const User = require("../models/User");
 const { OAuth2Client } = require("google-auth-library");
-
+const { getRoleIdByName } = require("../services/settingService");
 // Lấy Client ID từ biến môi trường (Bạn cần thêm vào file .env backend)
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -18,9 +18,28 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: "Email này đã được sử dụng!" });
     }
 
+    //TÌM ROLE CUSTOMER VÀ GÁN
+    const customerRoleId = await getRoleIdByName("Customer");
+    if (!customerRoleId) {
+      console.error("Critical Error: 'Customer' Role ID not found in Setting.");
+      return res.status(500).json({
+        error: "Lỗi cấu hình hệ thống: Không tìm thấy Role 'Customer'.",
+      });
+    }
+    const newUser = new User({
+      email,
+      password,
+      fullName,
+      role: customerRoleId,
+    });
     // Tạo user mới (chưa có hồ sơ chi tiết)
-    const newUser = new User({ email, password, fullName });
     await newUser.save();
+
+    //Lấy thông tin user đã populate role để trả về cho Frontend
+    const populatedUser = await User.findById(newUser._id).populate(
+      "role",
+      "name value"
+    );
 
     // Trả về thông tin user (trừ mật khẩu)
     res.status(201).json({
@@ -29,6 +48,7 @@ exports.register = async (req, res) => {
         _id: newUser._id,
         email: newUser.email,
         fullName: newUser.fullName,
+        role: populatedUser.role,
       },
     });
   } catch (err) {
@@ -42,10 +62,21 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     // Tìm user
-    const user = await User.findOne({ email });
+    // const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).populate("role", "name value");
     if (!user || user.password !== password) {
       // Lưu ý: password đang so sánh thô để test nhanh
       return res.status(401).json({ error: "Email hoặc mật khẩu không đúng!" });
+    }
+
+    if (!user.role) {
+      const customerRoleId = await getRoleIdByName("Customer");
+      if (customerRoleId) {
+        user.role = customerRoleId;
+        await user.save();
+        // Populate lại sau khi save
+        await user.populate("role", "name value");
+      }
     }
 
     // Đăng nhập thành công
@@ -55,6 +86,7 @@ exports.login = async (req, res) => {
         _id: user._id,
         email: user.email,
         fullName: user.fullName,
+        role: user.role,
         // Trả về thêm cờ để biết đã điền hồ sơ chưa
         hasProfile: !!user.height,
       },
@@ -91,6 +123,7 @@ exports.getProfile = async (req, res) => {
 
     // Populate để lấy chi tiết name, value từ bảng Setting dựa trên ID đã lưu
     const user = await User.findById(userId)
+      .populate("role", "name value")
       .populate("favoriteStyles", "name value type")
       .populate("favoriteBrands", "name value type")
       .populate("favoriteColors", "name value type")
@@ -104,7 +137,7 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// 5. Đăng nhập bằng Google (Đã sửa đổi logic gửi email)
+// 5. Đăng nhập bằng Google
 exports.googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
@@ -117,10 +150,23 @@ exports.googleLogin = async (req, res) => {
     const payload = ticket.getPayload();
     const { email, name, picture } = payload;
 
-    let user = await User.findOne({ email });
+    //Lấy ID Role Customer trước
+    const customerRoleId = await getRoleIdByName("Customer");
+    if (!customerRoleId) {
+        throw new Error("Lỗi cấu hình: Không tìm thấy Role 'Customer'.");
+    }
+
+    // let user = await User.findOne({ email });
+    let user = await User.findOne({ email }).populate("role", "name value");
     let isNewUser = false; // Biến cờ để đánh dấu người dùng mới
 
     if (user) {
+      // Người dùng đã tồn tại: Cập nhật thông tin cơ bản nếu cần
+      if (!user.role) {
+            user.role = customerRoleId;
+            await user.save();
+            await user.populate("role", "name value"); 
+      }
       // Người dùng cũ: Chỉ cập nhật avatar nếu chưa có
       if (!user.avatar) {
         user.avatar = picture;
@@ -141,11 +187,13 @@ exports.googleLogin = async (req, res) => {
         avatar: picture,
         authType: "google",
         hasProfile: false,
+        role: customerRoleId,
       });
       await user.save();
+
+      user = await User.findById(user._id).populate("role", "name value");
     }
 
-    // --- LOGIC GỬI EMAIL ĐƯỢC SỬA ĐỔI ---
     // Chỉ gửi email nếu là người dùng mới (isNewUser = true)
     if (isNewUser) {
       // Bạn có thể đổi tên hàm thành sendWelcomeEmail cho phù hợp hơn
@@ -163,6 +211,7 @@ exports.googleLogin = async (req, res) => {
         email: user.email,
         fullName: user.fullName,
         avatar: user.avatar,
+        role: user.role,
         hasProfile: !!user.height,
       },
     });

@@ -129,9 +129,6 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
 
         {/* Menu Items */}
         <nav className="p-4 space-y-1 mt-2">
-          <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-            Menu chính
-          </p>
           {filteredMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = router.pathname === item.path;

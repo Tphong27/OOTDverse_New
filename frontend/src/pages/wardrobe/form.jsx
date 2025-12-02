@@ -1,158 +1,284 @@
 import LayoutUser from "@/components/layout/LayoutUser";
 import { useState, useEffect } from "react";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, Plus, Tag as TagIcon, AlertCircle } from "lucide-react";
 import { useRouter } from "next/router";
-import { createWardrobeItem } from "@/services/wardrobeService";
-import axios from "axios";
+import { useWardrobe } from "@/context/WardrobeContext";
+import { useSettings } from "@/context/SettingContext";
 
-export default function AddItemForm() {
+export default function ItemForm() {
   const router = useRouter();
+  const { id } = router.query; // ID để edit
+  const { addItem, updateItem, getItemDetails } = useWardrobe();
+  const { 
+    settings,
+    getByType 
+  } = useSettings();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [tagInput, setTagInput] = useState("");
+  const [errors, setErrors] = useState({});
 
-  // State chứa dữ liệu động từ API
-  const [dynamicCategories, setDynamicCategories] = useState([]);
-  const [dynamicBrands, setDynamicBrands] = useState([]);
-
-  // State kiểm soát nhập thương hiệu tùy chỉnh
-  const [isCustomBrand, setIsCustomBrand] = useState(false);
-
+  // Form data
   const [formData, setFormData] = useState({
-    name: "",
-    category: "",
-    brand: "",
-    color: "",
-    season: "",
+    item_name: "",
+    category_id: "",
+    brand_id: "",
+    color_id: [],
+    season_id: [],
+    material_id: "",
+    size: "",
+    purchase_date: "",
+    price: "",
+    image_url: "",
+    style_tags: [],
+    notes: "",
+    is_favorite: false
   });
 
-  // Load Categories & Brands từ API khi trang tải
+  // Load item data nếu đang edit
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const API_URL =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        const res = await axios.get(`${API_URL}/api/setting`);
-        const settings = res.data;
+    if (id) {
+      loadItemData();
+    }
+  }, [id]);
 
-        // Lọc và SẮP XẾP theo createdAt từ cũ đến mới (ascending)
-        const categories = settings
-          .filter((s) => s.type === "category" && s.status === "Active")
-          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // ← CŨ → MỚI
-
-        const brands = settings
-          .filter((s) => s.type === "brand" && s.status === "Active")
-          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // ← CŨ → MỚI
-
-        setDynamicCategories(categories);
-        setDynamicBrands(brands);
-
-        // Set default category nếu có
-        if (categories.length > 0) {
-          setFormData((prev) => ({ ...prev, category: categories[0].name }));
-        }
-      } catch (error) {
-        console.error("Lỗi tải settings:", error);
+  const loadItemData = async () => {
+    setIsLoading(true);
+    try {
+      const result = await getItemDetails(id);
+      if (result.success) {
+        const item = result.data;
+        setFormData({
+          item_name: item.item_name || "",
+          category_id: item.category_id?._id || item.category_id || "",
+          brand_id: item.brand_id?._id || item.brand_id || "",
+          color_id: Array.isArray(item.color_id) 
+            ? item.color_id.map(c => c._id || c) 
+            : [],
+          season_id: Array.isArray(item.season_id)
+            ? item.season_id.map(s => s._id || s)
+            : [],
+          material_id: item.material_id?._id || item.material_id || "",
+          size: item.size || "",
+          purchase_date: item.purchase_date ? item.purchase_date.split('T')[0] : "",
+          price: item.price || "",
+          image_url: item.image_url || "",
+          style_tags: item.style_tags || [],
+          notes: item.notes || "",
+          is_favorite: item.is_favorite || false
+        });
+        setSelectedImage(item.image_url);
       }
-    };
-    fetchSettings();
-  }, []);
+    } catch (error) {
+      console.error("Error loading item:", error);
+      alert("Lỗi tải dữ liệu món đồ");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  // Get settings by type
+  const categories = getByType('category').filter(s => s.status === 'Active');
+  const brands = getByType('brand').filter(s => s.status === 'Active');
+  const colors = getByType('color').filter(s => s.status === 'Active');
+  const seasons = getByType('season').filter(s => s.status === 'Active');
+  const materials = getByType('material').filter(s => s.status === 'Active');
+
+  // DEBUG: Log để kiểm tra
+  useEffect(() => {
+    console.log('🔍 Settings Debug:', {
+      allSettings: settings,
+      categories: categories,
+      brands: brands,
+      colors: colors,
+      seasons: seasons,
+      materials: materials,
+      materialsRaw: getByType('material')
+    });
+  }, [settings, materials]);
+
+  // Handle image upload
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert("File ảnh quá lớn! Vui lòng chọn ảnh dưới 2MB.");
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.");
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => setSelectedImage(reader.result);
+      reader.onloadend = () => {
+        setSelectedImage(reader.result);
+        setFormData(prev => ({ ...prev, image_url: reader.result }));
+        setErrors(prev => ({ ...prev, image_url: null }));
+      };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleBrandChange = (e) => {
-    const value = e.target.value;
-    if (value === "other") {
-      setIsCustomBrand(true);
-      setFormData({ ...formData, brand: "" });
-    } else {
-      setIsCustomBrand(false);
-      setFormData({ ...formData, brand: value });
+  // Handle multi-select (color, season)
+  const handleMultiSelect = (field, value) => {
+    setFormData(prev => {
+      const currentValues = prev[field];
+      const newValues = currentValues.includes(value)
+        ? currentValues.filter(v => v !== value)
+        : [...currentValues, value];
+      return { ...prev, [field]: newValues };
+    });
+  };
+
+  // Handle style tags
+  const handleAddTag = () => {
+    const tag = tagInput.trim();
+    if (tag && !formData.style_tags.includes(tag)) {
+      if (formData.style_tags.length >= 20) {
+        alert("Chỉ được thêm tối đa 20 tags");
+        return;
+      }
+      setFormData(prev => ({
+        ...prev,
+        style_tags: [...prev.style_tags, tag]
+      }));
+      setTagInput("");
     }
   };
 
+  const handleRemoveTag = (tagToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      style_tags: prev.style_tags.filter(t => t !== tagToRemove)
+    }));
+  };
+
+  // Validate form
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.item_name.trim()) {
+      newErrors.item_name = "Tên món đồ là bắt buộc";
+    } else if (formData.item_name.length < 2) {
+      newErrors.item_name = "Tên phải có ít nhất 2 ký tự";
+    } else if (formData.item_name.length > 150) {
+      newErrors.item_name = "Tên không được quá 150 ký tự";
+    }
+
+    if (!formData.category_id) {
+      newErrors.category_id = "Vui lòng chọn danh mục";
+    }
+
+    if (!formData.image_url) {
+      newErrors.image_url = "Vui lòng tải lên ảnh món đồ";
+    }
+
+    if (formData.price && formData.price < 0) {
+      newErrors.price = "Giá không được âm";
+    }
+
+    if (formData.notes && formData.notes.length > 1000) {
+      newErrors.notes = "Ghi chú không được quá 1000 ký tự";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1. Kiểm tra đăng nhập
-    const storedUser =
-      typeof window !== "undefined"
-        ? localStorage.getItem("currentUser")
-        : null;
-    if (!storedUser) {
-      alert("Bạn cần đăng nhập để thực hiện tính năng này!");
-      router.push("/login");
-      return;
-    }
-    const currentUser = JSON.parse(storedUser);
-
-    if (!formData.name || !selectedImage) {
-      alert("Vui lòng nhập tên món đồ và chọn ảnh!");
-      return;
-    }
-
-    if (isCustomBrand && !formData.brand.trim()) {
-      alert("Vui lòng nhập tên thương hiệu mới!");
+    if (!validateForm()) {
+      alert("Vui lòng kiểm tra lại thông tin");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // 2. Gửi kèm userId và dữ liệu
       const payload = {
-        userId: currentUser._id,
-        name: formData.name,
-        category: formData.category || dynamicCategories[0]?.name,
-        brand: formData.brand,
-        imageUrl: selectedImage,
+        item_name: formData.item_name.trim(),
+        category_id: formData.category_id,
+        brand_id: formData.brand_id || null,
+        color_id: formData.color_id,
+        season_id: formData.season_id,
+        material_id: formData.material_id || null,
+        size: formData.size || null,
+        purchase_date: formData.purchase_date || null,
+        price: formData.price ? parseFloat(formData.price) : null,
+        image_url: formData.image_url,
+        style_tags: formData.style_tags,
+        notes: formData.notes || null,
+        is_favorite: formData.is_favorite
       };
 
-      await createWardrobeItem(payload);
-      alert("Thêm món đồ thành công! 🎉");
-      router.push("/wardrobe/wardrobe");
+      console.log('📤 Payload gửi đi:', payload);
+
+      let result;
+      if (id) {
+        result = await updateItem(id, payload);
+      } else {
+        result = await addItem(payload);
+      }
+
+      console.log('📥 Response:', result);
+
+      if (result.success) {
+        alert(id ? "Cập nhật thành công! 🎉" : "Thêm món đồ thành công! 🎉");
+        router.push("/wardrobe/wardrobe");
+      } else {
+        throw new Error(result.error || "Có lỗi xảy ra");
+      }
     } catch (error) {
-      console.error("Lỗi submit:", error);
-      alert("Có lỗi xảy ra khi lưu. Vui lòng thử lại!");
+      console.error("❌ Error details:", error);
+      console.error("❌ Error response:", error.response?.data);
+      alert("Lỗi: " + (error.response?.data?.message || error.message || "Vui lòng thử lại"));
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <LayoutUser>
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600"></div>
+        </div>
+      </LayoutUser>
+    );
+  }
+
   return (
     <LayoutUser>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Thêm món đồ mới</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {id ? "Chỉnh sửa món đồ" : "Thêm món đồ mới"}
+          </h1>
           <p className="text-gray-500 mt-1">
-            Chụp ảnh hoặc tải lên hình ảnh trang phục của bạn
+            Điền thông tin chi tiết về món đồ của bạn
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Upload Ảnh */}
+          {/* 1. UPLOAD ẢNH */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <label className="block text-sm font-medium text-gray-700 mb-4">
-              Hình ảnh trang phục <span className="text-red-500">*</span>
+            <label className="block text-sm font-semibold text-gray-700 mb-4">
+              Hình ảnh <span className="text-red-500">*</span>
             </label>
             {!selectedImage ? (
-              <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors group">
-                <div className="p-4 rounded-full bg-purple-50 group-hover:bg-purple-100 transition-colors mb-3">
-                  <Upload className="w-8 h-8 text-purple-600" />
+              <label className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-xl cursor-pointer hover:bg-gray-50 transition-colors group ${
+                errors.image_url ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}>
+                <div className={`p-4 rounded-full mb-3 ${
+                  errors.image_url ? 'bg-red-100' : 'bg-purple-50 group-hover:bg-purple-100'
+                } transition-colors`}>
+                  <Upload className={`w-8 h-8 ${errors.image_url ? 'text-red-600' : 'text-purple-600'}`} />
                 </div>
                 <p className="text-sm font-medium text-gray-700">
                   Nhấn để tải ảnh lên
                 </p>
+                <p className="text-xs text-gray-500 mt-1">PNG, JPG (max 5MB)</p>
                 <input
                   type="file"
                   className="hidden"
@@ -161,104 +287,326 @@ export default function AddItemForm() {
                 />
               </label>
             ) : (
-              <div className="relative w-full h-64 bg-gray-50 rounded-xl overflow-hidden border border-gray-200 group">
+              <div className="relative w-full h-96 bg-gray-50 rounded-xl overflow-hidden border border-gray-200 group">
                 <img
                   src={selectedImage}
                   alt="Preview"
                   className="w-full h-full object-contain"
                 />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                  <label className="p-3 bg-white text-purple-600 rounded-full hover:bg-purple-50 cursor-pointer">
+                    <Upload className="w-6 h-6" />
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
                   <button
                     type="button"
-                    onClick={() => setSelectedImage(null)}
-                    className="p-2 bg-white text-red-600 rounded-full hover:bg-red-50"
+                    onClick={() => {
+                      setSelectedImage(null);
+                      setFormData(prev => ({ ...prev, image_url: "" }));
+                    }}
+                    className="p-3 bg-white text-red-600 rounded-full hover:bg-red-50"
                   >
                     <X className="w-6 h-6" />
                   </button>
                 </div>
               </div>
             )}
+            {errors.image_url && (
+              <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />
+                {errors.image_url}
+              </p>
+            )}
           </div>
 
-          {/* Thông tin */}
+          {/* 2. THÔNG TIN CƠ BẢN */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900">Thông tin cơ bản</h3>
+
+            {/* Tên món đồ */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tên món đồ <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                placeholder="Ví dụ: Áo sơ mi trắng..."
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
-                required
+                value={formData.item_name}
+                onChange={(e) => {
+                  setFormData({ ...formData, item_name: e.target.value });
+                  setErrors({ ...errors, item_name: null });
+                }}
+                className={`w-full px-4 py-3 rounded-lg border ${
+                  errors.item_name ? 'border-red-300' : 'border-gray-300'
+                } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
+                placeholder="Ví dụ: Áo sơ mi trắng Oxford"
               />
+              {errors.item_name && (
+                <p className="mt-1 text-sm text-red-600">{errors.item_name}</p>
+              )}
             </div>
 
+            {/* Danh mục & Size */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Danh mục - Sắp xếp từ cũ đến mới */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Danh mục
+                  Danh mục <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
+                  value={formData.category_id}
+                  onChange={(e) => {
+                    setFormData({ ...formData, category_id: e.target.value });
+                    setErrors({ ...errors, category_id: null });
+                  }}
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    errors.category_id ? 'border-red-300' : 'border-gray-300'
+                  } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
                 >
                   <option value="">-- Chọn danh mục --</option>
-                  {dynamicCategories.map((cat) => (
-                    <option key={cat._id} value={cat.name}>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat._id}>
                       {cat.name}
                     </option>
                   ))}
                 </select>
+                {errors.category_id && (
+                  <p className="mt-1 text-sm text-red-600">{errors.category_id}</p>
+                )}
               </div>
 
-              {/* Thương hiệu - Sắp xếp từ cũ đến mới */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Thương hiệu
+                  Size
+                </label>
+                <input
+                  type="text"
+                  value={formData.size}
+                  onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
+                  placeholder="S, M, L, XL, 38, 40..."
+                  maxLength={20}
+                />
+              </div>
+            </div>
+
+            {/* Thương hiệu */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Thương hiệu
+              </label>
+              <select
+                value={formData.brand_id}
+                onChange={(e) => setFormData({ ...formData, brand_id: e.target.value })}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
+              >
+                <option value="">-- Chọn thương hiệu --</option>
+                {brands.map((brand) => (
+                  <option key={brand._id} value={brand._id}>
+                    {brand.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* 3. THUỘC TÍNH */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900">Thuộc tính</h3>
+
+            {/* Màu sắc - Multi-select */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Màu sắc (Có thể chọn nhiều)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {colors.map((color) => (
+                  <button
+                    key={color._id}
+                    type="button"
+                    onClick={() => handleMultiSelect('color_id', color._id)}
+                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                      formData.color_id.includes(color._id)
+                        ? 'border-purple-600 bg-purple-50 text-purple-700 font-semibold'
+                        : 'border-gray-200 hover:border-purple-300 text-gray-700'
+                    }`}
+                  >
+                    {color.name}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Đã chọn: {formData.color_id.length} màu
+              </p>
+            </div>
+
+            {/* Mùa - Multi-select */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Mùa phù hợp (Có thể chọn nhiều)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {seasons.map((season) => (
+                  <button
+                    key={season._id}
+                    type="button"
+                    onClick={() => handleMultiSelect('season_id', season._id)}
+                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                      formData.season_id.includes(season._id)
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-semibold'
+                        : 'border-gray-200 hover:border-blue-300 text-gray-700'
+                    }`}
+                  >
+                    {season.name}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Đã chọn: {formData.season_id.length} mùa
+              </p>
+            </div>
+
+            {/* Chất liệu */}
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Chất liệu
                 </label>
                 <select
-                  value={isCustomBrand ? "other" : formData.brand}
-                  onChange={handleBrandChange}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none mb-2"
+                  value={formData.material_id}
+                  onChange={(e) => setFormData({ ...formData, material_id: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
                 >
-                  <option value="">-- Chọn thương hiệu --</option>
-                  {dynamicBrands.map((brand) => (
-                    <option key={brand._id} value={brand.name}>
-                      {brand.name}
+                  <option value="">-- Chọn chất liệu --</option>
+                  {materials.map((material) => (
+                    <option key={material._id} value={material._id}>
+                      {material.name}
                     </option>
                   ))}
-                  <option
-                    value="other"
-                    className="font-semibold text-purple-600"
-                  >
-                    + Thêm thương hiệu mới
-                  </option>
                 </select>
-                {isCustomBrand && (
-                  <input
-                    type="text"
-                    placeholder="Nhập tên thương hiệu..."
-                    value={formData.brand}
-                    onChange={(e) =>
-                      setFormData({ ...formData, brand: e.target.value })
-                    }
-                    className="w-full px-4 py-2.5 rounded-lg border border-purple-300 bg-purple-50 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none animate-fade-in-up"
-                    autoFocus
-                  />
-                )}
               </div>
             </div>
           </div>
 
+          {/* 4. THÔNG TIN MUA SẮM */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900">Thông tin mua sắm</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày mua
+                </label>
+                <input
+                  type="date"
+                  value={formData.purchase_date}
+                  onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giá (VNĐ)
+                </label>
+                <input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
+                  placeholder="500000"
+                  min="0"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 5. STYLE TAGS & NOTES */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900">Ghi chú & Tags</h3>
+
+            {/* Style Tags */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Style Tags (Tối đa 20 tags)
+              </label>
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                  className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
+                  placeholder="VD: casual, streetwear, formal..."
+                />
+                <button
+                  type="button"
+                  onClick={handleAddTag}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Thêm
+                </button>
+              </div>
+              {formData.style_tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formData.style_tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium"
+                    >
+                      <TagIcon className="w-3 h-3" />
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="hover:text-purple-900"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ghi chú
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={4}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none resize-none"
+                placeholder="Ghi chú về món đồ, cách phối đồ, dịp phù hợp..."
+                maxLength={1000}
+              />
+              <p className="text-xs text-gray-500 mt-1 text-right">
+                {formData.notes.length}/1000 ký tự
+              </p>
+            </div>
+
+            {/* Favorite checkbox */}
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="is_favorite"
+                checked={formData.is_favorite}
+                onChange={(e) => setFormData({ ...formData, is_favorite: e.target.checked })}
+                className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+              />
+              <label htmlFor="is_favorite" className="text-sm font-medium text-gray-700 cursor-pointer">
+                ⭐ Đánh dấu là món đồ yêu thích
+              </label>
+            </div>
+          </div>
+
+          {/* SUBMIT BUTTONS */}
           <div className="flex items-center gap-4 pt-4">
             <button
               type="button"
@@ -271,14 +619,15 @@ export default function AddItemForm() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-6 py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors shadow-lg flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white font-medium rounded-xl hover:from-purple-700 hover:to-pink-600 transition-all shadow-lg flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" /> Đang lưu...
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {id ? "Đang cập nhật..." : "Đang lưu..."}
                 </>
               ) : (
-                "Thêm vào tủ đồ"
+                <>{id ? "Cập nhật" : "Thêm vào tủ đồ"}</>
               )}
             </button>
           </div>

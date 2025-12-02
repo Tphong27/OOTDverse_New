@@ -2,7 +2,6 @@ import LayoutUser from "@/components/layout/LayoutUser";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  Filter,
   Plus,
   Heart,
   Trash2,
@@ -11,108 +10,112 @@ import {
   List,
   Sparkles,
   AlertCircle,
+  TrendingUp,
+  DollarSign,
+  Shirt,
+  Eye,
+  Edit,
 } from "lucide-react";
-import { getWardrobeItems } from "@/services/wardrobeService";
-import axios from "axios"; // Cần import axios để gọi API setting
+import { useWardrobe } from "@/context/WardrobeContext";
+import axios from "axios";
 
 export default function Wardrobe() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  // ===== USE WARDROBE CONTEXT =====
+  const {
+    filteredItems,
+    loading,
+    error,
+    statistics,
+    filters,
+    updateFilters,
+    toggleFavorite,
+    deleteItem,
+    totalItems,
+    favoriteCount,
+  } = useWardrobe();
+
+  // ===== LOCAL STATE =====
   const [viewMode, setViewMode] = useState("grid");
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // State lưu danh mục lấy từ Admin Settings
   const [dynamicCategories, setDynamicCategories] = useState([]);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  // ===== LOAD CATEGORIES FROM SETTINGS =====
   useEffect(() => {
-    // 1. Lấy user từ localStorage
-    const storedUser =
-      typeof window !== "undefined"
-        ? localStorage.getItem("currentUser")
-        : null;
+    const fetchCategories = async () => {
+      try {
+        const API_URL =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const response = await axios.get(`${API_URL}/api/setting`);
 
-    if (storedUser) {
-      const currentUser = JSON.parse(storedUser);
+        const categoriesFromDB = response.data
+          .filter((s) => s.type === "category" && s.status === "Active")
+          .sort((a, b) => (a.priority || 0) - (b.priority || 0));
 
-      // 2. Gọi API song song: Lấy Tủ đồ & Lấy Settings
-      const fetchData = async () => {
-        try {
-          const API_URL =
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-          const [wardrobeRes, settingsRes] = await Promise.all([
-            getWardrobeItems(currentUser._id),
-            axios.get(`${API_URL}/api/setting`),
-          ]);
-
-          // Set items tủ đồ
-          setItems(wardrobeRes);
-
-          // Lọc lấy các setting là 'category' và đang Active để tạo Tabs
-          const categoriesFromDB = settingsRes.data
-            .filter((s) => s.type === "category" && s.status === "Active")
-            .sort((a, b) => (a.priority || 0) - (b.priority || 0)); // Sắp xếp theo ưu tiên
-
-          setDynamicCategories(categoriesFromDB);
-        } catch (error) {
-          console.error("Lỗi tải dữ liệu:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchData();
-    } else {
-      setLoading(false);
-    }
+        setDynamicCategories(categoriesFromDB);
+      } catch (error) {
+        console.error("Lỗi tải danh mục:", error);
+      }
+    };
+    fetchCategories();
   }, []);
 
-  // Tạo danh sách tabs: Tab "Tất cả" + Các danh mục từ DB
+  // ===== CREATE CATEGORY TABS =====
   const categoryTabs = [
-    { id: "all", label: "Tất cả", count: items.length },
+    { id: "all", label: "Tất cả", count: totalItems },
     ...dynamicCategories.map((cat) => ({
-      id: cat.name, // Dùng tên làm ID lọc (vì Item đang lưu category dạng String)
+      id: cat._id,
       label: cat.name,
-      count: items.filter((i) => i.category === cat.name).length,
+      count: filteredItems.filter(
+        (i) => i.category_id?._id === cat._id || i.category_id === cat._id
+      ).length,
     })),
   ];
 
-  // Logic lọc dữ liệu
-  const filteredItems = items.filter((item) => {
-    const matchCategory =
-      selectedCategory === "all" || item.category === selectedCategory;
+  // ===== HANDLE FUNCTIONS =====
+  const handleCategoryChange = (categoryId) => {
+    updateFilters({ category: categoryId });
+  };
 
-    const matchSearch =
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.brand?.toLowerCase().includes(searchQuery.toLowerCase());
+  const handleSearchChange = (e) => {
+    updateFilters({ search: e.target.value });
+  };
 
-    return matchCategory && matchSearch;
-  });
+  const handleToggleFavorite = async (itemId) => {
+    const result = await toggleFavorite(itemId);
+    if (!result.success) {
+      alert("Lỗi: " + result.error);
+    }
+  };
 
-  const toggleFavorite = (id) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item._id === id ? { ...item, favorite: !item.favorite } : item
-      )
-    );
-    // TODO: Gọi API cập nhật favorite lên server
+  const handleDeleteClick = (itemId) => {
+    setDeleteConfirm(itemId);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm) return;
+
+    const result = await deleteItem(deleteConfirm);
+    if (result.success) {
+      setDeleteConfirm(null);
+    } else {
+      alert("Lỗi xóa: " + result.error);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm(null);
   };
 
   return (
     <LayoutUser>
       <div className="space-y-6">
-        {/* Header với gradient */}
+        {/* Header với gradient và statistics */}
         <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 rounded-2xl p-8 text-white shadow-xl">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold mb-2 flex items-center gap-3">
-                <Sparkles className="w-8 h-8" />
                 Tủ đồ của tôi
               </h1>
-              <p className="text-white/90 text-lg">
-                {items.length} món đồ • {items.filter((i) => i.favorite).length}{" "}
-                yêu thích
-              </p>
             </div>
             <Link
               href="/wardrobe/form"
@@ -122,6 +125,54 @@ export default function Wardrobe() {
               Thêm món đồ mới
             </Link>
           </div>
+
+          {/* Statistics Cards */}
+          {statistics && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Shirt className="w-5 h-5" />
+                  <span className="text-sm text-white/80">Tổng món đồ</span>
+                </div>
+                <p className="text-2xl font-bold">
+                  {statistics.overview?.total_items || 0}
+                </p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Heart className="w-5 h-5" />
+                  <span className="text-sm text-white/80">Yêu thích</span>
+                </div>
+                <p className="text-2xl font-bold">
+                  {statistics.overview?.favorite_count || 0}
+                </p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="w-5 h-5" />
+                  <span className="text-sm text-white/80">Tổng giá trị</span>
+                </div>
+                <p className="text-2xl font-bold">
+                  {(statistics.overview?.total_value || 0).toLocaleString(
+                    "vi-VN"
+                  )}
+                  đ
+                </p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="w-5 h-5" />
+                  <span className="text-sm text-white/80">TB mặc/món</span>
+                </div>
+                <p className="text-2xl font-bold">
+                  {(statistics.overview?.avg_wear_count || 0).toFixed(1)}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Search & Filter Bar */}
@@ -132,9 +183,9 @@ export default function Wardrobe() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Tìm kiếm theo tên hoặc thương hiệu..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm kiếm theo tên, thương hiệu, ghi chú..."
+                value={filters.search}
+                onChange={handleSearchChange}
                 className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
               />
             </div>
@@ -148,6 +199,7 @@ export default function Wardrobe() {
                     ? "bg-white shadow-sm text-purple-600"
                     : "text-gray-400 hover:text-gray-600"
                 }`}
+                title="Xem dạng lưới"
               >
                 <Grid3x3 className="w-5 h-5" />
               </button>
@@ -158,6 +210,7 @@ export default function Wardrobe() {
                     ? "bg-white shadow-sm text-purple-600"
                     : "text-gray-400 hover:text-gray-600"
                 }`}
+                title="Xem dạng danh sách"
               >
                 <List className="w-5 h-5" />
               </button>
@@ -170,9 +223,9 @@ export default function Wardrobe() {
           {categoryTabs.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
+              onClick={() => handleCategoryChange(cat.id)}
               className={`px-5 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${
-                selectedCategory === cat.id
+                filters.category === cat.id
                   ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg scale-105"
                   : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
               }`}
@@ -180,7 +233,7 @@ export default function Wardrobe() {
               {cat.label}
               <span
                 className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                  selectedCategory === cat.id ? "bg-white/20" : "bg-gray-100"
+                  filters.category === cat.id ? "bg-white/20" : "bg-gray-100"
                 }`}
               >
                 {cat.count}
@@ -188,6 +241,13 @@ export default function Wardrobe() {
             </button>
           ))}
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-800">
+            <p className="font-medium">⚠️ Có lỗi xảy ra: {error}</p>
+          </div>
+        )}
 
         {/* Items Grid/List */}
         {loading ? (
@@ -203,11 +263,11 @@ export default function Wardrobe() {
               Không tìm thấy món đồ nào
             </h3>
             <p className="text-gray-500 mb-6">
-              {searchQuery
-                ? `Không có kết quả nào cho "${searchQuery}"`
+              {filters.search
+                ? `Không có kết quả nào cho "${filters.search}"`
                 : "Tủ đồ của bạn đang trống hoặc chưa có món nào thuộc danh mục này."}
             </p>
-            {!searchQuery && (
+            {!filters.search && (
               <Link
                 href="/wardrobe/form"
                 className="inline-flex items-center gap-2 text-purple-600 font-semibold hover:text-purple-700 hover:underline"
@@ -239,10 +299,10 @@ export default function Wardrobe() {
                 >
                   <img
                     src={
-                      item.imageUrl ||
+                      item.image_url ||
                       "https://placehold.co/400x600?text=No+Image"
                     }
-                    alt={item.name}
+                    alt={item.item_name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
 
@@ -251,24 +311,43 @@ export default function Wardrobe() {
 
                   {/* Favorite Button */}
                   <button
-                    onClick={() => toggleFavorite(item._id)}
+                    onClick={() => handleToggleFavorite(item._id)}
                     className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all shadow-lg hover:scale-110 z-10"
                   >
                     <Heart
                       className={`w-5 h-5 transition-colors ${
-                        item.favorite
+                        item.is_favorite
                           ? "fill-red-500 text-red-500"
                           : "text-gray-600"
                       }`}
                     />
                   </button>
 
+                  {/* Wear Count Badge */}
+                  {item.wear_count > 0 && (
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-lg text-xs font-medium">
+                      Mặc {item.wear_count} lần
+                    </div>
+                  )}
+
                   {/* Quick Actions */}
                   <div className="absolute bottom-3 left-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="flex-1 bg-white/90 backdrop-blur-sm py-2 rounded-lg text-sm font-medium text-gray-900 hover:bg-white transition-colors">
-                      Xem chi tiết
-                    </button>
-                    <button className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-colors">
+                    <Link
+                      href={`/wardrobe/${item._id}`}
+                      className="flex-1 bg-white/90 backdrop-blur-sm py-2 rounded-lg text-sm font-medium text-gray-900 hover:bg-white transition-colors text-center flex items-center justify-center gap-1"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Link>
+                    <Link
+                      href={`/wardrobe/form?id=${item._id}`}
+                      className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Link>
+                    <button
+                      onClick={() => handleDeleteClick(item._id)}
+                      className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-colors"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -283,26 +362,35 @@ export default function Wardrobe() {
                   }`}
                 >
                   <h3 className="font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-purple-600 transition-colors text-lg">
-                    {item.name}
+                    {item.item_name}
                   </h3>
+
+                  {/* Brand */}
                   <p className="text-sm text-gray-500 mb-3 flex items-center gap-1">
-                    {item.brand ? (
+                    {item.brand_id?.name ? (
                       <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium text-gray-600">
-                        {item.brand}
+                        {item.brand_id.name}
                       </span>
                     ) : (
-                      "No brand"
+                      <span className="text-gray-400 text-xs">No brand</span>
                     )}
                   </p>
 
                   {/* Tags */}
                   <div className="flex flex-wrap gap-1.5">
-                    <span className="px-2.5 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full border border-purple-100">
-                      {item.category}
-                    </span>
-                    {item.color && (
+                    {item.category_id?.name && (
+                      <span className="px-2.5 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full border border-purple-100">
+                        {item.category_id.name}
+                      </span>
+                    )}
+                    {item.color_id && item.color_id.length > 0 && (
                       <span className="px-2.5 py-1 bg-pink-50 text-pink-600 text-xs font-medium rounded-full border border-pink-100">
-                        {item.color}
+                        {item.color_id[0].name}
+                      </span>
+                    )}
+                    {item.price && (
+                      <span className="px-2.5 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full border border-green-100">
+                        {item.price.toLocaleString("vi-VN")}đ
                       </span>
                     )}
                   </div>
@@ -312,6 +400,38 @@ export default function Wardrobe() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-xl font-bold text-center mb-2">
+              Xác nhận xóa món đồ?
+            </h3>
+            <p className="text-gray-600 text-center mb-6">
+              Món đồ sẽ được xóa khỏi tủ đồ của bạn. Hành động này không thể
+              hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteCancel}
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom scrollbar styles */}
       <style jsx>{`

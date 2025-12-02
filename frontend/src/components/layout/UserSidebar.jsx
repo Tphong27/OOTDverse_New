@@ -10,6 +10,8 @@ import {
   BarChart3,
   LogOut,
   ChevronRight,
+  Settings,
+  User
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
@@ -18,6 +20,7 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
   const { logout } = useAuth(); // Lấy hàm logout
 
   const menuItems = [
+    //Customer
     { id: "overview", icon: Home, label: "Tổng quan", path: "/user/dashboard" },
     { id: "wardrobe", icon: Shirt, label: "Tủ đồ", path: "/wardrobe/wardrobe" },
     { id: "builder", icon: Sparkles, label: "Mix đồ AI", path: "/outfit/page" },
@@ -34,6 +37,10 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
       path: "/marketplace/marketplace",
     },
     { id: "stats", icon: BarChart3, label: "Thống kê", path: "/stats/stats" },
+
+    //Admin
+    { id: "settings", icon: Settings, label: "Cài đặt", path: "/setting/setting" },
+    { id: "account", icon: User, label: "Tài khoản", path: "/#" },
   ];
 
   return (
@@ -108,7 +115,7 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
         </nav>
 
         {/* Upgrade Card */}
-        <div className="absolute bottom-20 left-4 right-4 bg-gradient-to-br from-purple-600 to-pink-500 rounded-2xl p-5 text-white">
+        <div className="absolute bottom-22 left-4 right-4 bg-gradient-to-br from-purple-600 to-pink-500 rounded-2xl p-5 text-white">
           <Sparkles className="w-8 h-8 mb-3 animate-pulse" />
           <h3 className="font-bold text-lg mb-1">Nâng cấp Premium</h3>
           <p className="text-white/80 text-sm mb-4">
@@ -120,12 +127,12 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
         </div>
 
         {/* Footer */}
-        <div className="absolute bottom-0 w-full p-4 border-t border-purple-50 bg-gray-50">
+        {/* <div className="absolute bottom-0 w-full p-4 border-t border-purple-50 bg-gray-50">
           <button
             onClick={logout} // Sử dụng hàm logout từ Context
             className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all font-medium group"
           ></button>
-        </div>
+        </div> */}
       </aside>
     </>
   );

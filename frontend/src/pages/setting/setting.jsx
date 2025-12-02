@@ -85,7 +85,7 @@ export default function SettingsPage() {
     fabric: Sparkles,
   };
 
-  // Build categories động từ dynamicTypes (MỚI - THAY THẾ hardcoded categories)
+  // Build categories động từ dynamicTypes
   const categoriesFilter = [
     { 
       id: "all", 

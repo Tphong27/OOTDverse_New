@@ -37,10 +37,26 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("currentUser");
     setUser(null);
     router.push("/login");
+    // if (typeof window !== "undefined") {
+    //     window.location.href = "/login";
+    // }
   };
 
+  // Thêm cờ kiểm tra quyền truy cập (Access Control)
+  const isAdmin = user?.role?.name === "Admin";
+  const isCustomer = user?.role?.name === "Customer";
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        loading,
+        isAdmin,
+        isCustomer,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

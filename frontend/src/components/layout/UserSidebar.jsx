@@ -11,37 +11,94 @@ import {
   LogOut,
   ChevronRight,
   Settings,
-  User
+  User,
+  LayoutDashboard,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
   const router = useRouter();
-  const { logout } = useAuth(); // Lấy hàm logout
+  // const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+  const {isAdmin, isCustomer } = useAuth();
 
-  const menuItems = [
-    //Customer
-    { id: "overview", icon: Home, label: "Tổng quan", path: "/user/dashboard" },
-    { id: "wardrobe", icon: Shirt, label: "Tủ đồ", path: "/wardrobe/wardrobe" },
-    { id: "builder", icon: Sparkles, label: "Mix đồ AI", path: "/outfit/page" },
+  const ALL_MENU_ITEMS = [
+    // CUSTOMER ROUTES
+    {
+      id: "overview",
+      icon: Home,
+      label: "Tổng quan",
+      path: "/user/dashboard",
+      roles: ["Customer", "Admin"],
+    },
+    {
+      id: "wardrobe",
+      icon: Shirt,
+      label: "Tủ đồ",
+      path: "/wardrobe/wardrobe",
+      roles: ["Customer", "Admin"],
+    },
+    {
+      id: "builder",
+      icon: Sparkles,
+      label: "Mix đồ AI",
+      path: "/outfit/page",
+      roles: ["Customer", "Admin"],
+    },
     {
       id: "community",
       icon: Users,
       label: "Cộng đồng",
       path: "/community/community",
+      roles: ["Customer", "Admin"],
     },
     {
       id: "marketplace",
       icon: ShoppingBag,
       label: "Chợ",
       path: "/marketplace/marketplace",
+      roles: ["Customer", "Admin"],
     },
-    { id: "stats", icon: BarChart3, label: "Thống kê", path: "/stats/stats" },
-
-    //Admin
-    { id: "settings", icon: Settings, label: "Cài đặt", path: "/setting/setting" },
-    { id: "account", icon: User, label: "Tài khoản", path: "/#" },
+    {
+      id: "stats",
+      icon: BarChart3,
+      label: "Thống kê",
+      path: "/stats/stats",
+      roles: ["Customer", "Admin"],
+    },
+    // ADMIN ROUTES
+    {
+      id: "admin-dash",
+      icon: LayoutDashboard,
+      label: "Admin Dashboard",
+      path: "/admin/dashboard",
+      roles: ["Admin"],
+    },
+    {
+      id: "settings",
+      icon: Settings,
+      label: "Settings",
+      path: "/setting/setting",
+      roles: ["Admin"],
+    },
+    {
+      id: "account",
+      icon: User,
+      label: "Accounts",
+      path: "/#",
+      roles: ["Admin"],
+    },
   ];
+  const filteredMenuItems = ALL_MENU_ITEMS.filter(item => {
+    // Nếu người dùng là Admin, hiển thị tất cả các mục có role: ["Admin"]
+    if (isAdmin && item.roles.includes("Admin")) {
+      return true;
+    }
+    // Nếu người dùng là Customer (và không phải Admin), chỉ hiển thị các mục có role: ["Customer"]
+    if (isCustomer && !isAdmin && item.roles.includes("Customer")) {
+      return true;
+    }
+    return false;
+  });
 
   return (
     <>
@@ -75,7 +132,7 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
           <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
             Menu chính
           </p>
-          {menuItems.map((item) => {
+          {filteredMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = router.pathname === item.path;
 
@@ -125,14 +182,6 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
             Nâng cấp ngay
           </button>
         </div>
-
-        {/* Footer */}
-        {/* <div className="absolute bottom-0 w-full p-4 border-t border-purple-50 bg-gray-50">
-          <button
-            onClick={logout} // Sử dụng hàm logout từ Context
-            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all font-medium group"
-          ></button>
-        </div> */}
       </aside>
     </>
   );

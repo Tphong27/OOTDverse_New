@@ -1,100 +1,321 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import {
   getWardrobeItems,
+  getWardrobeItemById,
   createWardrobeItem,
+  updateWardrobeItem,
+  deleteWardrobeItem,
+  toggleFavoriteItem,
+  incrementWearCount,
+  getWardrobeStatistics,
+  filterWardrobeItems
 } from "@/services/wardrobeService";
 
 const WardrobeContext = createContext();
 
 export function WardrobeProvider({ children }) {
-  // State lưu danh sách món đồ
+  // ===== STATE MANAGEMENT =====
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [statistics, setStatistics] = useState(null);
 
-  // State lưu outfit (tạm thời để trống hoặc mock data)
-  const [outfits, setOutfits] = useState([]);
+  // State cho filters
+  const [filters, setFilters] = useState({
+    category: "all",
+    brand: null,
+    color: [],
+    season: [],
+    favorite: false,
+    search: ""
+  });
 
-  // Load dữ liệu từ Backend khi app khởi động
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        const data = await getWardrobeItems();
-        if (Array.isArray(data)) {
-          setItems(data);
-        }
-      } catch (error) {
-        console.error("Lỗi load tủ đồ:", error);
+  // ===== LOAD INITIAL DATA =====
+  const loadItems = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const storedUser = typeof window !== "undefined" 
+        ? localStorage.getItem("currentUser") 
+        : null;
+
+      if (!storedUser) {
+        setItems([]);
+        setLoading(false);
+        return;
       }
-    };
-    fetchItems();
+
+      const currentUser = JSON.parse(storedUser);
+      const data = await getWardrobeItems(currentUser._id);
+
+      setItems(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error loading wardrobe:", err);
+      setError(err.message || "Lỗi tải dữ liệu");
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Hàm thêm món đồ (gọi API + cập nhật state)
-  const addItem = async (newItemData) => {
+  // Load statistics
+  const loadStatistics = useCallback(async () => {
     try {
-      // newItemData cần khớp format mà API yêu cầu (name, category, brand, imageUrl)
-      const savedItem = await createWardrobeItem({
-        name: newItemData.name,
-        category: newItemData.category,
-        brand: newItemData.brand,
-        imageUrl: newItemData.image, // Lưu ý: Backend đang chờ 'imageUrl'
-      });
+      const stats = await getWardrobeStatistics();
+      setStatistics(stats);
+    } catch (err) {
+      console.error("Error loading statistics:", err);
+    }
+  }, []);
 
-      // Cập nhật state ngay lập tức để giao diện hiển thị
-      setItems((prev) => [savedItem, ...prev]);
-      return savedItem;
-    } catch (error) {
-      console.error("Lỗi thêm món đồ:", error);
-      throw error;
+  // ===== INITIAL LOAD =====
+  useEffect(() => {
+    loadItems();
+    loadStatistics();
+  }, [loadItems, loadStatistics]);
+
+  // ===== FILTERED ITEMS =====
+  const filteredItems = filterWardrobeItems(items, filters);
+
+  // ===== CRUD OPERATIONS =====
+
+  // 1. ADD ITEM
+  const addItem = async (itemData) => {
+    try {
+      setError(null);
+      const savedItem = await createWardrobeItem(itemData);
+      
+      // Thêm vào đầu danh sách
+      setItems(prev => [savedItem, ...prev]);
+      
+      // Reload statistics
+      loadStatistics();
+      
+      return { success: true, data: savedItem };
+    } catch (err) {
+      console.error("Error adding item:", err);
+      setError(err.message || "Thêm món đồ thất bại");
+      return { success: false, error: err.message };
     }
   };
 
-  // Các hàm phụ trợ (xóa, like...) - Tạm thời xử lý ở Client
-  const deleteItem = (id) => {
-    setItems((prev) => prev.filter((item) => item._id !== id));
-    // TODO: Gọi API xóa thật sự
+  // 2. UPDATE ITEM
+  const updateItem = async (itemId, updateData) => {
+    try {
+      setError(null);
+      const updatedItem = await updateWardrobeItem(itemId, updateData);
+      
+      // Cập nhật trong danh sách
+      setItems(prev => 
+        prev.map(item => item._id === itemId ? updatedItem : item)
+      );
+      
+      // Reload statistics nếu cần
+      loadStatistics();
+      
+      return { success: true, data: updatedItem };
+    } catch (err) {
+      console.error("Error updating item:", err);
+      setError(err.message || "Cập nhật thất bại");
+      return { success: false, error: err.message };
+    }
   };
 
-  const toggleFavorite = (id) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item._id === id ? { ...item, favorite: !item.favorite } : item
-      )
+  // 3. DELETE ITEM
+  const deleteItem = async (itemId) => {
+    try {
+      setError(null);
+      await deleteWardrobeItem(itemId);
+      
+      // Xóa khỏi danh sách
+      setItems(prev => prev.filter(item => item._id !== itemId));
+      
+      // Reload statistics
+      loadStatistics();
+      
+      return { success: true };
+    } catch (err) {
+      console.error("Error deleting item:", err);
+      setError(err.message || "Xóa thất bại");
+      return { success: false, error: err.message };
+    }
+  };
+
+  // 4. TOGGLE FAVORITE
+  const toggleFavorite = async (itemId) => {
+    try {
+      setError(null);
+      const updatedItem = await toggleFavoriteItem(itemId);
+      
+      // Cập nhật UI ngay lập tức
+      setItems(prev =>
+        prev.map(item =>
+          item._id === itemId 
+            ? { ...item, is_favorite: updatedItem.is_favorite }
+            : item
+        )
+      );
+      
+      // Reload statistics
+      loadStatistics();
+      
+      return { success: true, data: updatedItem };
+    } catch (err) {
+      console.error("Error toggling favorite:", err);
+      setError(err.message || "Toggle favorite thất bại");
+      return { success: false, error: err.message };
+    }
+  };
+
+  // 5. INCREMENT WEAR COUNT
+  const recordWear = async (itemId) => {
+    try {
+      setError(null);
+      const result = await incrementWearCount(itemId);
+      
+      // Cập nhật wear count và last_worn_date
+      setItems(prev =>
+        prev.map(item =>
+          item._id === itemId
+            ? { 
+                ...item, 
+                wear_count: result.wear_count,
+                last_worn_date: result.last_worn_date
+              }
+            : item
+        )
+      );
+      
+      return { success: true, data: result };
+    } catch (err) {
+      console.error("Error recording wear:", err);
+      setError(err.message || "Cập nhật wear count thất bại");
+      return { success: false, error: err.message };
+    }
+  };
+
+  // 6. GET SINGLE ITEM
+  const getItemDetails = async (itemId) => {
+    try {
+      setError(null);
+      const item = await getWardrobeItemById(itemId);
+      return { success: true, data: item };
+    } catch (err) {
+      console.error("Error getting item details:", err);
+      setError(err.message || "Lỗi tải chi tiết món đồ");
+      return { success: false, error: err.message };
+    }
+  };
+
+  // ===== FILTER FUNCTIONS =====
+
+  // Update filters
+  const updateFilters = (newFilters) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+  };
+
+  // Reset filters
+  const resetFilters = () => {
+    setFilters({
+      category: "all",
+      brand: null,
+      color: [],
+      season: [],
+      favorite: false,
+      search: ""
+    });
+  };
+
+  // ===== UTILITY FUNCTIONS =====
+
+  // Get items by category
+  const getItemsByCategory = (categoryId) => {
+    return items.filter(item => 
+      item.category_id?._id === categoryId || 
+      item.category_id === categoryId
     );
   };
 
-  // Outfit functions (Mock tạm thời)
-  const saveOutfit = (outfit) => {
-    const newOutfit = {
-      id: Date.now(),
-      ...outfit,
-      createdAt: new Date().toISOString(),
-    };
-    setOutfits([...outfits, newOutfit]);
-    return newOutfit;
+  // Get favorite items
+  const getFavoriteItems = () => {
+    return items.filter(item => item.is_favorite);
   };
 
-  const deleteOutfit = (id) => {
-    setOutfits(outfits.filter((outfit) => outfit.id !== id));
+  // Get recently added items
+  const getRecentItems = (limit = 10) => {
+    return [...items]
+      .sort((a, b) => new Date(b.added_date) - new Date(a.added_date))
+      .slice(0, limit);
+  };
+
+  // Get most worn items
+  const getMostWornItems = (limit = 10) => {
+    return [...items]
+      .sort((a, b) => (b.wear_count || 0) - (a.wear_count || 0))
+      .slice(0, limit);
+  };
+
+  // Search items
+  const searchItems = (query) => {
+    if (!query) return items;
+    
+    const searchLower = query.toLowerCase();
+    return items.filter(item =>
+      item.item_name?.toLowerCase().includes(searchLower) ||
+      item.brand_id?.name?.toLowerCase().includes(searchLower) ||
+      item.notes?.toLowerCase().includes(searchLower) ||
+      item.style_tags?.some(tag => tag.toLowerCase().includes(searchLower))
+    );
+  };
+
+  // ===== CONTEXT VALUE =====
+  const contextValue = {
+    // State
+    items,
+    filteredItems,
+    loading,
+    error,
+    statistics,
+    filters,
+
+    // CRUD Operations
+    addItem,
+    updateItem,
+    deleteItem,
+    toggleFavorite,
+    recordWear,
+    getItemDetails,
+    loadItems,
+    loadStatistics,
+
+    // Filter Operations
+    updateFilters,
+    resetFilters,
+
+    // Utility Functions
+    getItemsByCategory,
+    getFavoriteItems,
+    getRecentItems,
+    getMostWornItems,
+    searchItems,
+
+    // Computed Values
+    totalItems: items.length,
+    favoriteCount: items.filter(i => i.is_favorite).length,
+    totalValue: items.reduce((sum, item) => sum + (item.price || 0), 0),
+    categoryCount: new Set(items.map(i => i.category_id?._id || i.category_id)).size
   };
 
   return (
-    <WardrobeContext.Provider
-      value={{
-        items,
-        outfits,
-        addItem,
-        deleteItem,
-        toggleFavorite,
-        saveOutfit,
-        deleteOutfit,
-      }}
-    >
+    <WardrobeContext.Provider value={contextValue}>
       {children}
     </WardrobeContext.Provider>
   );
 }
 
+// ===== CUSTOM HOOK =====
 export function useWardrobe() {
   const context = useContext(WardrobeContext);
   if (!context) {
@@ -102,3 +323,6 @@ export function useWardrobe() {
   }
   return context;
 }
+
+// ===== EXPORT CONTEXT (for advanced usage) =====
+export { WardrobeContext };

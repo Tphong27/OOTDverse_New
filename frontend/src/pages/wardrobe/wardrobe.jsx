@@ -15,6 +15,8 @@ import {
   Shirt,
   Eye,
   Edit,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useWardrobe } from "@/context/WardrobeContext";
 import axios from "axios";
@@ -38,6 +40,8 @@ export default function Wardrobe() {
   const [viewMode, setViewMode] = useState("grid");
   const [dynamicCategories, setDynamicCategories] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // ===== LOAD CATEGORIES FROM SETTINGS =====
   useEffect(() => {
@@ -59,9 +63,15 @@ export default function Wardrobe() {
     fetchCategories();
   }, []);
 
-  // ===== CREATE CATEGORY TABS =====
+  // Reset currentPage when filteredItems change (e.g., due to filters)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredItems.length]);
+
+  // ===== CREATE CATEGORY TABS (with Favorite tab) =====
   const categoryTabs = [
     { id: "all", label: "Tất cả", count: totalItems },
+    { id: "favorite", label: "Yêu thích", count: favoriteCount },
     ...dynamicCategories.map((cat) => ({
       id: cat._id,
       label: cat.name,
@@ -71,9 +81,26 @@ export default function Wardrobe() {
     })),
   ];
 
+  // ===== PAGINATION LOGIC =====
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const currentItems = filteredItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
   // ===== HANDLE FUNCTIONS =====
   const handleCategoryChange = (categoryId) => {
-    updateFilters({ category: categoryId });
+    if (categoryId === "favorite") {
+      updateFilters({ category: "all", favorite: true });
+    } else {
+      updateFilters({ category: categoryId, favorite: false });
+    }
   };
 
   const handleSearchChange = (e) => {
@@ -225,7 +252,8 @@ export default function Wardrobe() {
               key={cat.id}
               onClick={() => handleCategoryChange(cat.id)}
               className={`px-5 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${
-                filters.category === cat.id
+                (filters.category === cat.id && !filters.favorite) ||
+                (cat.id === "favorite" && filters.favorite)
                   ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg scale-105"
                   : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
               }`}
@@ -233,7 +261,10 @@ export default function Wardrobe() {
               {cat.label}
               <span
                 className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                  filters.category === cat.id ? "bg-white/20" : "bg-gray-100"
+                  (filters.category === cat.id && !filters.favorite) ||
+                  (cat.id === "favorite" && filters.favorite)
+                    ? "bg-white/20"
+                    : "bg-gray-100"
                 }`}
               >
                 {cat.count}
@@ -277,127 +308,154 @@ export default function Wardrobe() {
             )}
           </div>
         ) : (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                : "space-y-4"
-            }
-          >
-            {filteredItems.map((item) => (
-              <div
-                key={item._id}
-                className={`group relative bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:border-purple-200 transition-all duration-300 ${
-                  viewMode === "list" ? "flex gap-4" : ""
-                }`}
-              >
-                {/* Image */}
+          <>
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                  : "space-y-4"
+              }
+            >
+              {currentItems.map((item) => (
                 <div
-                  className={`relative overflow-hidden ${
-                    viewMode === "list" ? "w-40 h-40 shrink-0" : "aspect-[3/4]"
+                  key={item._id}
+                  className={`group relative bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:border-purple-200 transition-all duration-300 ${
+                    viewMode === "list" ? "flex gap-4" : ""
                   }`}
                 >
-                  <img
-                    src={
-                      item.image_url ||
-                      "https://placehold.co/400x600?text=No+Image"
-                    }
-                    alt={item.item_name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                  {/* Favorite Button */}
-                  <button
-                    onClick={() => handleToggleFavorite(item._id)}
-                    className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all shadow-lg hover:scale-110 z-10"
+                  {/* Image */}
+                  <div
+                    className={`relative overflow-hidden ${
+                      viewMode === "list" ? "w-40 h-40 shrink-0" : "aspect-[3/4]"
+                    }`}
                   >
-                    <Heart
-                      className={`w-5 h-5 transition-colors ${
-                        item.is_favorite
-                          ? "fill-red-500 text-red-500"
-                          : "text-gray-600"
-                      }`}
+                    <img
+                      src={
+                        item.image_url ||
+                        "https://placehold.co/400x600?text=No+Image"
+                      }
+                      alt={item.item_name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
-                  </button>
 
-                  {/* Wear Count Badge */}
-                  {item.wear_count > 0 && (
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-lg text-xs font-medium">
-                      Mặc {item.wear_count} lần
-                    </div>
-                  )}
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                  {/* Quick Actions */}
-                  <div className="absolute bottom-3 left-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Link
-                      href={`/wardrobe/${item._id}`}
-                      className="flex-1 bg-white/90 backdrop-blur-sm py-2 rounded-lg text-sm font-medium text-gray-900 hover:bg-white transition-colors text-center flex items-center justify-center gap-1"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Link>
-                    <Link
-                      href={`/wardrobe/form?id=${item._id}`}
-                      className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Link>
+                    {/* Favorite Button */}
                     <button
-                      onClick={() => handleDeleteClick(item._id)}
-                      className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-colors"
+                      onClick={() => handleToggleFavorite(item._id)}
+                      className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all shadow-lg hover:scale-110 z-10"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Heart
+                        className={`w-5 h-5 transition-colors ${
+                          item.is_favorite
+                            ? "fill-red-500 text-red-500"
+                            : "text-gray-600"
+                        }`}
+                      />
                     </button>
+
+                    {/* Wear Count Badge */}
+                    {item.wear_count > 0 && (
+                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-lg text-xs font-medium">
+                        Mặc {item.wear_count} lần
+                      </div>
+                    )}
+
+                    {/* Quick Actions */}
+                    <div className="absolute bottom-3 left-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Link
+                        href={`/wardrobe/${item._id}`}
+                        className="flex-1 bg-white/90 backdrop-blur-sm py-2 rounded-lg text-sm font-medium text-gray-900 hover:bg-white transition-colors text-center flex items-center justify-center gap-1"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        href={`/wardrobe/form?id=${item._id}`}
+                        className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Link>
+                      <button
+                        onClick={() => handleDeleteClick(item._id)}
+                        className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div
+                    className={`p-4 ${
+                      viewMode === "list"
+                        ? "flex-1 flex flex-col justify-center"
+                        : ""
+                    }`}
+                  >
+                    <h3 className="font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-purple-600 transition-colors text-lg">
+                      {item.item_name}
+                    </h3>
+
+                    {/* Brand */}
+                    <p className="text-sm text-gray-500 mb-3 flex items-center gap-1">
+                      {item.brand_id?.name ? (
+                        <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium text-gray-600">
+                          {item.brand_id.name}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">No brand</span>
+                      )}
+                    </p>
+
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.category_id?.name && (
+                        <span className="px-2.5 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full border border-purple-100">
+                          {item.category_id.name}
+                        </span>
+                      )}
+                      {item.color_id && item.color_id.length > 0 && (
+                        <span className="px-2.5 py-1 bg-pink-50 text-pink-600 text-xs font-medium rounded-full border border-pink-100">
+                          {item.color_id[0].name}
+                        </span>
+                      )}
+                      {item.price && (
+                        <span className="px-2.5 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full border border-green-100">
+                          {item.price.toLocaleString("vi-VN")}đ
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
 
-                {/* Info */}
-                <div
-                  className={`p-4 ${
-                    viewMode === "list"
-                      ? "flex-1 flex flex-col justify-center"
-                      : ""
-                  }`}
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mt-8">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  <h3 className="font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-purple-600 transition-colors text-lg">
-                    {item.item_name}
-                  </h3>
-
-                  {/* Brand */}
-                  <p className="text-sm text-gray-500 mb-3 flex items-center gap-1">
-                    {item.brand_id?.name ? (
-                      <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium text-gray-600">
-                        {item.brand_id.name}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 text-xs">No brand</span>
-                    )}
-                  </p>
-
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {item.category_id?.name && (
-                      <span className="px-2.5 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full border border-purple-100">
-                        {item.category_id.name}
-                      </span>
-                    )}
-                    {item.color_id && item.color_id.length > 0 && (
-                      <span className="px-2.5 py-1 bg-pink-50 text-pink-600 text-xs font-medium rounded-full border border-pink-100">
-                        {item.color_id[0].name}
-                      </span>
-                    )}
-                    {item.price && (
-                      <span className="px-2.5 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full border border-green-100">
-                        {item.price.toLocaleString("vi-VN")}đ
-                      </span>
-                    )}
-                  </div>
-                </div>
+                  <ChevronLeft className="w-5 h-5" />
+                  Trước
+                </button>
+                <span className="text-gray-600 font-medium">
+                  Trang {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  Sau
+                  <ChevronRight className="w-5 h-5" />
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 

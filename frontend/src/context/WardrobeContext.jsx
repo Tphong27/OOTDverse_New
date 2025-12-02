@@ -55,8 +55,6 @@ export function WardrobeProvider({ children }) {
       setLoading(true);
       setError(null);
 
-      // Sử dụng trực tiếp user._id từ AuthContext
-      // Không cần đọc lại từ localStorage nữa
       const data = await getWardrobeItems(user._id);
 
       setItems(Array.isArray(data) ? data : []);
@@ -67,7 +65,7 @@ export function WardrobeProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [user]); // QUAN TRỌNG: Chạy lại khi 'user' thay đổi
+  }, [user]);//Chạy lại khi 'user' thay đổi
 
   // Load statistics
   const loadStatistics = useCallback(async () => {

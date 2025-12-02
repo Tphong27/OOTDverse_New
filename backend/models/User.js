@@ -8,6 +8,12 @@ const UserSchema = new mongoose.Schema(
     password: { type: String },
     fullName: { type: String, required: true },
 
+    role: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Setting",
+      default: null,
+    },
+
     // Thêm trường avatar
     avatar: { type: String },
 
@@ -43,7 +49,7 @@ const UserSchema = new mongoose.Schema(
     hasProfile: { type: Boolean, default: false },
   },
   {
-    timestamps: true, // <--- Đã sửa: Tự động tạo createdAt và updatedAt
+    timestamps: true,
   }
 );
 

@@ -24,6 +24,7 @@ import axios from "axios";
 export default function Wardrobe() {
   // ===== USE WARDROBE CONTEXT =====
   const {
+    items, // Thêm items để tính count tổng
     filteredItems,
     loading,
     error,
@@ -75,7 +76,7 @@ export default function Wardrobe() {
     ...dynamicCategories.map((cat) => ({
       id: cat._id,
       label: cat.name,
-      count: filteredItems.filter(
+      count: items.filter(  // Sử dụng items thay vì filteredItems để count tổng
         (i) => i.category_id?._id === cat._id || i.category_id === cat._id
       ).length,
     })),

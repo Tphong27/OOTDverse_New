@@ -11,9 +11,11 @@ import {
   LogOut,
   ChevronRight,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
   const router = useRouter();
+  const { logout } = useAuth(); // Lấy hàm logout
 
   const menuItems = [
     { id: "overview", icon: Home, label: "Tổng quan", path: "/user/dashboard" },
@@ -119,10 +121,10 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
 
         {/* Footer */}
         <div className="absolute bottom-0 w-full p-4 border-t border-purple-50 bg-gray-50">
-          <button className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all font-medium group">
-            <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span>Đăng xuất</span>
-          </button>
+          <button
+            onClick={logout} // Sử dụng hàm logout từ Context
+            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all font-medium group"
+          ></button>
         </div>
       </aside>
     </>

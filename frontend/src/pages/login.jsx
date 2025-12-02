@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Eye, EyeOff, Lock, Mail, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { loginUser, googleLoginUser } from "@/services/userService"; // Import thêm googleLoginUser
-import { GoogleLogin } from "@react-oauth/google"; // Import Google Component
+import { loginUser, googleLoginUser } from "@/services/userService";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuth } from "@/context/AuthContext"; // 1. Import hook
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth(); // 2. Lấy hàm login từ Context
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -42,7 +44,6 @@ export default function LoginPage() {
     setIsLoading(true);
     setError("");
     try {
-      // Gửi token Google về backend để xác thực
       const res = await googleLoginUser(credentialResponse.credential);
       handleAuthSuccess(res);
     } catch (err) {
@@ -56,9 +57,9 @@ export default function LoginPage() {
   // Hàm xử lý chung khi đăng nhập thành công
   const handleAuthSuccess = (res) => {
     if (res.success) {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("currentUser", JSON.stringify(res.user));
-      }
+      // 3. QUAN TRỌNG: Gọi hàm login của Context thay vì set localStorage thủ công
+      // Hàm login() trong AuthContext sẽ tự lo việc set localStorage và cập nhật state toàn app
+      login(res.user);
 
       if (res.user.hasProfile === false) {
         router.push("/user/profile");
@@ -189,7 +190,7 @@ export default function LoginPage() {
               useOneTap
               theme="outline"
               size="large"
-              width="350" // Đặt chiều rộng cụ thể hoặc dùng css
+              width="350"
               text="continue_with"
               shape="pill"
             />

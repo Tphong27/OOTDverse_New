@@ -1,5 +1,11 @@
 "use client";
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   getWardrobeItems,
   getWardrobeItemById,
@@ -9,13 +15,17 @@ import {
   toggleFavoriteItem,
   incrementWearCount,
   getWardrobeStatistics,
-  filterWardrobeItems
+  filterWardrobeItems,
 } from "@/services/wardrobeService";
+
+import { useAuth } from "@/context/AuthContext";
 
 const WardrobeContext = createContext();
 
 export function WardrobeProvider({ children }) {
   // ===== STATE MANAGEMENT =====
+  const { user } = useAuth();
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,27 +38,26 @@ export function WardrobeProvider({ children }) {
     color: [],
     season: [],
     favorite: false,
-    search: ""
+    search: "",
   });
 
   // ===== LOAD INITIAL DATA =====
   const loadItems = useCallback(async () => {
+    // Nếu chưa đăng nhập (user là null), reset dữ liệu
+    if (!user) {
+      setItems([]);
+      setStatistics(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      const storedUser = typeof window !== "undefined" 
-        ? localStorage.getItem("currentUser") 
-        : null;
-
-      if (!storedUser) {
-        setItems([]);
-        setLoading(false);
-        return;
-      }
-
-      const currentUser = JSON.parse(storedUser);
-      const data = await getWardrobeItems(currentUser._id);
+      // Sử dụng trực tiếp user._id từ AuthContext
+      // Không cần đọc lại từ localStorage nữa
+      const data = await getWardrobeItems(user._id);
 
       setItems(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -58,7 +67,7 @@ export function WardrobeProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]); // QUAN TRỌNG: Chạy lại khi 'user' thay đổi
 
   // Load statistics
   const loadStatistics = useCallback(async () => {
@@ -68,7 +77,7 @@ export function WardrobeProvider({ children }) {
     } catch (err) {
       console.error("Error loading statistics:", err);
     }
-  }, []);
+  }, [user]);
 
   // ===== INITIAL LOAD =====
   useEffect(() => {
@@ -86,13 +95,13 @@ export function WardrobeProvider({ children }) {
     try {
       setError(null);
       const savedItem = await createWardrobeItem(itemData);
-      
+
       // Thêm vào đầu danh sách
-      setItems(prev => [savedItem, ...prev]);
-      
+      setItems((prev) => [savedItem, ...prev]);
+
       // Reload statistics
       loadStatistics();
-      
+
       return { success: true, data: savedItem };
     } catch (err) {
       console.error("Error adding item:", err);
@@ -106,15 +115,15 @@ export function WardrobeProvider({ children }) {
     try {
       setError(null);
       const updatedItem = await updateWardrobeItem(itemId, updateData);
-      
+
       // Cập nhật trong danh sách
-      setItems(prev => 
-        prev.map(item => item._id === itemId ? updatedItem : item)
+      setItems((prev) =>
+        prev.map((item) => (item._id === itemId ? updatedItem : item))
       );
-      
+
       // Reload statistics nếu cần
       loadStatistics();
-      
+
       return { success: true, data: updatedItem };
     } catch (err) {
       console.error("Error updating item:", err);
@@ -128,13 +137,13 @@ export function WardrobeProvider({ children }) {
     try {
       setError(null);
       await deleteWardrobeItem(itemId);
-      
+
       // Xóa khỏi danh sách
-      setItems(prev => prev.filter(item => item._id !== itemId));
-      
+      setItems((prev) => prev.filter((item) => item._id !== itemId));
+
       // Reload statistics
       loadStatistics();
-      
+
       return { success: true };
     } catch (err) {
       console.error("Error deleting item:", err);
@@ -148,19 +157,19 @@ export function WardrobeProvider({ children }) {
     try {
       setError(null);
       const updatedItem = await toggleFavoriteItem(itemId);
-      
+
       // Cập nhật UI ngay lập tức
-      setItems(prev =>
-        prev.map(item =>
-          item._id === itemId 
+      setItems((prev) =>
+        prev.map((item) =>
+          item._id === itemId
             ? { ...item, is_favorite: updatedItem.is_favorite }
             : item
         )
       );
-      
+
       // Reload statistics
       loadStatistics();
-      
+
       return { success: true, data: updatedItem };
     } catch (err) {
       console.error("Error toggling favorite:", err);
@@ -174,20 +183,20 @@ export function WardrobeProvider({ children }) {
     try {
       setError(null);
       const result = await incrementWearCount(itemId);
-      
+
       // Cập nhật wear count và last_worn_date
-      setItems(prev =>
-        prev.map(item =>
+      setItems((prev) =>
+        prev.map((item) =>
           item._id === itemId
-            ? { 
-                ...item, 
+            ? {
+                ...item,
                 wear_count: result.wear_count,
-                last_worn_date: result.last_worn_date
+                last_worn_date: result.last_worn_date,
               }
             : item
         )
       );
-      
+
       return { success: true, data: result };
     } catch (err) {
       console.error("Error recording wear:", err);
@@ -213,7 +222,7 @@ export function WardrobeProvider({ children }) {
 
   // Update filters
   const updateFilters = (newFilters) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+    setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
   // Reset filters
@@ -224,7 +233,7 @@ export function WardrobeProvider({ children }) {
       color: [],
       season: [],
       favorite: false,
-      search: ""
+      search: "",
     });
   };
 
@@ -232,15 +241,15 @@ export function WardrobeProvider({ children }) {
 
   // Get items by category
   const getItemsByCategory = (categoryId) => {
-    return items.filter(item => 
-      item.category_id?._id === categoryId || 
-      item.category_id === categoryId
+    return items.filter(
+      (item) =>
+        item.category_id?._id === categoryId || item.category_id === categoryId
     );
   };
 
   // Get favorite items
   const getFavoriteItems = () => {
-    return items.filter(item => item.is_favorite);
+    return items.filter((item) => item.is_favorite);
   };
 
   // Get recently added items
@@ -260,13 +269,14 @@ export function WardrobeProvider({ children }) {
   // Search items
   const searchItems = (query) => {
     if (!query) return items;
-    
+
     const searchLower = query.toLowerCase();
-    return items.filter(item =>
-      item.item_name?.toLowerCase().includes(searchLower) ||
-      item.brand_id?.name?.toLowerCase().includes(searchLower) ||
-      item.notes?.toLowerCase().includes(searchLower) ||
-      item.style_tags?.some(tag => tag.toLowerCase().includes(searchLower))
+    return items.filter(
+      (item) =>
+        item.item_name?.toLowerCase().includes(searchLower) ||
+        item.brand_id?.name?.toLowerCase().includes(searchLower) ||
+        item.notes?.toLowerCase().includes(searchLower) ||
+        item.style_tags?.some((tag) => tag.toLowerCase().includes(searchLower))
     );
   };
 
@@ -303,9 +313,11 @@ export function WardrobeProvider({ children }) {
 
     // Computed Values
     totalItems: items.length,
-    favoriteCount: items.filter(i => i.is_favorite).length,
+    favoriteCount: items.filter((i) => i.is_favorite).length,
     totalValue: items.reduce((sum, item) => sum + (item.price || 0), 0),
-    categoryCount: new Set(items.map(i => i.category_id?._id || i.category_id)).size
+    categoryCount: new Set(
+      items.map((i) => i.category_id?._id || i.category_id)
+    ).size,
   };
 
   return (

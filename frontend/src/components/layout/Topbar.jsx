@@ -1,27 +1,21 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Bell, Menu, Search, LogOut, User as UserIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 export default function Topbar({ setIsSidebarOpen }) {
   const router = useRouter();
-  const [user, setUser] = useState(null);
+  // Lấy user và logout từ Context (Reactive State)
+  const { user, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Lấy thông tin User từ LocalStorage khi trang web tải xong
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUser = localStorage.getItem("currentUser");
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    }
-  }, []);
+  // Không cần useEffect để đọc localStorage nữa vì useAuth đã làm việc đó
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser"); // Xóa session
-    router.push("/login"); // Quay về trang đăng nhập
+    logout(); // Gọi hàm logout từ context để xóa state và localStorage
+    // Hàm logout trong context đã có router.push('/login')
   };
 
   return (
@@ -64,7 +58,7 @@ export default function Topbar({ setIsSidebarOpen }) {
                 className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
               >
                 <div className="text-right hidden md:block">
-                  {/* Hiển thị tên thật từ DB */}
+                  {/* Hiển thị tên thật từ Context */}
                   <p className="text-sm font-bold text-gray-800">
                     {user.fullName}
                   </p>

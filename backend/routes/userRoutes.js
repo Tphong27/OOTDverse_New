@@ -5,9 +5,15 @@ const userController = require("../controllers/userController");
 
 router.post("/register", userController.register);
 router.post("/login", userController.login);
-// --- THÊM DÒNG NÀY ---
 router.post("/google-login", userController.googleLogin);
-router.post("/profile", userController.updateProfile); // API cập nhật hồ sơ
-router.get("/profile", userController.getProfile); // API lấy hồ sơ
+router.post("/profile", userController.updateProfile);
+router.get("/profile", userController.getProfile);
+
+router.get("/all", userController.getAllUsers);              // Lấy danh sách users
+router.get("/:id", userController.getUserById);              // Lấy chi tiết 1 user
+router.put("/:id/role", userController.updateUserRole);      // Cập nhật role
+router.put("/:id/status", userController.updateUserStatus);  // Cập nhật status
+router.put("/:id/info", userController.updateUserInfo);      // Cập nhật thông tin
+router.delete("/:id", userController.deleteUser);            // Xóa (soft delete)
 
 module.exports = router;

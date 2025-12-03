@@ -8,25 +8,9 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const { sendLoginSuccessEmail } = require("../services/emailService");
 
-const bcrypt = require("bcryptjs"); // Thêm bcrypt để hash mật khẩu
+const bcrypt = require("bcryptjs"); // bcrypt hash mật khẩu
 
-// Hàm validate mật khẩu chung
-const validatePassword = (password) => {
-  const minLength = 8;
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
-
-  if (password.length < minLength) {
-    return "Mật khẩu phải dài ít nhất 8 ký tự.";
-  }
-  if (!hasUppercase) {
-    return "Mật khẩu phải chứa ít nhất 1 chữ cái in hoa.";
-  }
-  if (!hasSpecialChar) {
-    return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.";
-  }
-  return null; // Valid
-};
+const { validatePassword } = require("../services/validators");
 
 // 1. Đăng ký tài khoản mới
 exports.register = async (req, res) => {
@@ -587,5 +571,3 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-// console.log("Exported functions:", Object.keys(exports));

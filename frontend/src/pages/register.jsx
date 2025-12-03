@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, User, Check, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { registerUser } from "@/services/userService"; // Import service bạn đã làm
+import { registerUser } from "@/services/userService";
 
 export default function RegisterPage() {
   const router = useRouter();

@@ -14,7 +14,6 @@ const UserSchema = new mongoose.Schema(
       default: null,
     },
 
-    // Thêm trường avatar
     avatar: { type: String },
 
     // 2. Thông tin cơ bản

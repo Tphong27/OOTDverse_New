@@ -56,7 +56,18 @@ export default function ProfilePage() {
 
     budget: "1-3 triệu",
     sustainableFashion: false,
+    age: "",
+    gender: "",
   });
+
+  // Hàm tính tuổi từ ngày sinh
+  const calculateAge = (birthday) => {
+    if (!birthday) return "";
+    const birthDate = new Date(birthday);
+    const ageDifMs = Date.now() - birthDate.getTime();
+    const ageDate = new Date(ageDifMs);
+    return Math.abs(ageDate.getUTCFullYear() - 1970);
+  };
 
   // 1. Load User & Settings khi trang tải
   useEffect(() => {
@@ -104,6 +115,12 @@ export default function ProfilePage() {
         favoriteColors: userData.favoriteColors?.map((s) => s._id) || [],
         favoriteOccasions: userData.favoriteOccasions?.map((s) => s._id) || [],
         avoidColors: userData.avoidColors?.map((s) => s._id) || [],
+        // Đảm bảo birthday là định dạng YYYY-MM-DD cho input date
+        birthday: userData.birthday
+          ? new Date(userData.birthday).toISOString().split("T")[0]
+          : "",
+        // Tính tuổi nếu chưa có hoặc để đồng bộ
+        age: userData.age || calculateAge(userData.birthday),
       });
     } catch (error) {
       console.error("Lỗi tải dữ liệu:", error);
@@ -112,7 +129,14 @@ export default function ProfilePage() {
 
   // Xử lý thay đổi input thường
   const handleChange = (field, value) => {
-    setProfile({ ...profile, [field]: value });
+    setProfile((prev) => {
+      const updated = { ...prev, [field]: value };
+      // Nếu thay đổi birthday, tự tính age
+      if (field === "birthday") {
+        updated.age = calculateAge(value);
+      }
+      return updated;
+    });
   };
 
   // Xử lý chọn/bỏ chọn Setting (Toggle ID trong mảng)
@@ -221,7 +245,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* Thông tin cơ bản (Giữ nguyên logic input cũ, chỉ bind data mới) */}
+        {/* Thông tin cơ bản (Thêm gender, location, birthday, age) */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center space-x-2 mb-6">
             <User className="w-5 h-5 text-purple-600" />
@@ -240,6 +264,58 @@ export default function ProfilePage() {
                 onChange={(e) => handleChange("fullName", e.target.value)}
                 disabled={!isEditing}
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Giới tính
+              </label>
+              <select
+                value={profile.gender || ""}
+                onChange={(e) => handleChange("gender", e.target.value)}
+                disabled={!isEditing}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50"
+              >
+                <option value="">Chọn giới tính</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
+              </select>
+            </div>
+            
+            {/* <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Địa điểm
+              </label>
+              <input
+                type="text"
+                value={profile.location}
+                onChange={(e) => handleChange("location", e.target.value)}
+                disabled={!isEditing}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50"
+              />
+            </div> */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ngày sinh
+              </label>
+              <input
+                type="date"
+                value={profile.birthday}
+                onChange={(e) => handleChange("birthday", e.target.value)}
+                disabled={!isEditing}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tuổi
+              </label>
+              <input
+                type="number"
+                value={profile.age}
+                disabled={true} // Read-only, tự tính từ birthday
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 cursor-not-allowed"
               />
             </div>
             <div>

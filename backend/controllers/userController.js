@@ -290,7 +290,7 @@ exports.getAllUsers = async (req, res) => {
 
     // Filter by role
     if (role !== "all") {
-      const roleDoc = await require("../models/setting").findOne({ 
+      const roleDoc = await Setting.findOne({ 
         type: "role", 
         name: role 
       });
@@ -358,7 +358,7 @@ exports.updateUserRole = async (req, res) => {
     const { roleName } = req.body; // Nhận "Admin" hoặc "Customer"
 
     // Tìm role ID từ Setting
-    const roleDoc = await require("../models/eetting").findOne({ 
+    const roleDoc = await Setting.findOne({ 
       type: "role", 
       name: roleName 
     });
@@ -494,6 +494,43 @@ exports.updateUserInfo = async (req, res) => {
       success: true, 
       message: "Đã cập nhật thông tin user",
       user 
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 7. Đổi mật khẩu (User only)
+exports.changePassword = async (req, res) => {
+  try {
+    const { userId, oldPassword, newPassword } = req.body;
+
+    // Tìm user
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User không tồn tại" });
+    }
+
+    // Kiểm tra authType
+    if (user.authType !== "local") {
+      return res.status(400).json({ 
+        error: "Chỉ tài khoản đăng ký thủ công mới có thể đổi mật khẩu." 
+      });
+    }
+
+    // Kiểm tra mật khẩu cũ
+    if (user.password !== oldPassword) {
+      return res.status(401).json({ error: "Mật khẩu cũ không đúng!" });
+    }
+
+    // Cập nhật mật khẩu mới
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ 
+      success: true, 
+      message: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại nếu cần." 
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

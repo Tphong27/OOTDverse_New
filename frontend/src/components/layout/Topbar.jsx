@@ -83,6 +83,12 @@ export default function Topbar({ setIsSidebarOpen }) {
                   >
                     <UserIcon className="w-4 h-4 mr-2" /> Hồ sơ
                   </Link>
+                  <Link
+                    href="/user/changePass"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-purple-50"
+                  >
+                    <UserIcon className="w-4 h-4 mr-2" /> Đổi mật khẩu
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"

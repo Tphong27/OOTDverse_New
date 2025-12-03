@@ -8,10 +8,36 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const { sendLoginSuccessEmail } = require("../services/emailService");
 
+const bcrypt = require("bcryptjs"); // Thêm bcrypt để hash mật khẩu
+
+// Hàm validate mật khẩu chung
+const validatePassword = (password) => {
+  const minLength = 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+  if (password.length < minLength) {
+    return "Mật khẩu phải dài ít nhất 8 ký tự.";
+  }
+  if (!hasUppercase) {
+    return "Mật khẩu phải chứa ít nhất 1 chữ cái in hoa.";
+  }
+  if (!hasSpecialChar) {
+    return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.";
+  }
+  return null; // Valid
+};
+
 // 1. Đăng ký tài khoản mới
 exports.register = async (req, res) => {
   try {
     const { email, password, fullName } = req.body;
+
+    // Validate mật khẩu
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
 
     // Kiểm tra email trùng
     const existingUser = await User.findOne({ email });
@@ -27,9 +53,13 @@ exports.register = async (req, res) => {
         error: "Lỗi cấu hình hệ thống: Không tìm thấy Role 'Customer'.",
       });
     }
+
+    // Hash mật khẩu
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const newUser = new User({
       email,
-      password,
+      password: hashedPassword,
       fullName,
       role: customerRoleId,
       status: "Active",
@@ -68,10 +98,15 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     // Tìm user
-    // const user = await User.findOne({ email });
     const user = await User.findOne({ email }).populate("role", "name value");
 
-    if (!user || user.password !== password) {
+    if (!user) {
+      return res.status(401).json({ error: "Email hoặc mật khẩu không đúng!" });
+    }
+
+    // Kiểm tra mật khẩu (so sánh với hash)
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
       return res.status(401).json({ error: "Email hoặc mật khẩu không đúng!" });
     }
 
@@ -220,10 +255,13 @@ exports.googleLogin = async (req, res) => {
         Math.random().toString(36).slice(-8) +
         Math.random().toString(36).slice(-8);
 
+      // Hash mật khẩu ngẫu nhiên
+      const hashedRandomPassword = await bcrypt.hash(randomPassword, 10);
+
       user = new User({
         email,
         fullName: name,
-        password: randomPassword,
+        password: hashedRandomPassword,
         avatar: picture,
         authType: "google",
         status: "Active",
@@ -520,12 +558,25 @@ exports.changePassword = async (req, res) => {
     }
 
     // Kiểm tra mật khẩu cũ
-    if (user.password !== oldPassword) {
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
       return res.status(401).json({ error: "Mật khẩu cũ không đúng!" });
     }
 
-    // Cập nhật mật khẩu mới
-    user.password = newPassword;
+    // Validate mật khẩu mới
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
+
+    // Kiểm tra mật khẩu mới khác cũ
+    if (await bcrypt.compare(newPassword, user.password)) {
+      return res.status(400).json({ error: "Mật khẩu mới phải khác mật khẩu cũ!" });
+    }
+
+    // Hash mật khẩu mới
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedNewPassword;
     await user.save();
 
     res.json({ 

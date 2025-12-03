@@ -39,6 +39,19 @@ export default function ChangePasswordPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const validatePassword = (password) => {
+    if (password.length < 8) {
+      return "Mật khẩu phải dài ít nhất 8 ký tự.";
+    }
+    if (!/[A-Z]/.test(password)) {
+      return "Mật khẩu phải chứa ít nhất 1 chữ cái in hoa.";
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.";
+    }
+    return null;
+  };
+
   const validateForm = () => {
     if (!formData.oldPassword || !formData.newPassword || !formData.confirmPassword) {
       setError("Vui lòng điền đầy đủ thông tin.");
@@ -48,8 +61,13 @@ export default function ChangePasswordPage() {
       setError("Mật khẩu mới và xác nhận không khớp.");
       return false;
     }
-    if (formData.newPassword.length < 6) {
-      setError("Mật khẩu mới phải ít nhất 6 ký tự.");
+    const passwordError = validatePassword(formData.newPassword);
+    if (passwordError) {
+      setError(passwordError);
+      return false;
+    }
+    if (formData.newPassword === formData.oldPassword) {
+      setError("Mật khẩu mới phải khác mật khẩu cũ.");
       return false;
     }
     return true;

@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
-import { Bell, Menu, Search, LogOut, User as UserIcon } from "lucide-react";
+import { Bell, Menu, Search, LogOut, User as UserIcon,UnlockKeyhole, } from "lucide-react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useAuth } from "@/context/AuthContext";
 
 export default function Topbar({ setIsSidebarOpen }) {
   const router = useRouter();
@@ -87,7 +87,7 @@ export default function Topbar({ setIsSidebarOpen }) {
                     href="/user/changePass"
                     className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-purple-50"
                   >
-                    <UserIcon className="w-4 h-4 mr-2" /> Đổi mật khẩu
+                    <UnlockKeyhole className="w-4 h-4 mr-2" /> Đổi mật khẩu
                   </Link>
                   <button
                     onClick={handleLogout}

@@ -1,4 +1,4 @@
-// frontend/src/pages/register.jsx
+"use client";
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, User, Check, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -29,6 +29,19 @@ export default function RegisterPage() {
     }));
   };
 
+  const validatePassword = (password) => {
+    if (password.length < 8) {
+      return "Mật khẩu phải dài ít nhất 8 ký tự.";
+    }
+    if (!/[A-Z]/.test(password)) {
+      return "Mật khẩu phải chứa ít nhất 1 chữ cái in hoa.";
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.";
+    }
+    return null;
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
@@ -40,6 +53,11 @@ export default function RegisterPage() {
     }
     if (formData.password !== formData.confirmPassword) {
       setError("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+    const passwordError = validatePassword(formData.password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
     if (!formData.terms) {

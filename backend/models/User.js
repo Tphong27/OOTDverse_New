@@ -47,6 +47,16 @@ const UserSchema = new mongoose.Schema(
 
     // Cờ kiểm tra đã điền profile chưa
     hasProfile: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: ["Active", "Inactive"],
+      default: "Active",
+    },
+    authType: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
   },
   {
     timestamps: true,

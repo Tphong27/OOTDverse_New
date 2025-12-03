@@ -8,7 +8,6 @@ import {
   Users,
   ShoppingBag,
   BarChart3,
-  LogOut,
   ChevronRight,
   Settings,
   User,
@@ -19,7 +18,7 @@ import { useAuth } from "@/context/AuthContext"; // Import useAuth
 export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
   const router = useRouter();
   // const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
-  const {isAdmin, isCustomer } = useAuth();
+  const { isAdmin, isCustomer } = useAuth();
 
   const ALL_MENU_ITEMS = [
     // CUSTOMER ROUTES
@@ -88,7 +87,7 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
       roles: ["Admin"],
     },
   ];
-  const filteredMenuItems = ALL_MENU_ITEMS.filter(item => {
+  const filteredMenuItems = ALL_MENU_ITEMS.filter((item) => {
     // Nếu người dùng là Admin, hiển thị tất cả các mục có role: ["Admin"]
     if (isAdmin && item.roles.includes("Admin")) {
       return true;
@@ -111,9 +110,9 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
       )}
 
       <aside
-        className={`fixed top-0 left-0 z-30 h-full w-72 bg-white border-r border-purple-100 shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 left-0 z-30 h-full w-72 bg-white border-r overflow-y-auto transition-transform duration-300 ease-in-out lg:static lg:translate-x-0
+        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
       >
         {/* Logo Area with gradient */}
         <div className="h-16 flex items-center px-6 border-b border-purple-50 bg-gradient-to-r from-purple-50 to-pink-50">

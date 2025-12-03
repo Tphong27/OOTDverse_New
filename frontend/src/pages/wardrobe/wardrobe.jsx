@@ -162,7 +162,7 @@ export default function Wardrobe() {
                   <Shirt className="w-5 h-5" />
                   <span className="text-sm text-white/80">Tổng món đồ</span>
                 </div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold leading-tight break-words">
                   {statistics.overview?.total_items || 0}
                 </p>
               </div>
@@ -172,7 +172,7 @@ export default function Wardrobe() {
                   <Heart className="w-5 h-5" />
                   <span className="text-sm text-white/80">Yêu thích</span>
                 </div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold leading-tight break-words">
                   {statistics.overview?.favorite_count || 0}
                 </p>
               </div>
@@ -182,7 +182,7 @@ export default function Wardrobe() {
                   <DollarSign className="w-5 h-5" />
                   <span className="text-sm text-white/80">Tổng giá trị</span>
                 </div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold leading-tight break-words">
                   {(statistics.overview?.total_value || 0).toLocaleString(
                     "vi-VN"
                   )}
@@ -195,7 +195,7 @@ export default function Wardrobe() {
                   <TrendingUp className="w-5 h-5" />
                   <span className="text-sm text-white/80">TB mặc/món</span>
                 </div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold leading-tight break-words">
                   {(statistics.overview?.avg_wear_count || 0).toFixed(1)}
                 </p>
               </div>

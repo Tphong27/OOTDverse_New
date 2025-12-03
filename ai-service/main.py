@@ -17,9 +17,11 @@ api_key = os.getenv("OPENAI_API_KEY")
 
 # Kiểm tra xem có key chưa (để debug)
 if not api_key:
-    print("❌ LỖI: Không tìm thấy OPENAI_API_KEY trong .env")
+    # Tuyệt đối không dùng tiếng Việt có dấu ở đây
+    print("[ERROR] OPENAI_API_KEY not found in .env")
 else:
-    print("✅ Đã tìm thấy API Key")
+    # Sửa dòng này thành tiếng Anh
+    print("[SUCCESS] Found API Key")
 
 # 3. Khởi tạo Client ĐÚNG CÁCH
 client = OpenAI(api_key=api_key) 

@@ -5,6 +5,10 @@ import os
 from openai import OpenAI
 import json
 
+from dotenv import load_dotenv # Cần cài đặt: pip install python-dotenv
+
+load_dotenv() # Tải biến từ file .env
+
 # Khởi tạo App
 app = FastAPI()
 

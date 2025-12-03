@@ -331,7 +331,7 @@ export function SettingProvider({ children }) {
         // Functions
         loadAllSettings,
         loadSettingsByType,
-        loadDynamicTypes, // ← THÊM từ phần thứ hai
+        loadDynamicTypes,
         addSetting,
         editSetting,
         removeSetting,

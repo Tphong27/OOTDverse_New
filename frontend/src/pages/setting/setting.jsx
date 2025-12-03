@@ -1,6 +1,8 @@
 import LayoutUser from "@/components/layout/LayoutUser";
 import { useState, useEffect } from "react";
 import { useSettings } from "@/context/SettingContext";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/router";
 import {
   Settings as SettingsIcon,
   Plus,
@@ -20,6 +22,7 @@ import {
   Grid3x3,
   X,
   Check,
+  Lock,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -40,6 +43,42 @@ export default function SettingsPage() {
     loadDynamicTypes,
     getByType,
   } = useSettings();
+
+  // KHAI BÁO MỚI CHO VIỆC PHÂN QUYỀN
+  const { user, loading: authLoading, isAdmin } = useAuth();
+  const router = useRouter();
+
+  if (authLoading) {
+    return (
+      <LayoutUser>
+        <div className="flex items-center justify-center py-40">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600"></div>
+        </div>
+      </LayoutUser>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <LayoutUser>
+        <div className="text-center py-20 bg-white rounded-2xl space-y-4">
+          <Lock className="w-16 h-16 text-red-500 mx-auto" />
+          <h3 className="text-xl font-bold text-gray-900">
+            Truy cập bị từ chối
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Bạn không có quyền truy cập trang quản lý Settings này.
+          </p>
+          <button
+            onClick={() => router.push("/")}// sau này sửa thành trang dashboard
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition duration-150"
+          >
+            Quay về Trang chủ
+          </button>
+        </div>
+      </LayoutUser>
+    );
+  }
 
   const [selectedType, setSelectedType] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -87,18 +126,18 @@ export default function SettingsPage() {
 
   // Build categories động từ dynamicTypes
   const categoriesFilter = [
-    { 
-      id: "all", 
-      label: "Tất cả", 
-      icon: SettingsIcon, 
-      count: settings.length 
+    {
+      id: "all",
+      label: "Tất cả",
+      icon: SettingsIcon,
+      count: settings.length,
     },
-    ...dynamicTypes.map(type => ({
+    ...dynamicTypes.map((type) => ({
       id: type.id,
       label: type.label,
       icon: typeIcons[type.id] || SettingsIcon, // Fallback icon nếu không tìm thấy
-      count: type.count
-    }))
+      count: type.count,
+    })),
   ];
 
   // Filter settings
@@ -126,7 +165,7 @@ export default function SettingsPage() {
   // Set default type khi dynamicTypes load xong (MỚI)
   useEffect(() => {
     if (dynamicTypes.length > 0 && !formData.type) {
-      setFormData(prev => ({ ...prev, type: dynamicTypes[0].id }));
+      setFormData((prev) => ({ ...prev, type: dynamicTypes[0].id }));
     }
   }, [dynamicTypes]);
 
@@ -191,20 +230,20 @@ export default function SettingsPage() {
 
     // Kiểm tra trùng lặp
     const isDuplicate = dynamicTypes.some(
-      t => t.id.toLowerCase() === newTypeName.toLowerCase()
+      (t) => t.id.toLowerCase() === newTypeName.toLowerCase()
     );
-    
+
     if (isDuplicate) {
       alert("Type này đã tồn tại!");
       return;
     }
 
     // Set type mới vào form
-    setFormData({ 
-      ...formData, 
-      type: newTypeName.toLowerCase()
+    setFormData({
+      ...formData,
+      type: newTypeName.toLowerCase(),
     });
-    
+
     // Reset state
     setIsAddingNewType(false);
     setNewTypeName("");
@@ -226,10 +265,10 @@ export default function SettingsPage() {
       } else {
         await addSetting(formData);
       }
-      
+
       // Reload dynamic types sau khi thêm/sửa (MỚI)
       await loadDynamicTypes();
-      
+
       resetForm();
       setShowModal(false);
     } catch (error) {
@@ -643,16 +682,16 @@ export default function SettingsPage() {
                           {type.label} ({type.count} items)
                         </option>
                       ))}
-                      
+
                       {/* Option thêm type mới */}
-                      <option 
+                      <option
                         value="add_new_type"
                         className="font-semibold text-purple-600 bg-purple-50"
                       >
                         ➕ Thêm loại mới
                       </option>
                     </select>
-                    
+
                     <p className="text-xs text-gray-500 flex items-center gap-1">
                       <Sparkles className="w-3 h-3" />
                       Chọn loại có sẵn hoặc tạo loại mới
@@ -666,7 +705,7 @@ export default function SettingsPage() {
                         <Sparkles className="w-4 h-4" />
                         Tạo loại setting mới
                       </p>
-                      
+
                       {/* Type ID (slug) */}
                       <div className="mb-3">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -677,7 +716,9 @@ export default function SettingsPage() {
                           value={newTypeName}
                           onChange={(e) => {
                             // Chỉ cho phép a-z và gạch dưới
-                            const value = e.target.value.toLowerCase().replace(/[^a-z_]/g, '');
+                            const value = e.target.value
+                              .toLowerCase()
+                              .replace(/[^a-z_]/g, "");
                             setNewTypeName(value);
                           }}
                           placeholder="VD: material, size, fabric"

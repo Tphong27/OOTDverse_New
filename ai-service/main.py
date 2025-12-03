@@ -11,7 +11,7 @@ app = FastAPI()
 # --- CẤU HÌNH OPENAI ---
 # Cách an toàn: Đặt key trong biến môi trường hệ thống
 # Hoặc tạm thời paste key MỚI vào đây (không push lên git)
-client = OpenAI(api_key="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") 
+client = OpenAI("OPENAI_API_KEY") 
 
 class ImageRequest(BaseModel):
     image_base64: str

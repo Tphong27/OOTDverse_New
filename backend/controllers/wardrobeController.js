@@ -435,7 +435,7 @@ exports.getStatistics = async (req, res) => {
   }
 };
 
-// ===== 9. AI ANALYZE IMAGE (GỌI SANG PYTHON SERVICE) =====
+// ===== 9. AI ANALYZE IMAGE =====
 exports.analyzeImage = async (req, res) => {
   try {
     const { imageBase64 } = req.body;
@@ -444,12 +444,11 @@ exports.analyzeImage = async (req, res) => {
       return res.status(400).json({ success: false, message: "Không có ảnh" });
     }
 
-    // 1. Gọi sang AI Service (PYTHON)
-    // URL AI Service (nên đưa vào biến môi trường .env)
+    // 1. Gọi sang AI Service
     const aiServiceUrl =
       process.env.AI_SERVICE_URL || "http://localhost:8000/analyze";
-
     let aiResponse;
+
     try {
       console.log("📡 Sending image to AI Service...");
       aiResponse = await axios.post(aiServiceUrl, {
@@ -457,47 +456,56 @@ exports.analyzeImage = async (req, res) => {
       });
     } catch (aiError) {
       console.error("❌ Lỗi kết nối AI Service:", aiError.message);
-      // Fallback: Nếu AI service chết, trả về lỗi hoặc dữ liệu giả lập (tuỳ chọn)
-      return res.status(503).json({
-        success: false,
-        message: "AI Service đang bảo trì hoặc quá tải.",
-      });
+      return res
+        .status(503)
+        .json({ success: false, message: "AI Service lỗi." });
     }
 
     const aiResult = aiResponse.data.data;
     console.log("🤖 AI Result:", aiResult);
 
-    // 2. MAP DỮ LIỆU AI VÀO DATABASE CỦA NODE.JS
-    // AI trả về text ("Áo thun"), ta cần tìm ID của text đó trong bảng Setting
+    // 2. MAP DỮ LIỆU AI VÀO DATABASE
 
-    // Tìm Category ID (Regex search case-insensitive)
+    // a) Tìm Category (Tìm chính xác "Áo", "Quần"...)
     const category = await Setting.findOne({
       type: "category",
-      name: { $regex: new RegExp(aiResult.category, "i") },
+      name: { $regex: new RegExp(`^${aiResult.category}$`, "i") },
       status: "Active",
     });
 
-    // Tìm Color ID
+    // b) Tìm Color
     const color = await Setting.findOne({
       type: "color",
-      name: { $regex: new RegExp(aiResult.color, "i") },
+      name: { $regex: new RegExp(aiResult.color, "i") }, // Tìm gần đúng (VD: AI trả "Đỏ" vẫn khớp "Màu đỏ(Red)")
       status: "Active",
     });
 
-    // 3. TRẢ VỀ CHO FRONTEND (để điền vào form)
+    // c) Tìm Season (Mùa)
+    const season = await Setting.findOne({
+      type: "season",
+      name: { $regex: new RegExp(aiResult.season, "i") },
+      status: "Active",
+    });
+
+    // Debug log để bạn xem nó tìm thấy gì
+    console.log("✅ Mapping:", {
+      Category: category ? category.name : "Not Found",
+      Color: color ? color.name : "Not Found",
+      Season: season ? season.name : "Not Found",
+    });
+
+    // 3. TRẢ VỀ CHO FRONTEND
     res.json({
       success: true,
       data: {
-        // Nếu tìm thấy trong DB thì trả về ID, không thì để trống
         category_id: category ? category._id : "",
-        color_id: color ? [color._id] : [],
+        color_id: color ? [color._id] : [], // Form nhận mảng ID cho Multi-select
+        season_id: season ? [season._id] : [], // Form nhận mảng ID
         style_tags: aiResult.tags || [],
+        notes: aiResult.notes || "", // AI tự viết ghi chú
 
-        // Gửi kèm dữ liệu thô để frontend hiển thị nếu cần
-        raw_category: aiResult.category,
-        raw_color: aiResult.color,
-
-        notes: `AI Analysis: ${aiResult.category} (${aiResult.color})`,
+        // Gửi kèm text thô phòng khi không tìm thấy ID
+        raw_data: aiResult,
       },
     });
   } catch (err) {

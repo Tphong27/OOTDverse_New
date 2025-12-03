@@ -38,17 +38,30 @@ async def analyze_wardrobe_item(request: ImageRequest):
             messages=[
                 {
                     "role": "system",
-                    "content": "Bạn là một chuyên gia thời trang AI. Nhiệm vụ của bạn là phân tích hình ảnh quần áo và trả về dữ liệu JSON chính xác."
+                    # CHỈNH SỬA PROMPT TẠI ĐÂY
+                    "content": """Bạn là chuyên gia thời trang. Nhiệm vụ: Phân tích ảnh và trả về JSON chính xác.
+                    
+                    QUY TẮC BẮT BUỘC (Trùng khớp với Database):
+                    1. category (Chọn 1): "Áo", "Quần", "Váy", "Giày", "Phụ kiện". (Nếu là túi xách, mũ, kính... hãy chọn "Phụ kiện").
+                    2. color (Chọn 1): "Đen", "Trắng", "Xám", "Xanh dương", "Xanh lá", "Đỏ", "Vàng", "Cam", "Hồng", "Tím", "Nâu", "Be".
+                    3. season (Chọn 1): "Mùa Xuân", "Mùa Hạ", "Mùa Thu", "Mùa Đông".
+                    4. notes: Viết một câu ngắn gợi ý cách phối đồ (Tiếng Việt).
+                    5. tags: 3-5 từ khóa tiếng Anh (VD: casual, vintage).
+                    """
                 },
                 {
                     "role": "user",
                     "content": [
                         {
                             "type": "text", 
-                            "text": """Hãy phân tích ảnh này và trả về kết quả dưới dạng JSON (không có markdown) với các trường sau:
-                            - category: Loại trang phục (ví dụ: Áo thun, Sơ mi, Quần Jeans, Váy liền, Áo khoác, Giày, Túi xách). Hãy dùng tiếng Việt.
-                            - color: Màu sắc chủ đạo (ví dụ: Trắng, Đen, Xanh dương, Be, Đỏ). Hãy dùng tiếng Việt.
-                            - tags: Mảng chứa 3-5 từ khóa về phong cách (ví dụ: ["casual", "vintage", "streetwear", "summer"]).
+                            "text": """Phân tích ảnh này và trả về kết quả dưới dạng JSON (không markdown):
+                            {
+                                "category": "String",
+                                "color": "String",
+                                "season": "String",
+                                "notes": "String",
+                                "tags": ["String"]
+                            }
                             """
                         },
                         {
@@ -60,7 +73,7 @@ async def analyze_wardrobe_item(request: ImageRequest):
                     ],
                 }
             ],
-            response_format={"type": "json_object"}, # Bắt buộc trả về JSON
+            response_format={"type": "json_object"}, 
             max_tokens=300,
         )
 

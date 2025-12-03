@@ -99,7 +99,6 @@ export default function ItemForm() {
   const analyzeImageWithAI = async (base64Image) => {
     setIsAnalyzing(true);
     try {
-      // Gọi API Backend (Node.js), Backend sẽ gọi tiếp sang Python Service
       const API_URL =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const response = await axios.post(`${API_URL}/api/wardrobe/analyze`, {
@@ -112,32 +111,30 @@ export default function ItemForm() {
 
         setFormData((prev) => ({
           ...prev,
-          // Ưu tiên lấy ID tìm được từ DB, nếu không thì giữ nguyên giá trị cũ
           category_id: aiData.category_id || prev.category_id,
+
           color_id:
             aiData.color_id && aiData.color_id.length > 0
               ? aiData.color_id
               : prev.color_id,
-          // Gộp tags cũ và tags mới từ AI
+
+          // --- [BỔ SUNG ĐOẠN NÀY] ---
+          season_id:
+            aiData.season_id && aiData.season_id.length > 0
+              ? aiData.season_id
+              : prev.season_id,
+          // --------------------------
+
           style_tags: [
             ...new Set([...prev.style_tags, ...(aiData.style_tags || [])]),
           ],
-          // Ghi chú từ AI
           notes: prev.notes
             ? prev.notes + "\n" + (aiData.notes || "")
             : aiData.notes || "",
         }));
-
-        // Nếu AI trả về text nhưng không map được ID trong DB, có thể thông báo nhẹ
-        if (!aiData.category_id && aiData.raw_category) {
-          console.warn(
-            `AI suggested category "${aiData.raw_category}" but no match found in settings.`
-          );
-        }
       }
     } catch (error) {
       console.error("AI Analysis failed:", error);
-      // Không block luồng user nếu AI lỗi, chỉ log ra console
     } finally {
       setIsAnalyzing(false);
     }

@@ -6,7 +6,7 @@ export default function LayoutUser({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
-    <div className="flex h-screen bg-[#F8F9FC] overflow-hidden font-sans">
+    <div className="flex h-screen bg-[#F8F9FC] overflow-x-hidden font-sans">
       <UserSidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}

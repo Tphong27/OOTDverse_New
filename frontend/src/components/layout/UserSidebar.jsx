@@ -83,7 +83,7 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
       id: "account",
       icon: User,
       label: "Accounts",
-      path: "/#",
+      path: "/user/account",
       roles: ["Admin"],
     },
   ];

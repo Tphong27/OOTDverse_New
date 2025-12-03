@@ -4,6 +4,7 @@ import uvicorn
 import os
 from openai import OpenAI
 import json
+
 from dotenv import load_dotenv
 
 # 1. Load biến môi trường

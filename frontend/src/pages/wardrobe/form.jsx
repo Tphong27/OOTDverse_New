@@ -1,21 +1,28 @@
 import LayoutUser from "@/components/layout/LayoutUser";
 import { useState, useEffect } from "react";
-import { Upload, X, Loader2, Plus, Tag as TagIcon, AlertCircle } from "lucide-react";
+import {
+  Upload,
+  X,
+  Loader2,
+  Plus,
+  Tag as TagIcon,
+  AlertCircle,
+  Sparkles,
+} from "lucide-react";
 import { useRouter } from "next/router";
 import { useWardrobe } from "@/context/WardrobeContext";
 import { useSettings } from "@/context/SettingContext";
+import axios from "axios";
 
 export default function ItemForm() {
   const router = useRouter();
   const { id } = router.query; // ID để edit
   const { addItem, updateItem, getItemDetails } = useWardrobe();
-  const { 
-    settings,
-    getByType 
-  } = useSettings();
+  const { settings, getByType } = useSettings();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false); // State loading cho AI
   const [selectedImage, setSelectedImage] = useState(null);
   const [tagInput, setTagInput] = useState("");
   const [errors, setErrors] = useState({});
@@ -34,7 +41,7 @@ export default function ItemForm() {
     image_url: "",
     style_tags: [],
     notes: "",
-    is_favorite: false
+    is_favorite: false,
   });
 
   // Load item data nếu đang edit
@@ -54,20 +61,22 @@ export default function ItemForm() {
           item_name: item.item_name || "",
           category_id: item.category_id?._id || item.category_id || "",
           brand_id: item.brand_id?._id || item.brand_id || "",
-          color_id: Array.isArray(item.color_id) 
-            ? item.color_id.map(c => c._id || c) 
+          color_id: Array.isArray(item.color_id)
+            ? item.color_id.map((c) => c._id || c)
             : [],
           season_id: Array.isArray(item.season_id)
-            ? item.season_id.map(s => s._id || s)
+            ? item.season_id.map((s) => s._id || s)
             : [],
           material_id: item.material_id?._id || item.material_id || "",
           size: item.size || "",
-          purchase_date: item.purchase_date ? item.purchase_date.split('T')[0] : "",
+          purchase_date: item.purchase_date
+            ? item.purchase_date.split("T")[0]
+            : "",
           price: item.price || "",
           image_url: item.image_url || "",
           style_tags: item.style_tags || [],
           notes: item.notes || "",
-          is_favorite: item.is_favorite || false
+          is_favorite: item.is_favorite || false,
         });
         setSelectedImage(item.image_url);
       }
@@ -80,24 +89,59 @@ export default function ItemForm() {
   };
 
   // Get settings by type
-  const categories = getByType('category').filter(s => s.status === 'Active');
-  const brands = getByType('brand').filter(s => s.status === 'Active');
-  const colors = getByType('color').filter(s => s.status === 'Active');
-  const seasons = getByType('season').filter(s => s.status === 'Active');
-  const materials = getByType('material').filter(s => s.status === 'Active');
+  const categories = getByType("category").filter((s) => s.status === "Active");
+  const brands = getByType("brand").filter((s) => s.status === "Active");
+  const colors = getByType("color").filter((s) => s.status === "Active");
+  const seasons = getByType("season").filter((s) => s.status === "Active");
+  const materials = getByType("material").filter((s) => s.status === "Active");
 
-  // DEBUG: Log để kiểm tra
-  useEffect(() => {
-    console.log('🔍 Settings Debug:', {
-      allSettings: settings,
-      categories: categories,
-      brands: brands,
-      colors: colors,
-      seasons: seasons,
-      materials: materials,
-      materialsRaw: getByType('material')
-    });
-  }, [settings, materials]);
+  // Hàm gọi API phân tích ảnh (AI)
+  const analyzeImageWithAI = async (base64Image) => {
+    setIsAnalyzing(true);
+    try {
+      // Gọi API Backend (Node.js), Backend sẽ gọi tiếp sang Python Service
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await axios.post(`${API_URL}/api/wardrobe/analyze`, {
+        imageBase64: base64Image,
+      });
+
+      if (response.data.success) {
+        const aiData = response.data.data;
+        console.log("✨ AI Result:", aiData);
+
+        setFormData((prev) => ({
+          ...prev,
+          // Ưu tiên lấy ID tìm được từ DB, nếu không thì giữ nguyên giá trị cũ
+          category_id: aiData.category_id || prev.category_id,
+          color_id:
+            aiData.color_id && aiData.color_id.length > 0
+              ? aiData.color_id
+              : prev.color_id,
+          // Gộp tags cũ và tags mới từ AI
+          style_tags: [
+            ...new Set([...prev.style_tags, ...(aiData.style_tags || [])]),
+          ],
+          // Ghi chú từ AI
+          notes: prev.notes
+            ? prev.notes + "\n" + (aiData.notes || "")
+            : aiData.notes || "",
+        }));
+
+        // Nếu AI trả về text nhưng không map được ID trong DB, có thể thông báo nhẹ
+        if (!aiData.category_id && aiData.raw_category) {
+          console.warn(
+            `AI suggested category "${aiData.raw_category}" but no match found in settings.`
+          );
+        }
+      }
+    } catch (error) {
+      console.error("AI Analysis failed:", error);
+      // Không block luồng user nếu AI lỗi, chỉ log ra console
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // Handle image upload
   const handleImageUpload = (e) => {
@@ -108,10 +152,16 @@ export default function ItemForm() {
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result);
-        setFormData(prev => ({ ...prev, image_url: reader.result }));
-        setErrors(prev => ({ ...prev, image_url: null }));
+      reader.onloadend = async () => {
+        const base64Image = reader.result;
+        setSelectedImage(base64Image);
+        setFormData((prev) => ({ ...prev, image_url: base64Image }));
+        setErrors((prev) => ({ ...prev, image_url: null }));
+
+        // === KÍCH HOẠT AI NẾU ĐANG TẠO MỚI ===
+        if (!id) {
+          await analyzeImageWithAI(base64Image);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -119,10 +169,10 @@ export default function ItemForm() {
 
   // Handle multi-select (color, season)
   const handleMultiSelect = (field, value) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const currentValues = prev[field];
       const newValues = currentValues.includes(value)
-        ? currentValues.filter(v => v !== value)
+        ? currentValues.filter((v) => v !== value)
         : [...currentValues, value];
       return { ...prev, [field]: newValues };
     });
@@ -136,18 +186,18 @@ export default function ItemForm() {
         alert("Chỉ được thêm tối đa 20 tags");
         return;
       }
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        style_tags: [...prev.style_tags, tag]
+        style_tags: [...prev.style_tags, tag],
       }));
       setTagInput("");
     }
   };
 
   const handleRemoveTag = (tagToRemove) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      style_tags: prev.style_tags.filter(t => t !== tagToRemove)
+      style_tags: prev.style_tags.filter((t) => t !== tagToRemove),
     }));
   };
 
@@ -157,10 +207,6 @@ export default function ItemForm() {
 
     if (!formData.item_name.trim()) {
       newErrors.item_name = "Tên món đồ là bắt buộc";
-    } else if (formData.item_name.length < 2) {
-      newErrors.item_name = "Tên phải có ít nhất 2 ký tự";
-    } else if (formData.item_name.length > 150) {
-      newErrors.item_name = "Tên không được quá 150 ký tự";
     }
 
     if (!formData.category_id) {
@@ -208,10 +254,8 @@ export default function ItemForm() {
         image_url: formData.image_url,
         style_tags: formData.style_tags,
         notes: formData.notes || null,
-        is_favorite: formData.is_favorite
+        is_favorite: formData.is_favorite,
       };
-
-      console.log('📤 Payload gửi đi:', payload);
 
       let result;
       if (id) {
@@ -219,8 +263,6 @@ export default function ItemForm() {
       } else {
         result = await addItem(payload);
       }
-
-      console.log('📥 Response:', result);
 
       if (result.success) {
         alert(id ? "Cập nhật thành công! 🎉" : "Thêm món đồ thành công! 🎉");
@@ -230,8 +272,10 @@ export default function ItemForm() {
       }
     } catch (error) {
       console.error("❌ Error details:", error);
-      console.error("❌ Error response:", error.response?.data);
-      alert("Lỗi: " + (error.response?.data?.message || error.message || "Vui lòng thử lại"));
+      alert(
+        "Lỗi: " +
+          (error.response?.data?.message || error.message || "Vui lòng thử lại")
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -262,18 +306,44 @@ export default function ItemForm() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 1. UPLOAD ẢNH */}
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
             <label className="block text-sm font-semibold text-gray-700 mb-4">
               Hình ảnh <span className="text-red-500">*</span>
             </label>
+
+            {/* AI Loading Overlay */}
+            {isAnalyzing && (
+              <div className="absolute inset-0 bg-white/80 z-20 flex flex-col items-center justify-center backdrop-blur-[2px]">
+                <Sparkles className="w-10 h-10 text-purple-600 animate-pulse mb-3" />
+                <p className="text-purple-700 font-semibold animate-pulse text-lg">
+                  AI đang phân tích...
+                </p>
+                <p className="text-sm text-purple-500 mt-1">
+                  Đang nhận diện loại đồ, màu sắc & phong cách
+                </p>
+              </div>
+            )}
+
             {!selectedImage ? (
-              <label className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-xl cursor-pointer hover:bg-gray-50 transition-colors group ${
-                errors.image_url ? 'border-red-300 bg-red-50' : 'border-gray-300'
-              }`}>
-                <div className={`p-4 rounded-full mb-3 ${
-                  errors.image_url ? 'bg-red-100' : 'bg-purple-50 group-hover:bg-purple-100'
-                } transition-colors`}>
-                  <Upload className={`w-8 h-8 ${errors.image_url ? 'text-red-600' : 'text-purple-600'}`} />
+              <label
+                className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-xl cursor-pointer hover:bg-gray-50 transition-colors group ${
+                  errors.image_url
+                    ? "border-red-300 bg-red-50"
+                    : "border-gray-300"
+                }`}
+              >
+                <div
+                  className={`p-4 rounded-full mb-3 ${
+                    errors.image_url
+                      ? "bg-red-100"
+                      : "bg-purple-50 group-hover:bg-purple-100"
+                  } transition-colors`}
+                >
+                  <Upload
+                    className={`w-8 h-8 ${
+                      errors.image_url ? "text-red-600" : "text-purple-600"
+                    }`}
+                  />
                 </div>
                 <p className="text-sm font-medium text-gray-700">
                   Nhấn để tải ảnh lên
@@ -307,7 +377,7 @@ export default function ItemForm() {
                     type="button"
                     onClick={() => {
                       setSelectedImage(null);
-                      setFormData(prev => ({ ...prev, image_url: "" }));
+                      setFormData((prev) => ({ ...prev, image_url: "" }));
                     }}
                     className="p-3 bg-white text-red-600 rounded-full hover:bg-red-50"
                   >
@@ -326,7 +396,9 @@ export default function ItemForm() {
 
           {/* 2. THÔNG TIN CƠ BẢN */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
-            <h3 className="text-lg font-semibold text-gray-900">Thông tin cơ bản</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Thông tin cơ bản
+            </h3>
 
             {/* Tên món đồ */}
             <div>
@@ -341,7 +413,7 @@ export default function ItemForm() {
                   setErrors({ ...errors, item_name: null });
                 }}
                 className={`w-full px-4 py-3 rounded-lg border ${
-                  errors.item_name ? 'border-red-300' : 'border-gray-300'
+                  errors.item_name ? "border-red-300" : "border-gray-300"
                 } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
                 placeholder="Ví dụ: Áo sơ mi trắng Oxford"
               />
@@ -363,7 +435,7 @@ export default function ItemForm() {
                     setErrors({ ...errors, category_id: null });
                   }}
                   className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.category_id ? 'border-red-300' : 'border-gray-300'
+                    errors.category_id ? "border-red-300" : "border-gray-300"
                   } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
                 >
                   <option value="">-- Chọn danh mục --</option>
@@ -374,7 +446,9 @@ export default function ItemForm() {
                   ))}
                 </select>
                 {errors.category_id && (
-                  <p className="mt-1 text-sm text-red-600">{errors.category_id}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.category_id}
+                  </p>
                 )}
               </div>
 
@@ -385,7 +459,9 @@ export default function ItemForm() {
                 <input
                   type="text"
                   value={formData.size}
-                  onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, size: e.target.value })
+                  }
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
                   placeholder="S, M, L, XL, 38, 40..."
                   maxLength={20}
@@ -400,7 +476,9 @@ export default function ItemForm() {
               </label>
               <select
                 value={formData.brand_id}
-                onChange={(e) => setFormData({ ...formData, brand_id: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, brand_id: e.target.value })
+                }
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
               >
                 <option value="">-- Chọn thương hiệu --</option>
@@ -427,11 +505,11 @@ export default function ItemForm() {
                   <button
                     key={color._id}
                     type="button"
-                    onClick={() => handleMultiSelect('color_id', color._id)}
+                    onClick={() => handleMultiSelect("color_id", color._id)}
                     className={`px-4 py-2 rounded-lg border-2 transition-all ${
                       formData.color_id.includes(color._id)
-                        ? 'border-purple-600 bg-purple-50 text-purple-700 font-semibold'
-                        : 'border-gray-200 hover:border-purple-300 text-gray-700'
+                        ? "border-purple-600 bg-purple-50 text-purple-700 font-semibold"
+                        : "border-gray-200 hover:border-purple-300 text-gray-700"
                     }`}
                   >
                     {color.name}
@@ -453,11 +531,11 @@ export default function ItemForm() {
                   <button
                     key={season._id}
                     type="button"
-                    onClick={() => handleMultiSelect('season_id', season._id)}
+                    onClick={() => handleMultiSelect("season_id", season._id)}
                     className={`px-4 py-2 rounded-lg border-2 transition-all ${
                       formData.season_id.includes(season._id)
-                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-semibold'
-                        : 'border-gray-200 hover:border-blue-300 text-gray-700'
+                        ? "border-blue-600 bg-blue-50 text-blue-700 font-semibold"
+                        : "border-gray-200 hover:border-blue-300 text-gray-700"
                     }`}
                   >
                     {season.name}
@@ -477,7 +555,9 @@ export default function ItemForm() {
                 </label>
                 <select
                   value={formData.material_id}
-                  onChange={(e) => setFormData({ ...formData, material_id: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, material_id: e.target.value })
+                  }
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
                 >
                   <option value="">-- Chọn chất liệu --</option>
@@ -493,7 +573,9 @@ export default function ItemForm() {
 
           {/* 4. THÔNG TIN MUA SẮM */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
-            <h3 className="text-lg font-semibold text-gray-900">Thông tin mua sắm</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Thông tin mua sắm
+            </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -503,7 +585,9 @@ export default function ItemForm() {
                 <input
                   type="date"
                   value={formData.purchase_date}
-                  onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, purchase_date: e.target.value })
+                  }
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
                 />
               </div>
@@ -515,7 +599,9 @@ export default function ItemForm() {
                 <input
                   type="number"
                   value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, price: e.target.value })
+                  }
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
                   placeholder="500000"
                   min="0"
@@ -526,7 +612,9 @@ export default function ItemForm() {
 
           {/* 5. STYLE TAGS & NOTES */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
-            <h3 className="text-lg font-semibold text-gray-900">Ghi chú & Tags</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Ghi chú & Tags
+            </h3>
 
             {/* Style Tags */}
             <div>
@@ -538,7 +626,9 @@ export default function ItemForm() {
                   type="text"
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                  onKeyPress={(e) =>
+                    e.key === "Enter" && (e.preventDefault(), handleAddTag())
+                  }
                   className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
                   placeholder="VD: casual, streetwear, formal..."
                 />
@@ -580,7 +670,9 @@ export default function ItemForm() {
               </label>
               <textarea
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
                 rows={4}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none resize-none"
                 placeholder="Ghi chú về món đồ, cách phối đồ, dịp phù hợp..."
@@ -597,10 +689,15 @@ export default function ItemForm() {
                 type="checkbox"
                 id="is_favorite"
                 checked={formData.is_favorite}
-                onChange={(e) => setFormData({ ...formData, is_favorite: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, is_favorite: e.target.checked })
+                }
                 className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
               />
-              <label htmlFor="is_favorite" className="text-sm font-medium text-gray-700 cursor-pointer">
+              <label
+                htmlFor="is_favorite"
+                className="text-sm font-medium text-gray-700 cursor-pointer"
+              >
                 ⭐ Đánh dấu là món đồ yêu thích
               </label>
             </div>

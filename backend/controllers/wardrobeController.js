@@ -435,7 +435,7 @@ exports.getStatistics = async (req, res) => {
   }
 };
 
-// ===== 9. AI ANALYZE IMAGE =====
+// ===== 9. AI ANALYZE IMAGE (NÂNG CẤP) =====
 exports.analyzeImage = async (req, res) => {
   try {
     const { imageBase64 } = req.body;
@@ -444,77 +444,98 @@ exports.analyzeImage = async (req, res) => {
       return res.status(400).json({ success: false, message: "Không có ảnh" });
     }
 
-    // 1. Gọi sang AI Service
+    // 1. Gọi AI Service
     const aiServiceUrl =
       process.env.AI_SERVICE_URL || "http://localhost:8000/analyze";
-    let aiResponse;
+    console.log("📡 Đang gửi ảnh tới AI Service...");
 
+    let aiResponse;
     try {
-      console.log("📡 Sending image to AI Service...");
       aiResponse = await axios.post(aiServiceUrl, {
         image_base64: imageBase64,
       });
     } catch (aiError) {
-      console.error("❌ Lỗi kết nối AI Service:", aiError.message);
+      console.error("❌ AI Service Lỗi:", aiError.message);
       return res
         .status(503)
-        .json({ success: false, message: "AI Service lỗi." });
+        .json({ success: false, message: "Không kết nối được AI Service" });
     }
 
     const aiResult = aiResponse.data.data;
-    console.log("🤖 AI Result:", aiResult);
+    console.log("🤖 AI Trả về:", JSON.stringify(aiResult, null, 2));
 
-    // 2. MAP DỮ LIỆU AI VÀO DATABASE
+    // 2. CHIẾN THUẬT TÌM KIẾM THÔNG MINH (Fuzzy Match)
 
-    // a) Tìm Category (Tìm chính xác "Áo", "Quần"...)
-    const category = await Setting.findOne({
-      type: "category",
-      name: { $regex: new RegExp(`^${aiResult.category}$`, "i") },
-      status: "Active",
-    });
+    // --- Hàm hỗ trợ tìm kiếm ---
+    const findBestMatch = async (type, keyword) => {
+      if (!keyword) return null;
+      const keywordLower = keyword.toLowerCase().trim();
 
-    // b) Tìm Color
-    const color = await Setting.findOne({
-      type: "color",
-      name: { $regex: new RegExp(aiResult.color, "i") }, // Tìm gần đúng (VD: AI trả "Đỏ" vẫn khớp "Màu đỏ(Red)")
-      status: "Active",
-    });
+      // Lấy tất cả setting đang Active của loại này
+      const allSettings = await Setting.find({ type: type, status: "Active" });
 
-    // c) Tìm Season (Mùa)
-    const season = await Setting.findOne({
-      type: "season",
-      name: { $regex: new RegExp(aiResult.season, "i") },
-      status: "Active",
-    });
+      // Lọc tìm cái khớp nhất
+      const match = allSettings.find((s) => {
+        const dbName = s.name.toLowerCase();
+        // 1. Khớp chính xác
+        if (dbName === keywordLower) return true;
+        // 2. DB chứa từ khóa AI (VD: DB="Màu đỏ(Red)", AI="Đỏ" -> Khớp)
+        if (dbName.includes(keywordLower)) return true;
+        // 3. Từ khóa AI chứa DB (VD: AI="Áo khoác", DB="Áo" -> Khớp)
+        if (keywordLower.includes(dbName)) return true;
+        return false;
+      });
 
-    // Debug log để bạn xem nó tìm thấy gì
-    console.log("✅ Mapping:", {
-      Category: category ? category.name : "Not Found",
-      Color: color ? color.name : "Not Found",
-      Season: season ? season.name : "Not Found",
-    });
+      return match;
+    };
 
-    // 3. TRẢ VỀ CHO FRONTEND
+    // --- Thực hiện tìm kiếm ---
+    const category = await findBestMatch("category", aiResult.category);
+    const color = await findBestMatch("color", aiResult.color);
+    const season = await findBestMatch("season", aiResult.season);
+
+    // --- Log kết quả map để kiểm tra ---
+    console.log("✅ KẾT QUẢ MAP:");
+    console.log(
+      `   - Category: "${aiResult.category}" -> DB: ${
+        category ? category.name : "KHÔNG TÌM THẤY"
+      }`
+    );
+    console.log(
+      `   - Color:    "${aiResult.color}"    -> DB: ${
+        color ? color.name : "KHÔNG TÌM THẤY"
+      }`
+    );
+    console.log(
+      `   - Season:   "${aiResult.season}"   -> DB: ${
+        season ? season.name : "KHÔNG TÌM THẤY"
+      }`
+    );
+
+    // 3. Trả về Frontend
     res.json({
       success: true,
       data: {
+        // Nếu tìm thấy thì lấy ID, không thì để chuỗi rỗng
         category_id: category ? category._id : "",
-        color_id: color ? [color._id] : [], // Form nhận mảng ID cho Multi-select
-        season_id: season ? [season._id] : [], // Form nhận mảng ID
-        style_tags: aiResult.tags || [],
-        notes: aiResult.notes || "", // AI tự viết ghi chú
+        // Form yêu cầu mảng ID cho color và season
+        color_id: color ? [color._id] : [],
+        season_id: season ? [season._id] : [],
 
-        // Gửi kèm text thô phòng khi không tìm thấy ID
-        raw_data: aiResult,
+        style_tags: aiResult.tags || [],
+        notes: aiResult.notes || "",
+
+        // Gửi kèm dữ liệu gốc để debug ở frontend nếu cần
+        raw_ai: aiResult,
       },
     });
   } catch (err) {
-    console.error("Error in analyzeImage:", err);
+    console.error("❌ Lỗi Server:", err);
     res
       .status(500)
       .json({
         success: false,
-        message: "Lỗi Server Node.js",
+        message: "Lỗi xử lý backend",
         error: err.message,
       });
   }

@@ -107,30 +107,26 @@ export default function ItemForm() {
 
       if (response.data.success) {
         const aiData = response.data.data;
-        console.log("✨ AI Result:", aiData);
+        console.log("✨ AI Result (Frontend nhận):", aiData); // Xem log này trên trình duyệt (F12)
 
         setFormData((prev) => ({
           ...prev,
           category_id: aiData.category_id || prev.category_id,
 
+          // Backend mới đã trả về mảng ID ([...]) nên gán trực tiếp được
           color_id:
             aiData.color_id && aiData.color_id.length > 0
               ? aiData.color_id
               : prev.color_id,
-
-          // --- [BỔ SUNG ĐOẠN NÀY] ---
           season_id:
             aiData.season_id && aiData.season_id.length > 0
               ? aiData.season_id
               : prev.season_id,
-          // --------------------------
 
           style_tags: [
             ...new Set([...prev.style_tags, ...(aiData.style_tags || [])]),
           ],
-          notes: prev.notes
-            ? prev.notes + "\n" + (aiData.notes || "")
-            : aiData.notes || "",
+          notes: aiData.notes || prev.notes,
         }));
       }
     } catch (error) {

@@ -218,6 +218,18 @@ export default function ItemForm() {
       newErrors.notes = "Ghi chú không được quá 1000 ký tự";
     }
 
+    // Bắt lỗi Ngày mua không được lớn hơn ngày hiện tại ===
+    if (formData.purchase_date) {
+      const purchaseDate = new Date(formData.purchase_date);
+      const today = new Date();
+      // Thiết lập giờ, phút, giây về 0 để so sánh chỉ ngày, tháng, năm
+      today.setHours(0, 0, 0, 0); 
+      
+      if (purchaseDate > today) { 
+          newErrors.purchase_date = "Ngày mua không được lớn hơn ngày hiện tại";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -578,11 +590,20 @@ export default function ItemForm() {
                 <input
                   type="date"
                   value={formData.purchase_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, purchase_date: e.target.value })
-                  }
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none"
+                  onChange={(e) => {
+                    setFormData({ ...formData, purchase_date: e.target.value });
+                    setErrors({ ...errors, purchase_date: null }); // Xóa lỗi khi người dùng thay đổi
+                  }}
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    errors.purchase_date ? "border-red-300" : "border-gray-300"
+                  } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
                 />
+                {errors.purchase_date && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.purchase_date}
+                  </p>
+                )}
               </div>
 
               <div>

@@ -69,6 +69,18 @@ export default function ProfilePage() {
     return Math.abs(ageDate.getUTCFullYear() - 1970);
   };
 
+  // Hàm validate ngày sinh không lớn hơn hôm nay
+  const validateBirthday = (birthday) => {
+    if (!birthday) return null;
+    const inputDate = new Date(birthday);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (inputDate > today) {
+      return "Ngày sinh không được lớn hơn hôm nay.";
+    }
+    return null;
+  };
+
   // 1. Load User & Settings khi trang tải
   useEffect(() => {
     const storedUser = localStorage.getItem("currentUser");
@@ -154,6 +166,13 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
+    // Validate ngày sinh trước khi lưu
+    const birthdayError = validateBirthday(profile.birthday);
+    if (birthdayError) {
+      alert(birthdayError); // Hoặc dùng state error để hiển thị
+      return;
+    }
+
     setIsSaving(true);
     try {
       await updateUserProfile({
@@ -282,7 +301,18 @@ export default function ProfilePage() {
                 <option value="Khác">Khác</option>
               </select>
             </div>
-            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Số điện thoại
+              </label>
+              <input
+                type="text"
+                value={profile.phone}
+                onChange={(e) => handleChange("phone", e.target.value)}
+                disabled={!isEditing}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50"
+              />
+            </div>
             {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Địa điểm
@@ -316,18 +346,6 @@ export default function ProfilePage() {
                 value={profile.age}
                 disabled={true} // Read-only, tự tính từ birthday
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Số điện thoại
-              </label>
-              <input
-                type="text"
-                value={profile.phone}
-                onChange={(e) => handleChange("phone", e.target.value)}
-                disabled={!isEditing}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50"
               />
             </div>
             <div className="md:col-span-2">

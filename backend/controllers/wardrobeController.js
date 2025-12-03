@@ -1,6 +1,8 @@
 // backend/controllers/wardrobeController.js
 const Item = require("../models/Item");
 const mongoose = require("mongoose");
+const axios = require("axios"); // [MỚI] Import axios để gọi AI Service
+const Setting = require("../models/setting"); // [MỚI] Import Setting để map dữ liệu
 
 // ===== 1. GET ALL ITEMS (Lấy danh sách món đồ của user) =====
 exports.getItems = async (req, res) => {
@@ -8,43 +10,43 @@ exports.getItems = async (req, res) => {
     const { userId } = req.query;
 
     if (!userId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "userId là bắt buộc" 
+      return res.status(400).json({
+        success: false,
+        message: "userId là bắt buộc",
       });
     }
 
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "userId không hợp lệ" 
+      return res.status(400).json({
+        success: false,
+        message: "userId không hợp lệ",
       });
     }
 
     // Lấy items và populate các reference
-    const items = await Item.find({ 
-      user_id: userId, 
-      is_active: true 
+    const items = await Item.find({
+      user_id: userId,
+      is_active: true,
     })
-      .populate('category_id', 'name value')
-      .populate('brand_id', 'name value')
-      .populate('color_id', 'name value')
-      .populate('season_id', 'name value')
-      .populate('material_id', 'name value')
+      .populate("category_id", "name value")
+      .populate("brand_id", "name value")
+      .populate("color_id", "name value")
+      .populate("season_id", "name value")
+      .populate("material_id", "name value")
       .sort({ added_date: -1 });
 
     res.json({
       success: true,
       count: items.length,
-      data: items
+      data: items,
     });
   } catch (err) {
     console.error("Error in getItems:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Lỗi server", 
-      error: err.message 
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+      error: err.message,
     });
   }
 };
@@ -56,39 +58,39 @@ exports.getItemById = async (req, res) => {
     const { userId } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "ID không hợp lệ" 
+      return res.status(400).json({
+        success: false,
+        message: "ID không hợp lệ",
       });
     }
 
-    const item = await Item.findOne({ 
-      _id: id, 
-      user_id: userId 
+    const item = await Item.findOne({
+      _id: id,
+      user_id: userId,
     })
-      .populate('category_id', 'name value')
-      .populate('brand_id', 'name value')
-      .populate('color_id', 'name value')
-      .populate('season_id', 'name value')
-      .populate('material_id', 'name value');
+      .populate("category_id", "name value")
+      .populate("brand_id", "name value")
+      .populate("color_id", "name value")
+      .populate("season_id", "name value")
+      .populate("material_id", "name value");
 
     if (!item) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Không tìm thấy món đồ" 
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy món đồ",
       });
     }
 
     res.json({
       success: true,
-      data: item
+      data: item,
     });
   } catch (err) {
     console.error("Error in getItemById:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Lỗi server", 
-      error: err.message 
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+      error: err.message,
     });
   }
 };
@@ -99,66 +101,66 @@ exports.createItem = async (req, res) => {
     const { userId, ...itemData } = req.body;
 
     if (!userId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "userId là bắt buộc" 
+      return res.status(400).json({
+        success: false,
+        message: "userId là bắt buộc",
       });
     }
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "userId không hợp lệ" 
+      return res.status(400).json({
+        success: false,
+        message: "userId không hợp lệ",
       });
     }
 
     // Validate required fields
     if (!itemData.item_name || !itemData.category_id || !itemData.image_url) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Thiếu thông tin bắt buộc: item_name, category_id, image_url" 
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin bắt buộc: item_name, category_id, image_url",
       });
     }
 
     // Tạo item mới
     const newItem = new Item({
       user_id: userId,
-      ...itemData
+      ...itemData,
     });
 
     const savedItem = await newItem.save();
 
     // Populate trước khi trả về
     await savedItem.populate([
-      { path: 'category_id', select: 'name value' },
-      { path: 'brand_id', select: 'name value' },
-      { path: 'color_id', select: 'name value' },
-      { path: 'season_id', select: 'name value' },
-      { path: 'material_id', select: 'name value' }
+      { path: "category_id", select: "name value" },
+      { path: "brand_id", select: "name value" },
+      { path: "color_id", select: "name value" },
+      { path: "season_id", select: "name value" },
+      { path: "material_id", select: "name value" },
     ]);
 
     res.status(201).json({
       success: true,
       message: "Thêm món đồ thành công",
-      data: savedItem
+      data: savedItem,
     });
   } catch (err) {
     console.error("Error in createItem:", err);
-    
+
     // Handle validation errors
-    if (err.name === 'ValidationError') {
-      const messages = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({ 
-        success: false, 
-        message: "Dữ liệu không hợp lệ", 
-        errors: messages 
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({
+        success: false,
+        message: "Dữ liệu không hợp lệ",
+        errors: messages,
       });
     }
 
-    res.status(500).json({ 
-      success: false, 
-      message: "Lỗi server", 
-      error: err.message 
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+      error: err.message,
     });
   }
 };
@@ -170,9 +172,9 @@ exports.updateItem = async (req, res) => {
     const { userId, ...updateData } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "ID không hợp lệ" 
+      return res.status(400).json({
+        success: false,
+        message: "ID không hợp lệ",
       });
     }
 
@@ -180,45 +182,45 @@ exports.updateItem = async (req, res) => {
     const updatedItem = await Item.findOneAndUpdate(
       { _id: id, user_id: userId },
       { $set: updateData },
-      { 
+      {
         new: true, // Trả về document sau khi update
-        runValidators: true // Chạy validation
+        runValidators: true, // Chạy validation
       }
     )
-      .populate('category_id', 'name value')
-      .populate('brand_id', 'name value')
-      .populate('color_id', 'name value')
-      .populate('season_id', 'name value')
-      .populate('material_id', 'name value');
+      .populate("category_id", "name value")
+      .populate("brand_id", "name value")
+      .populate("color_id", "name value")
+      .populate("season_id", "name value")
+      .populate("material_id", "name value");
 
     if (!updatedItem) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Không tìm thấy món đồ hoặc bạn không có quyền chỉnh sửa" 
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy món đồ hoặc bạn không có quyền chỉnh sửa",
       });
     }
 
     res.json({
       success: true,
       message: "Cập nhật thành công",
-      data: updatedItem
+      data: updatedItem,
     });
   } catch (err) {
     console.error("Error in updateItem:", err);
-    
-    if (err.name === 'ValidationError') {
-      const messages = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({ 
-        success: false, 
-        message: "Dữ liệu không hợp lệ", 
-        errors: messages 
+
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({
+        success: false,
+        message: "Dữ liệu không hợp lệ",
+        errors: messages,
       });
     }
 
-    res.status(500).json({ 
-      success: false, 
-      message: "Lỗi server", 
-      error: err.message 
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+      error: err.message,
     });
   }
 };
@@ -230,9 +232,9 @@ exports.deleteItem = async (req, res) => {
     const { userId } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "ID không hợp lệ" 
+      return res.status(400).json({
+        success: false,
+        message: "ID không hợp lệ",
       });
     }
 
@@ -244,23 +246,23 @@ exports.deleteItem = async (req, res) => {
     );
 
     if (!deletedItem) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Không tìm thấy món đồ hoặc bạn không có quyền xóa" 
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy món đồ hoặc bạn không có quyền xóa",
       });
     }
 
     res.json({
       success: true,
       message: "Xóa món đồ thành công",
-      data: deletedItem
+      data: deletedItem,
     });
   } catch (err) {
     console.error("Error in deleteItem:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Lỗi server", 
-      error: err.message 
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+      error: err.message,
     });
   }
 };
@@ -272,18 +274,18 @@ exports.toggleFavorite = async (req, res) => {
     const { userId } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "ID không hợp lệ" 
+      return res.status(400).json({
+        success: false,
+        message: "ID không hợp lệ",
       });
     }
 
     const item = await Item.findOne({ _id: id, user_id: userId });
 
     if (!item) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Không tìm thấy món đồ" 
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy món đồ",
       });
     }
 
@@ -293,14 +295,14 @@ exports.toggleFavorite = async (req, res) => {
     res.json({
       success: true,
       message: item.is_favorite ? "Đã thêm vào yêu thích" : "Đã bỏ yêu thích",
-      data: item
+      data: item,
     });
   } catch (err) {
     console.error("Error in toggleFavorite:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Lỗi server", 
-      error: err.message 
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+      error: err.message,
     });
   }
 };
@@ -312,18 +314,18 @@ exports.incrementWearCount = async (req, res) => {
     const { userId } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "ID không hợp lệ" 
+      return res.status(400).json({
+        success: false,
+        message: "ID không hợp lệ",
       });
     }
 
     const item = await Item.findOne({ _id: id, user_id: userId });
 
     if (!item) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Không tìm thấy món đồ" 
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy món đồ",
       });
     }
 
@@ -335,15 +337,15 @@ exports.incrementWearCount = async (req, res) => {
       message: "Đã cập nhật số lần mặc",
       data: {
         wear_count: item.wear_count,
-        last_worn_date: item.last_worn_date
-      }
+        last_worn_date: item.last_worn_date,
+      },
     });
   } catch (err) {
     console.error("Error in incrementWearCount:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Lỗi server", 
-      error: err.message 
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+      error: err.message,
     });
   }
 };
@@ -354,51 +356,61 @@ exports.getStatistics = async (req, res) => {
     const { userId } = req.query;
 
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "userId không hợp lệ" 
+      return res.status(400).json({
+        success: false,
+        message: "userId không hợp lệ",
       });
     }
 
     const stats = await Item.aggregate([
-      { $match: { user_id: new mongoose.Types.ObjectId(userId), is_active: true } },
+      {
+        $match: {
+          user_id: new mongoose.Types.ObjectId(userId),
+          is_active: true,
+        },
+      },
       {
         $group: {
           _id: null,
           total_items: { $sum: 1 },
-          favorite_count: { 
-            $sum: { $cond: ['$is_favorite', 1, 0] } 
+          favorite_count: {
+            $sum: { $cond: ["$is_favorite", 1, 0] },
           },
-          total_value: { $sum: '$price' },
-          avg_wear_count: { $avg: '$wear_count' }
-        }
-      }
+          total_value: { $sum: "$price" },
+          avg_wear_count: { $avg: "$wear_count" },
+        },
+      },
     ]);
 
     // Đếm theo category
     const categoryStats = await Item.aggregate([
-      { $match: { user_id: new mongoose.Types.ObjectId(userId), is_active: true } },
-      { 
-        $group: { 
-          _id: '$category_id', 
-          count: { $sum: 1 } 
-        } 
+      {
+        $match: {
+          user_id: new mongoose.Types.ObjectId(userId),
+          is_active: true,
+        },
+      },
+      {
+        $group: {
+          _id: "$category_id",
+          count: { $sum: 1 },
+        },
       },
       {
         $lookup: {
-          from: 'settings',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'category'
-        }
+          from: "settings",
+          localField: "_id",
+          foreignField: "_id",
+          as: "category",
+        },
       },
-      { $unwind: '$category' },
+      { $unwind: "$category" },
       {
         $project: {
-          category_name: '$category.name',
-          count: 1
-        }
-      }
+          category_name: "$category.name",
+          count: 1,
+        },
+      },
     ]);
 
     res.json({
@@ -408,17 +420,94 @@ exports.getStatistics = async (req, res) => {
           total_items: 0,
           favorite_count: 0,
           total_value: 0,
-          avg_wear_count: 0
+          avg_wear_count: 0,
         },
-        by_category: categoryStats
-      }
+        by_category: categoryStats,
+      },
     });
   } catch (err) {
     console.error("Error in getStatistics:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Lỗi server", 
-      error: err.message 
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+      error: err.message,
     });
+  }
+};
+
+// ===== 9. AI ANALYZE IMAGE (GỌI SANG PYTHON SERVICE) =====
+exports.analyzeImage = async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({ success: false, message: "Không có ảnh" });
+    }
+
+    // 1. Gọi sang AI Service (PYTHON)
+    // URL AI Service (nên đưa vào biến môi trường .env)
+    const aiServiceUrl =
+      process.env.AI_SERVICE_URL || "http://localhost:8000/analyze";
+
+    let aiResponse;
+    try {
+      console.log("📡 Sending image to AI Service...");
+      aiResponse = await axios.post(aiServiceUrl, {
+        image_base64: imageBase64,
+      });
+    } catch (aiError) {
+      console.error("❌ Lỗi kết nối AI Service:", aiError.message);
+      // Fallback: Nếu AI service chết, trả về lỗi hoặc dữ liệu giả lập (tuỳ chọn)
+      return res.status(503).json({
+        success: false,
+        message: "AI Service đang bảo trì hoặc quá tải.",
+      });
+    }
+
+    const aiResult = aiResponse.data.data;
+    console.log("🤖 AI Result:", aiResult);
+
+    // 2. MAP DỮ LIỆU AI VÀO DATABASE CỦA NODE.JS
+    // AI trả về text ("Áo thun"), ta cần tìm ID của text đó trong bảng Setting
+
+    // Tìm Category ID (Regex search case-insensitive)
+    const category = await Setting.findOne({
+      type: "category",
+      name: { $regex: new RegExp(aiResult.category, "i") },
+      status: "Active",
+    });
+
+    // Tìm Color ID
+    const color = await Setting.findOne({
+      type: "color",
+      name: { $regex: new RegExp(aiResult.color, "i") },
+      status: "Active",
+    });
+
+    // 3. TRẢ VỀ CHO FRONTEND (để điền vào form)
+    res.json({
+      success: true,
+      data: {
+        // Nếu tìm thấy trong DB thì trả về ID, không thì để trống
+        category_id: category ? category._id : "",
+        color_id: color ? [color._id] : [],
+        style_tags: aiResult.tags || [],
+
+        // Gửi kèm dữ liệu thô để frontend hiển thị nếu cần
+        raw_category: aiResult.category,
+        raw_color: aiResult.color,
+
+        notes: `AI Analysis: ${aiResult.category} (${aiResult.color})`,
+      },
+    });
+  } catch (err) {
+    console.error("Error in analyzeImage:", err);
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Lỗi Server Node.js",
+        error: err.message,
+      });
   }
 };

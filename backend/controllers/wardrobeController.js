@@ -447,22 +447,25 @@ exports.analyzeImage = async (req, res) => {
     // 1. Gọi AI Service
     const aiServiceUrl =
       process.env.AI_SERVICE_URL || "http://localhost:8000/analyze";
-    console.log("📡 Đang gửi ảnh tới AI Service...");
+    console.log("Đang gửi ảnh tới AI Service...");
 
     let aiResponse;
     try {
-      aiResponse = await axios.post(aiServiceUrl, {
-        image_base64: imageBase64,
-      });
+      aiResponse = await axios.post(
+        aiServiceUrl,
+        { image_base64: imageBase64 },
+        { timeout: 50000 }
+      );
+      console.log("✅ [2/4] AI Service đã phản hồi");
     } catch (aiError) {
-      console.error("❌ AI Service Lỗi:", aiError.message);
+      console.error("AI Service Lỗi:", aiError.message);
       return res
         .status(503)
         .json({ success: false, message: "Không kết nối được AI Service" });
     }
 
     const aiResult = aiResponse.data.data;
-    console.log("🤖 AI Trả về:", JSON.stringify(aiResult, null, 2));
+    console.log("AI Trả về:", JSON.stringify(aiResult, null, 2));
 
     // 2. CHIẾN THUẬT TÌM KIẾM THÔNG MINH (Fuzzy Match)
 
@@ -530,13 +533,162 @@ exports.analyzeImage = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ Lỗi Server:", err);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Lỗi xử lý backend",
-        error: err.message,
+    console.error("Lỗi Server:", err);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi xử lý backend",
+      error: err.message,
+    });
+  }
+};
+
+// Hàm tính độ tương đồng giữa 2 chuỗi (0-1)
+const stringSimilarity = (str1, str2) => {
+  const s1 = str1.toLowerCase().trim();
+  const s2 = str2.toLowerCase().trim();
+
+  if (s1 === s2) return 1;
+  if (s1.includes(s2) || s2.includes(s1)) return 0.8;
+
+  // Levenshtein distance đơn giản
+  const len1 = s1.length;
+  const len2 = s2.length;
+  const matrix = Array(len1 + 1)
+    .fill(null)
+    .map(() => Array(len2 + 1).fill(0));
+
+  for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+  for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= len1; i++) {
+    for (let j = 1; j <= len2; j++) {
+      const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  const distance = matrix[len1][len2];
+  return 1 - distance / Math.max(len1, len2);
+};
+
+// Hàm tìm kiếm NÂNG CẤP
+const findBestMatch = async (type, keyword) => {
+  if (!keyword) return null;
+
+  const allSettings = await Setting.find({ type: type, status: "Active" });
+
+  let bestMatch = null;
+  let highestScore = 0;
+
+  for (const setting of allSettings) {
+    const score = stringSimilarity(setting.name, keyword);
+
+    // Nếu độ tương đồng > 60% và cao hơn kết quả trước
+    if (score > 0.6 && score > highestScore) {
+      highestScore = score;
+      bestMatch = setting;
+    }
+  }
+
+  console.log(
+    `Tìm "${keyword}" → "${bestMatch?.name || "KHÔNG TÌM THẤY"}" (Score: ${(
+      highestScore * 100
+    ).toFixed(0)}%)`
+  );
+  return bestMatch;
+};
+
+exports.analyzeImage = async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({ success: false, message: "Không có ảnh" });
+    }
+
+    console.log("📡 [1/4] Đang gửi ảnh tới AI Service...");
+
+    const aiServiceUrl =
+      process.env.AI_SERVICE_URL || "http://localhost:8000/analyze";
+    console.log(`URL: ${aiServiceUrl}`);
+
+    let aiResponse;
+
+    try {
+      // ✅ SỬA: Đổi key thành "image_base64" để khớp với AI Service
+      aiResponse = await axios.post(
+        aiServiceUrl,
+        { image_base64: imageBase64 }, // ← Đã sửa tên field
+        { timeout: 50000 }
+      );
+      console.log("✅ [2/4] AI Service đã phản hồi");
+    } catch (aiError) {
+      console.error("AI Service Lỗi:", {
+        message: aiError.message,
+        code: aiError.code,
+        url: aiServiceUrl,
       });
+      return res.status(503).json({
+        success: false,
+        message:
+          "Không kết nối được AI Service. Vui lòng kiểm tra xem AI Service đã chạy chưa.",
+      });
+    }
+
+    const aiResponseData = aiResponse.data;
+
+    // 1. Kiểm tra xem AI có báo lỗi không (QUAN TRỌNG)
+    if (!aiResponseData.success) {
+      console.error("AI Service trả về lỗi:", aiResponseData.error);
+      return res.status(400).json({
+        success: false,
+        message: "Lỗi từ AI: " + aiResponseData.error,
+      });
+    }
+
+    // 2. Nếu thành công mới lấy data
+    const aiResult = aiResponseData.data;
+    console.log("[3/4] AI Trả về:", JSON.stringify(aiResult, null, 2));
+
+    // Tìm kiếm trong database
+    const category = await findBestMatch("category", aiResult.category);
+    const color = await findBestMatch("color", aiResult.color);
+    const season = await findBestMatch("season", aiResult.season);
+
+    console.log("✅ [4/4] Hoàn thành mapping:");
+    console.log(
+      `   Category: "${aiResult.category}" → ${
+        category?.name || "KHÔNG TÌM THẤY"
+      }`
+    );
+    console.log(
+      `   Color:    "${aiResult.color}" → ${color?.name || "KHÔNG TÌM THẤY"}`
+    );
+    console.log(
+      `   Season:   "${aiResult.season}" → ${season?.name || "KHÔNG TÌM THẤY"}`
+    );
+
+    res.json({
+      success: true,
+      data: {
+        category_id: category?._id || "",
+        color_id: color ? [color._id] : [],
+        season_id: season ? [season._id] : [],
+        style_tags: aiResult.tags || [],
+        notes: aiResult.notes || "",
+        raw_ai: aiResult,
+      },
+    });
+  } catch (err) {
+    console.error("Lỗi Server:", err);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi xử lý backend",
+      error: err.message,
+    });
   }
 };

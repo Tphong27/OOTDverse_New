@@ -9,9 +9,9 @@ const {
   deleteItem,
   toggleFavorite,
   incrementWearCount,
-  getStatistics
+  getStatistics,
+  analyzeImage,
 } = require("../controllers/wardrobeController");
-
 
 // GET /api/wardrobe - Lấy danh sách tất cả items của user
 // Query params: ?userId=xxx
@@ -20,6 +20,9 @@ router.get("/", getItems);
 // GET /api/wardrobe/statistics - Thống kê tủ đồ
 // Query params: ?userId=xxx
 router.get("/statistics", getStatistics);
+
+// POST /api/wardrobe/analyze - Phân tích ảnh bằng AI
+router.post("/analyze", analyzeImage);
 
 // GET /api/wardrobe/:id - Lấy chi tiết 1 item
 // Query params: ?userId=xxx

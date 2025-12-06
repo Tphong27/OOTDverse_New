@@ -101,36 +101,53 @@ export default function ItemForm() {
     try {
       const API_URL =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const response = await axios.post(`${API_URL}/api/wardrobe/analyze`, {
-        imageBase64: base64Image,
-      });
+      const response = await axios.post(
+        `${API_URL}/api/wardrobe/analyze`,
+        { imageBase64: base64Image },
+        { timeout: 60000 } // Timeout 30s
+      );
 
       if (response.data.success) {
         const aiData = response.data.data;
-        console.log("✨ AI Result (Frontend nhận):", aiData); // Xem log này trên trình duyệt (F12)
+        console.log("✨ AI Result:", aiData);
 
-        setFormData((prev) => ({
-          ...prev,
-          category_id: aiData.category_id || prev.category_id,
-
-          // Backend mới đã trả về mảng ID ([...]) nên gán trực tiếp được
-          color_id:
-            aiData.color_id && aiData.color_id.length > 0
-              ? aiData.color_id
-              : prev.color_id,
-          season_id:
-            aiData.season_id && aiData.season_id.length > 0
+        // ✅ Kiểm tra dữ liệu trước khi set
+        if (
+          aiData.category_id ||
+          aiData.color_id?.length ||
+          aiData.season_id?.length
+        ) {
+          setFormData((prev) => ({
+            ...prev,
+            category_id: aiData.category_id || prev.category_id,
+            color_id: aiData.color_id?.length ? aiData.color_id : prev.color_id,
+            season_id: aiData.season_id?.length
               ? aiData.season_id
               : prev.season_id,
+            style_tags: [
+              ...new Set([...prev.style_tags, ...(aiData.style_tags || [])]),
+            ],
+            notes: aiData.notes || prev.notes,
+          }));
 
-          style_tags: [
-            ...new Set([...prev.style_tags, ...(aiData.style_tags || [])]),
-          ],
-          notes: aiData.notes || prev.notes,
-        }));
+          // Thông báo thành công
+          alert("✅ AI đã phân tích xong! Vui lòng kiểm tra lại thông tin.");
+        } else {
+          alert("⚠️ AI không nhận diện được, vui lòng nhập thủ công.");
+        }
       }
     } catch (error) {
       console.error("AI Analysis failed:", error);
+      // Thông báo lỗi chi tiết hơn
+      if (error.code === "ECONNABORTED") {
+        alert(
+          "⏱️ AI đang xử lý quá lâu. Vui lòng thử ảnh khác hoặc nhập thủ công."
+        );
+      } else if (error.response?.status === 503) {
+        alert("❌ AI Service chưa được khởi động. Vui lòng kiểm tra terminal.");
+      } else {
+        alert("❌ Lỗi kết nối AI. Vui lòng thử lại hoặc nhập thủ công.");
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -223,10 +240,10 @@ export default function ItemForm() {
       const purchaseDate = new Date(formData.purchase_date);
       const today = new Date();
       // Thiết lập giờ, phút, giây về 0 để so sánh chỉ ngày, tháng, năm
-      today.setHours(0, 0, 0, 0); 
-      
-      if (purchaseDate > today) { 
-          newErrors.purchase_date = "Ngày mua không được lớn hơn ngày hiện tại";
+      today.setHours(0, 0, 0, 0);
+
+      if (purchaseDate > today) {
+        newErrors.purchase_date = "Ngày mua không được lớn hơn ngày hiện tại";
       }
     }
 

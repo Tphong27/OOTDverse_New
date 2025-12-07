@@ -602,6 +602,25 @@ const findBestMatch = async (type, keyword) => {
   return bestMatch;
 };
 
+// ===== HÀM HỖ TRỢ: TÌM KIẾM NHIỀU KEYWORDS (CHO COLOR/SEASON) =====
+const findMultipleMatches = async (type, keywords) => {
+  if (!keywords) return [];
+
+  // Đảm bảo input là mảng
+  const keywordList = Array.isArray(keywords) ? keywords : [keywords];
+  const matchedIds = [];
+
+  for (const keyword of keywordList) {
+    const match = await findBestMatch(type, keyword);
+    if (match) {
+      matchedIds.push(match._id);
+    }
+  }
+
+  // Loại bỏ ID trùng lặp
+  return [...new Set(matchedIds.map((id) => id.toString()))];
+};
+
 exports.analyzeImage = async (req, res) => {
   try {
     const { imageBase64 } = req.body;
@@ -614,23 +633,20 @@ exports.analyzeImage = async (req, res) => {
 
     const aiServiceUrl =
       process.env.AI_SERVICE_URL || "http://localhost:8000/analyze";
-    console.log(`URL: ${aiServiceUrl}`);
 
     let aiResponse;
 
     try {
-      // ✅ SỬA: Đổi key thành "image_base64" để khớp với AI Service
       aiResponse = await axios.post(
         aiServiceUrl,
-        { image_base64: imageBase64 }, // ← Đã sửa tên field
-        { timeout: 50000 }
+        { image_base64: imageBase64 },
+        { timeout: 60000 } // Tăng timeout lên 60s cho xử lý ảnh nặng
       );
       console.log("✅ [2/4] AI Service đã phản hồi");
     } catch (aiError) {
       console.error("AI Service Lỗi:", {
         message: aiError.message,
         code: aiError.code,
-        url: aiServiceUrl,
       });
       return res.status(503).json({
         success: false,
@@ -641,50 +657,43 @@ exports.analyzeImage = async (req, res) => {
 
     const aiResponseData = aiResponse.data;
 
-    // 1. Kiểm tra xem AI có báo lỗi không (QUAN TRỌNG)
     if (!aiResponseData.success) {
-      console.error("AI Service trả về lỗi:", aiResponseData.error);
       return res.status(400).json({
         success: false,
         message: "Lỗi từ AI: " + aiResponseData.error,
       });
     }
 
-    // 2. Nếu thành công mới lấy data
     const aiResult = aiResponseData.data;
-    console.log("[3/4] AI Trả về:", JSON.stringify(aiResult, null, 2));
+    console.log("📝 [3/4] AI Raw Data:", JSON.stringify(aiResult, null, 2));
 
-    // Tìm kiếm trong database
+    // 1. Tìm Category (Single)
     const category = await findBestMatch("category", aiResult.category);
-    const color = await findBestMatch("color", aiResult.color);
-    const season = await findBestMatch("season", aiResult.season);
 
-    console.log("✅ [4/4] Hoàn thành mapping:");
-    console.log(
-      `   Category: "${aiResult.category}" → ${
-        category?.name || "KHÔNG TÌM THẤY"
-      }`
-    );
-    console.log(
-      `   Color:    "${aiResult.color}" → ${color?.name || "KHÔNG TÌM THẤY"}`
-    );
-    console.log(
-      `   Season:   "${aiResult.season}" → ${season?.name || "KHÔNG TÌM THẤY"}`
-    );
+    // 2. Tìm Colors (Multiple)
+    const colorIds = await findMultipleMatches("color", aiResult.color);
+
+    // 3. Tìm Seasons (Multiple)
+    const seasonIds = await findMultipleMatches("season", aiResult.season);
+
+    console.log("✅ [4/4] Mapping hoàn tất:");
+    console.log(`   - Category ID: ${category?._id || "null"}`);
+    console.log(`   - Color IDs: [${colorIds.join(", ")}]`);
+    console.log(`   - Season IDs: [${seasonIds.join(", ")}]`);
 
     res.json({
       success: true,
       data: {
         category_id: category?._id || "",
-        color_id: color ? [color._id] : [],
-        season_id: season ? [season._id] : [],
+        color_id: colorIds, // Trả về mảng ID
+        season_id: seasonIds, // Trả về mảng ID
         style_tags: aiResult.tags || [],
         notes: aiResult.notes || "",
         raw_ai: aiResult,
       },
     });
   } catch (err) {
-    console.error("Lỗi Server:", err);
+    console.error("🔥 Lỗi Server (analyzeImage):", err);
     res.status(500).json({
       success: false,
       message: "Lỗi xử lý backend",

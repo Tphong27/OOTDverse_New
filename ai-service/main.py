@@ -64,16 +64,16 @@ async def analyze_wardrobe_item(request: ImageRequest):
         
         YÊU CẦU DỮ LIỆU ĐẦU RA (BẮT BUỘC KHỚP VỚI DANH SÁCH):
         1. "category": Chọn 1 trong ["Áo", "Quần", "Váy", "Giày", "Túi xách", "Phụ kiện"].
-        2. "color": Chọn 1 trong ["Đen", "Trắng", "Vàng", "Màu đỏ(Red)", "Xanh dương", "Xanh lá", "Cam", "Hồng", "Tím", "Nâu", "Be", "Xám"].
-        3. "season": Chọn 1 trong ["Mùa Xuân", "Mùa Hạ", "Mùa Thu", "Mùa Đông"].
+        2. "color": Chọn danh sách các màu phù hợp từ ["Đen", "Trắng", "Vàng", "Đỏ(Red)", "Xanh dương", "Xanh lá", "Cam", "Hồng", "Tím", "Nâu", "Be", "Xám"].
+        3. "season": Chọn danh sách các mùa phù hợp từ ["Mùa Xuân", "Mùa Hạ", "Mùa Thu", "Mùa Đông"].
         4. "notes": Viết 1 câu ngắn (tiếng Việt) gợi ý phối đồ.
         5. "tags": Danh sách 3-5 từ khóa tiếng Anh.
 
-        Ví dụ format JSON trả về:
+        Ví dụ format JSON trả về (CHÚ Ý DẠNG MẢNG CHO COLOR VÀ SEASON):
         {
             "category": "Áo",
-            "color": "Trắng",
-            "season": "Mùa Hè",
+            "color": ["Trắng", "Xanh dương"],
+            "season": ["Mùa Hè", "Mùa Thu"],
             "notes": "Phù hợp mặc đi chơi, phối với quần jean.",
             "tags": ["casual", "streetwear"]
         }
@@ -85,7 +85,6 @@ async def analyze_wardrobe_item(request: ImageRequest):
         
         # --- BƯỚC 4: XỬ LÝ KẾT QUẢ ---
         raw_text = response.text
-        # In kết quả dạng safe-ascii để tránh lỗi trên Windows
         print(f"[INFO] Response received (len={len(raw_text)})")
 
         cleaned_text = raw_text.strip()
@@ -99,13 +98,19 @@ async def analyze_wardrobe_item(request: ImageRequest):
         
         result_json = json.loads(cleaned_text)
 
+        # Đảm bảo color và season luôn là list ngay cả khi AI trả về string
+        if isinstance(result_json.get("color"), str):
+            result_json["color"] = [result_json["color"]]
+            
+        if isinstance(result_json.get("season"), str):
+            result_json["season"] = [result_json["season"]]
+
         return {
             "success": True,
             "data": result_json
         }
 
     except Exception as e:
-        # In lỗi chi tiết
         print(f"[ERROR] General Error: {str(e)}")
         return {
             "success": False,

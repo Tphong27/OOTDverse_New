@@ -10,8 +10,6 @@ const {
   bulkAddItems,
 } = require("../controllers/outfitItemController");
 
-// Base URL: http://localhost:5000/api/outfit-items
-
 // ========================================
 // OUTFIT ITEM MANAGEMENT
 // ========================================

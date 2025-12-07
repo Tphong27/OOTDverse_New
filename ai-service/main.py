@@ -36,7 +36,7 @@ else:
 
 # [FIX] Đổi tên model sang phiên bản cụ thể nếu tên ngắn gọn bị lỗi
 # Bạn có thể thử lần lượt: 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'
-MODEL_NAME = 'gemini-2.0-flash' 
+MODEL_NAME = 'gemini-flash-latest' 
 model = genai.GenerativeModel(MODEL_NAME)
 
 class ImageRequest(BaseModel):

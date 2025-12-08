@@ -209,12 +209,12 @@ export default function OutfitPage() {
                   <Filter className="w-4 h-4" />
                   Bộ lọc
                 </h3>
-                <button
+                {/* <button
                   onClick={handleClearFilters}
                   className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                 >
                   Xóa
-                </button>
+                </button> */}
               </div>
 
               {/* Style Filter */}

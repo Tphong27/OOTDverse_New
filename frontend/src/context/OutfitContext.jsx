@@ -1,7 +1,4 @@
-// frontend/src/context/OutfitContext.js
-"use client";
-import { createContext, useContext, useState, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext"; // Import AuthContext để lấy user
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import {
   getOutfits,
   getOutfitById,
@@ -15,438 +12,522 @@ import {
   getUserOutfits,
   getOutfitsByItem,
   getOutfitStats,
-  getOutfitItems,
   addItemToOutfit,
-  bulkAddItems,
   removeItemFromOutfit,
   updateOutfitItem,
   reorderOutfitItems,
+  bulkAddItems,
   toggleOptional,
-  validateOutfitData,
-  formatOutfitForDisplay,
   groupItemsByPosition,
-  getPositionLabel,
+  validateOutfitData,
   sortOutfits,
   calculateOutfitScore,
-} from "@/services/outfitService"; // Import tất cả services từ outfitService.js
+} from "../services/outfitService";
+import { useAuth } from "./AuthContext";
 
 const OutfitContext = createContext();
 
-export function OutfitProvider({ children }) {
-  const { user } = useAuth(); // Lấy user từ AuthContext
-  const [outfits, setOutfits] = useState([]); // Danh sách outfits
-  const [currentOutfit, setCurrentOutfit] = useState(null); // Outfit đang xem/ chỉnh sửa
-  const [outfitItems, setOutfitItems] = useState([]); // Items của currentOutfit
-  const [stats, setStats] = useState(null); // Thống kê outfits
-  const [loading, setLoading] = useState(false); // Trạng thái loading chung
-  const [error, setError] = useState(null); // Lỗi chung
+export const useOutfit = () => {
+  const context = useContext(OutfitContext);
+  if (!context) {
+    throw new Error("useOutfit must be used within OutfitProvider");
+  }
+  return context;
+};
 
-  // Load outfits của user khi mount (nếu có user)
-  useEffect(() => {
-    if (user?._id) {
-      fetchUserOutfits();
-      fetchOutfitStats();
-    }
-  }, [user]);
+export const OutfitProvider = ({ children }) => {
+  const { user } = useAuth();
+  
+  // ========================================
+  // STATE MANAGEMENT
+  // ========================================
+  const [outfits, setOutfits] = useState([]);
+  const [currentOutfit, setCurrentOutfit] = useState(null);
+  const [userOutfits, setUserOutfits] = useState([]);
+  const [outfitStats, setOutfitStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [filters, setFilters] = useState({
+    style_id: null,
+    occasion_id: null,
+    season_id: null,
+    weather_id: null,
+    is_public: true,
+    sort_by: "newest",
+    page: 1,
+    limit: 20,
+  });
 
-  // 1. Lấy outfits của user
-  const fetchUserOutfits = async (filters = {}) => {
+  // ========================================
+  // OUTFIT CRUD OPERATIONS
+  // ========================================
+
+  // Lấy danh sách outfits với filters
+  const fetchOutfits = useCallback(async (customFilters = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getUserOutfits(user._id, filters);
+      const mergedFilters = { ...filters, ...customFilters };
+      const response = await getOutfits(mergedFilters);
+      
       if (response.success) {
-        // Format và sort outfits
-        const formattedOutfits = response.data.data.map(formatOutfitForDisplay);
-        const sortedOutfits = sortOutfits(formattedOutfits, filters.sort_by || "newest");
-        setOutfits(sortedOutfits);
-      } else {
-        throw new Error(response.error || "Lỗi lấy outfits");
+        setOutfits(response.data);
+        return response;
       }
     } catch (err) {
-      setError(err.message);
-      console.error("Lỗi fetch user outfits:", err);
+      setError(err.message || "Lỗi khi tải outfits");
+      console.error("Fetch outfits error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
-  // 2. Lấy chi tiết 1 outfit
-  const fetchOutfitById = async (id, incrementView = true) => {
+  // Lấy chi tiết outfit
+  const fetchOutfitById = useCallback(async (id, incrementView = false) => {
     setLoading(true);
     setError(null);
     try {
       const response = await getOutfitById(id, incrementView);
+      
       if (response.success) {
-        const formattedOutfit = formatOutfitForDisplay(response.data.data);
-        formattedOutfit.score = calculateOutfitScore(formattedOutfit);
-        formattedOutfit.groupedItems = groupItemsByPosition(formattedOutfit.items || []);
-        setCurrentOutfit(formattedOutfit);
-      } else {
-        throw new Error(response.error || "Lỗi lấy outfit");
+        setCurrentOutfit(response.data);
+        return response.data;
       }
     } catch (err) {
-      setError(err.message);
-      console.error("Lỗi fetch outfit:", err);
+      setError(err.message || "Lỗi khi tải outfit");
+      console.error("Fetch outfit error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // 3. Lấy items của outfit (nếu cần riêng)
-  const fetchOutfitItems = async (outfitId) => {
+  // Tạo outfit mới
+  const handleCreateOutfit = useCallback(async (outfitData) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getOutfitItems(outfitId);
-      if (response.success) {
-        setOutfitItems(response.data.data);
-        return response.data.data;
-      } else {
-        throw new Error(response.error || "Lỗi lấy items");
-      }
-    } catch (err) {
-      setError(err.message);
-      console.error("Lỗi fetch outfit items:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 4. Tạo outfit mới
-  const handleCreateOutfit = async (outfitData) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Validate trước khi gửi
+      // Validate data trước khi submit
       const validation = validateOutfitData(outfitData);
       if (!validation.isValid) {
-        throw new Error(Object.values(validation.errors)[0]);
+        setError(validation.errors);
+        return { success: false, errors: validation.errors };
       }
 
-      const response = await createOutfit({
-        ...outfitData,
-        user_id: user._id,
-      });
+      const response = await createOutfit(outfitData);
+      
       if (response.success) {
-        await fetchUserOutfits(); // Refresh list
-        return response.data.data;
-      } else {
-        throw new Error(response.error || "Lỗi tạo outfit");
+        // Thêm outfit mới vào danh sách
+        setOutfits((prev) => [response.data, ...prev]);
+        
+        // Nếu là outfit của user hiện tại, thêm vào userOutfits
+        if (user && outfitData.user_id === user._id) {
+          setUserOutfits((prev) => [response.data, ...prev]);
+        }
+        
+        return response;
       }
     } catch (err) {
-      setError(err.message);
-      console.error("Lỗi create outfit:", err);
+      setError(err.message || "Lỗi khi tạo outfit");
+      console.error("Create outfit error:", err);
+      return { success: false, error: err.message };
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  // 5. Cập nhật outfit
-  const handleUpdateOutfit = async (id, outfitData) => {
+  // Cập nhật outfit
+  const handleUpdateOutfit = useCallback(async (id, outfitData) => {
     setLoading(true);
     setError(null);
     try {
-      // Validate (tùy chọn items)
-      if (outfitData.items) {
-        const validation = validateOutfitData(outfitData);
-        if (!validation.isValid) {
-          throw new Error(Object.values(validation.errors)[0]);
-        }
-      }
-
       const response = await updateOutfit(id, outfitData);
+      
       if (response.success) {
-        await fetchUserOutfits(); // Refresh list
+        // Update trong danh sách outfits
+        setOutfits((prev) =>
+          prev.map((outfit) => (outfit._id === id ? response.data : outfit))
+        );
+        
+        // Update userOutfits nếu có
+        setUserOutfits((prev) =>
+          prev.map((outfit) => (outfit._id === id ? response.data : outfit))
+        );
+        
+        // Update currentOutfit nếu đang xem outfit này
         if (currentOutfit?._id === id) {
-          await fetchOutfitById(id, false); // Refresh current
+          setCurrentOutfit(response.data);
         }
-        return response.data.data;
-      } else {
-        throw new Error(response.error || "Lỗi cập nhật outfit");
+        
+        return response;
       }
     } catch (err) {
-      setError(err.message);
-      console.error("Lỗi update outfit:", err);
+      setError(err.message || "Lỗi khi cập nhật outfit");
+      console.error("Update outfit error:", err);
+      return { success: false, error: err.message };
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentOutfit]);
 
-  // 6. Xóa outfit
-  const handleDeleteOutfit = async (id) => {
+  // Xóa outfit
+  const handleDeleteOutfit = useCallback(async (id) => {
     setLoading(true);
     setError(null);
     try {
       const response = await deleteOutfit(id);
+      
       if (response.success) {
-        await fetchUserOutfits(); // Refresh list
+        // Xóa khỏi danh sách
+        setOutfits((prev) => prev.filter((outfit) => outfit._id !== id));
+        setUserOutfits((prev) => prev.filter((outfit) => outfit._id !== id));
+        
+        // Clear currentOutfit nếu đang xem outfit bị xóa
         if (currentOutfit?._id === id) {
           setCurrentOutfit(null);
         }
-        return true;
-      } else {
-        throw new Error(response.error || "Lỗi xóa outfit");
+        
+        return response;
       }
     } catch (err) {
-      setError(err.message);
-      console.error("Lỗi delete outfit:", err);
+      setError(err.message || "Lỗi khi xóa outfit");
+      console.error("Delete outfit error:", err);
+      return { success: false, error: err.message };
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentOutfit]);
 
-  // 7. Toggle like
-  const handleToggleLike = async (id, increment) => {
+  // ========================================
+  // OUTFIT INTERACTIONS
+  // ========================================
+
+  const handleToggleLike = useCallback(async (id, increment = true) => {
     try {
       const response = await toggleLike(id, increment);
+      
       if (response.success) {
-        // Update local state
-        setOutfits((prev) =>
-          prev.map((o) => o._id === id ? { ...o, like_count: response.data.data.like_count } : o)
-        );
+        // Update like count trong state
+        const updateLikeCount = (outfit) => {
+          if (outfit._id === id) {
+            return { ...outfit, like_count: response.data.like_count };
+          }
+          return outfit;
+        };
+        
+        setOutfits((prev) => prev.map(updateLikeCount));
+        setUserOutfits((prev) => prev.map(updateLikeCount));
+        
         if (currentOutfit?._id === id) {
-          setCurrentOutfit((prev) => ({ ...prev, like_count: response.data.data.like_count }));
+          setCurrentOutfit((prev) => ({ ...prev, like_count: response.data.like_count }));
         }
+        
+        return response;
       }
     } catch (err) {
-      console.error("Lỗi toggle like:", err);
+      console.error("Toggle like error:", err);
     }
-  };
+  }, [currentOutfit]);
 
-  // 8. Toggle save
-  const handleToggleSave = async (id, increment) => {
+  const handleToggleSave = useCallback(async (id, increment = true) => {
     try {
       const response = await toggleSave(id, increment);
+      
       if (response.success) {
-        // Update local state
-        setOutfits((prev) =>
-          prev.map((o) => o._id === id ? { ...o, save_count: response.data.data.save_count } : o)
-        );
+        const updateSaveCount = (outfit) => {
+          if (outfit._id === id) {
+            return { ...outfit, save_count: response.data.save_count };
+          }
+          return outfit;
+        };
+        
+        setOutfits((prev) => prev.map(updateSaveCount));
+        setUserOutfits((prev) => prev.map(updateSaveCount));
+        
         if (currentOutfit?._id === id) {
-          setCurrentOutfit((prev) => ({ ...prev, save_count: response.data.data.save_count }));
+          setCurrentOutfit((prev) => ({ ...prev, save_count: response.data.save_count }));
         }
+        
+        return response;
       }
     } catch (err) {
-      console.error("Lỗi toggle save:", err);
+      console.error("Toggle save error:", err);
     }
-  };
+  }, [currentOutfit]);
 
-  // 9. Record wear
-  const handleRecordWear = async (id) => {
+  const handleRecordWear = useCallback(async (id) => {
     try {
       const response = await recordWear(id);
+      
       if (response.success) {
-        // Update local state
-        setOutfits((prev) =>
-          prev.map((o) => o._id === id ? { ...o, wear_count: response.data.data.wear_count, last_worn_date: response.data.data.last_worn_date } : o)
-        );
+        const updateWearData = (outfit) => {
+          if (outfit._id === id) {
+            return {
+              ...outfit,
+              wear_count: response.data.wear_count,
+              last_worn_date: response.data.last_worn_date,
+            };
+          }
+          return outfit;
+        };
+        
+        setOutfits((prev) => prev.map(updateWearData));
+        setUserOutfits((prev) => prev.map(updateWearData));
+        
         if (currentOutfit?._id === id) {
-          setCurrentOutfit((prev) => ({ ...prev, wear_count: response.data.data.wear_count, last_worn_date: response.data.data.last_worn_date }));
+          setCurrentOutfit((prev) => ({
+            ...prev,
+            wear_count: response.data.wear_count,
+            last_worn_date: response.data.last_worn_date,
+          }));
         }
+        
+        return response;
       }
     } catch (err) {
-      console.error("Lỗi record wear:", err);
+      console.error("Record wear error:", err);
     }
-  };
+  }, [currentOutfit]);
 
-  // 10. Update rating
-  const handleUpdateRating = async (id, rating) => {
+  const handleUpdateRating = useCallback(async (id, rating) => {
     try {
       const response = await updateRating(id, rating);
+      
       if (response.success) {
-        // Update local state
-        setOutfits((prev) =>
-          prev.map((o) => o._id === id ? { ...o, user_rating: response.data.data.user_rating } : o)
-        );
+        const updateRatingData = (outfit) => {
+          if (outfit._id === id) {
+            return { ...outfit, user_rating: response.data.user_rating };
+          }
+          return outfit;
+        };
+        
+        setOutfits((prev) => prev.map(updateRatingData));
+        setUserOutfits((prev) => prev.map(updateRatingData));
+        
         if (currentOutfit?._id === id) {
-          setCurrentOutfit((prev) => ({ ...prev, user_rating: response.data.data.user_rating }));
+          setCurrentOutfit((prev) => ({ ...prev, user_rating: response.data.user_rating }));
         }
+        
+        return response;
       }
     } catch (err) {
-      console.error("Lỗi update rating:", err);
+      console.error("Update rating error:", err);
     }
-  };
+  }, [currentOutfit]);
 
-  // 11. Lấy outfits chứa item
-  const fetchOutfitsByItem = async (itemId) => {
+  // ========================================
+  // USER OUTFITS & STATS
+  // ========================================
+
+  const fetchUserOutfits = useCallback(async (userId, customFilters = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getOutfitsByItem(itemId);
+      const response = await getUserOutfits(userId, customFilters);
+      
       if (response.success) {
-        return response.data.data;
-      } else {
-        throw new Error(response.error || "Lỗi lấy outfits chứa item");
+        setUserOutfits(response.data);
+        return response;
       }
     } catch (err) {
-      setError(err.message);
-      console.error("Lỗi fetch outfits by item:", err);
-      return [];
+      setError(err.message || "Lỗi khi tải outfits của user");
+      console.error("Fetch user outfits error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // 12. Lấy thống kê outfits
-  const fetchOutfitStats = async () => {
-    setLoading(true);
-    setError(null);
+  const fetchUserOutfitStats = useCallback(async (userId) => {
     try {
-      const response = await getOutfitStats(user._id);
+      const response = await getOutfitStats(userId);
+      
       if (response.success) {
-        setStats(response.data.data);
-      } else {
-        throw new Error(response.error || "Lỗi lấy stats");
+        setOutfitStats(response.data);
+        return response.data;
       }
     } catch (err) {
-      setError(err.message);
-      console.error("Lỗi fetch stats:", err);
-    } finally {
-      setLoading(false);
+      console.error("Fetch stats error:", err);
     }
-  };
+  }, []);
 
   // ========================================
-  // OUTFIT ITEMS MANAGEMENT FUNCTIONS
+  // OUTFIT ITEMS MANAGEMENT
   // ========================================
 
-  // 13. Thêm item vào outfit
-  const handleAddItemToOutfit = async (outfitId, itemData) => {
+  const handleAddItemToOutfit = useCallback(async (outfitId, itemData) => {
     try {
       const response = await addItemToOutfit(outfitId, itemData);
-      if (response.success) {
-        // Refresh items nếu đang xem outfit này
-        if (currentOutfit?._id === outfitId) {
-          await fetchOutfitItems(outfitId);
-        }
-        return response.data.data;
+      
+      if (response.success && currentOutfit?._id === outfitId) {
+        // Thêm item vào currentOutfit
+        setCurrentOutfit((prev) => ({
+          ...prev,
+          items: [...(prev.items || []), response.data],
+        }));
       }
+      
+      return response;
     } catch (err) {
-      console.error("Lỗi add item:", err);
+      console.error("Add item to outfit error:", err);
+      return { success: false, error: err.message };
     }
-  };
+  }, [currentOutfit]);
 
-  // 14. Thêm nhiều items
-  const handleBulkAddItems = async (outfitId, items) => {
-    try {
-      const response = await bulkAddItems(outfitId, items);
-      if (response.success) {
-        // Refresh items
-        if (currentOutfit?._id === outfitId) {
-          await fetchOutfitItems(outfitId);
-        }
-        return response.data.data;
-      }
-    } catch (err) {
-      console.error("Lỗi bulk add:", err);
-    }
-  };
-
-  // 15. Xóa item khỏi outfit
-  const handleRemoveItemFromOutfit = async (outfitId, itemId) => {
+  const handleRemoveItemFromOutfit = useCallback(async (outfitId, itemId) => {
     try {
       const response = await removeItemFromOutfit(outfitId, itemId);
-      if (response.success) {
-        // Refresh items
-        if (currentOutfit?._id === outfitId) {
-          await fetchOutfitItems(outfitId);
-        }
-        return true;
+      
+      if (response.success && currentOutfit?._id === outfitId) {
+        // Xóa item khỏi currentOutfit
+        setCurrentOutfit((prev) => ({
+          ...prev,
+          items: prev.items.filter((item) => item.item_id._id !== itemId),
+        }));
       }
+      
+      return response;
     } catch (err) {
-      console.error("Lỗi remove item:", err);
+      console.error("Remove item from outfit error:", err);
+      return { success: false, error: err.message };
     }
-  };
+  }, [currentOutfit]);
 
-  // 16. Cập nhật outfit item
-  const handleUpdateOutfitItem = async (id, itemData) => {
+  const handleUpdateOutfitItem = useCallback(async (id, itemData) => {
     try {
       const response = await updateOutfitItem(id, itemData);
-      if (response.success) {
-        // Refresh items nếu có currentOutfit
-        if (currentOutfit) {
-          await fetchOutfitItems(currentOutfit._id);
-        }
-        return response.data.data;
+      
+      if (response.success && currentOutfit) {
+        // Update item trong currentOutfit
+        setCurrentOutfit((prev) => ({
+          ...prev,
+          items: prev.items.map((item) => (item._id === id ? response.data : item)),
+        }));
       }
+      
+      return response;
     } catch (err) {
-      console.error("Lỗi update item:", err);
+      console.error("Update outfit item error:", err);
+      return { success: false, error: err.message };
     }
-  };
+  }, [currentOutfit]);
 
-  // 17. Sắp xếp lại items
-  const handleReorderOutfitItems = async (outfitId, items) => {
+  const handleReorderItems = useCallback(async (outfitId, items) => {
     try {
       const response = await reorderOutfitItems(outfitId, items);
-      if (response.success) {
-        // Refresh items
-        if (currentOutfit?._id === outfitId) {
-          await fetchOutfitItems(outfitId);
-        }
-        return response.data.data;
+      
+      if (response.success && currentOutfit?._id === outfitId) {
+        setCurrentOutfit((prev) => ({
+          ...prev,
+          items: response.data,
+        }));
       }
+      
+      return response;
     } catch (err) {
-      console.error("Lỗi reorder items:", err);
+      console.error("Reorder items error:", err);
+      return { success: false, error: err.message };
     }
-  };
+  }, [currentOutfit]);
 
-  // 18. Toggle optional
-  const handleToggleOptional = async (id) => {
+  const handleBulkAddItems = useCallback(async (outfitId, items) => {
     try {
-      const response = await toggleOptional(id);
-      if (response.success) {
-        // Refresh items nếu có currentOutfit
-        if (currentOutfit) {
-          await fetchOutfitItems(currentOutfit._id);
-        }
-        return response.data.data;
+      const response = await bulkAddItems(outfitId, items);
+      
+      if (response.success && currentOutfit?._id === outfitId) {
+        setCurrentOutfit((prev) => ({
+          ...prev,
+          items: [...(prev.items || []), ...response.data],
+        }));
       }
+      
+      return response;
     } catch (err) {
-      console.error("Lỗi toggle optional:", err);
+      console.error("Bulk add items error:", err);
+      return { success: false, error: err.message };
     }
+  }, [currentOutfit]);
+
+  // ========================================
+  // HELPER FUNCTIONS
+  // ========================================
+
+  const updateFilters = useCallback((newFilters) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setFilters({
+      style_id: null,
+      occasion_id: null,
+      season_id: null,
+      weather_id: null,
+      is_public: true,
+      sort_by: "newest",
+      page: 1,
+      limit: 20,
+    });
+  }, []);
+
+  const sortOutfitsLocal = useCallback((sortBy) => {
+    setOutfits((prev) => sortOutfits(prev, sortBy));
+    setUserOutfits((prev) => sortOutfits(prev, sortBy));
+  }, []);
+
+  const groupCurrentOutfitItems = useCallback(() => {
+    if (!currentOutfit?.items) return {};
+    return groupItemsByPosition(currentOutfit.items);
+  }, [currentOutfit]);
+
+  const getOutfitScore = useCallback((outfit) => {
+    return calculateOutfitScore(outfit);
+  }, []);
+
+  // ========================================
+  // CONTEXT VALUE
+  // ========================================
+
+  const value = {
+    // State
+    outfits,
+    currentOutfit,
+    userOutfits,
+    outfitStats,
+    loading,
+    error,
+    filters,
+
+    // CRUD Operations
+    fetchOutfits,
+    fetchOutfitById,
+    createOutfit: handleCreateOutfit,
+    updateOutfit: handleUpdateOutfit,
+    deleteOutfit: handleDeleteOutfit,
+
+    // Interactions
+    toggleLike: handleToggleLike,
+    toggleSave: handleToggleSave,
+    recordWear: handleRecordWear,
+    updateRating: handleUpdateRating,
+
+    // User Outfits
+    fetchUserOutfits,
+    fetchUserOutfitStats,
+
+    // Outfit Items
+    addItemToOutfit: handleAddItemToOutfit,
+    removeItemFromOutfit: handleRemoveItemFromOutfit,
+    updateOutfitItem: handleUpdateOutfitItem,
+    reorderItems: handleReorderItems,
+    bulkAddItems: handleBulkAddItems,
+
+    // Helpers
+    updateFilters,
+    clearFilters,
+    sortOutfits: sortOutfitsLocal,
+    groupCurrentOutfitItems,
+    getOutfitScore,
+    setCurrentOutfit,
+    setError,
   };
 
-  return (
-    <OutfitContext.Provider
-      value={{
-        outfits,
-        currentOutfit,
-        outfitItems,
-        stats,
-        loading,
-        error,
-        fetchUserOutfits,
-        fetchOutfitById,
-        fetchOutfitItems,
-        handleCreateOutfit,
-        handleUpdateOutfit,
-        handleDeleteOutfit,
-        handleToggleLike,
-        handleToggleSave,
-        handleRecordWear,
-        handleUpdateRating,
-        fetchOutfitsByItem,
-        fetchOutfitStats,
-        handleAddItemToOutfit,
-        handleBulkAddItems,
-        handleRemoveItemFromOutfit,
-        handleUpdateOutfitItem,
-        handleReorderOutfitItems,
-        handleToggleOptional,
-        validateOutfitData,
-        formatOutfitForDisplay,
-        groupItemsByPosition,
-        getPositionLabel,
-        sortOutfits,
-        calculateOutfitScore,
-      }}
-    >
-      {children}
-    </OutfitContext.Provider>
-  );
-}
-
-export function useOutfit() {
-  return useContext(OutfitContext);
-}
+  return <OutfitContext.Provider value={value}>{children}</OutfitContext.Provider>;
+};

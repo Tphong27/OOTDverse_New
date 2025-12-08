@@ -2,7 +2,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const path = require("path"); // <--- 1. Thêm dòng này
+const path = require("path");
 
 // 2. Sửa dòng config dotenv này:
 // Nó sẽ luôn tìm file .env nằm cùng thư mục với file server.js
@@ -34,12 +34,15 @@ mongoose
 // Import route
 const wardrobeRoutes = require("./routes/wardrobeRoutes");
 const settingRoutes = require("./routes/settingRoutes");
+const outfitRoutes = require("./routes/outfitRoutes");
+const outfitItemRoutes = require("./routes/outfitItemRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 // Đăng ký route
 app.use("/api/wardrobe", wardrobeRoutes);
 app.use("/api/setting", settingRoutes);
-
-const userRoutes = require("./routes/userRoutes"); // Import
+app.use("/api/outfits", outfitRoutes);
+app.use("/api/outfit-items", outfitItemRoutes);
 app.use("/api/users", userRoutes);
 
 // 4. Start Server

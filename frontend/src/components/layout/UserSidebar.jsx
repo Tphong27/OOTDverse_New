@@ -40,7 +40,7 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
       id: "builder",
       icon: Sparkles,
       label: "Mix đồ AI",
-      path: "/outfit/page",
+      path: "/outfit/outfit",
       roles: ["Customer", "Admin"],
     },
     {

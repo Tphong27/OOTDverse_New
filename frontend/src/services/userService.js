@@ -1,7 +1,7 @@
 // frontend/src/services/userService.js
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/users";
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/users`;
 
 export const registerUser = async (userData) => {
   const response = await axios.post(`${API_URL}/register`, userData);

@@ -26,17 +26,10 @@ export default function OutfitFormPage() {
   const router = useRouter();
   const { id } = router.query; // Nếu có id = Edit mode, không có = Create mode
   const { user } = useAuth();
-  const {
-    currentOutfit,
-    createOutfit,
-    updateOutfit,
-    fetchOutfitById,
-    loading,
-    clearCurrentOutfit,
-  } = useOutfit();
+  const { currentOutfit, createOutfit, updateOutfit, fetchOutfitById, loading, clearCurrentOutfit } = useOutfit();
   const { settings } = useSettings();
-  //   const { items, fetchItems } = useWardrobe();
-  const { items, loadItems } = useWardrobe(); // Thay fetchItems
+  const { items, loadItems } = useWardrobe();
+
   const isEditMode = Boolean(id);
 
   const [formData, setFormData] = useState({
@@ -58,7 +51,7 @@ export default function OutfitFormPage() {
   const [errors, setErrors] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-
+  
   // Item Selection State
   const [selectedItems, setSelectedItems] = useState([]); // Array of item IDs
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,7 +67,6 @@ export default function OutfitFormPage() {
     }
 
     // Load user's wardrobe items
-    // fetchItems({ userId: user._id });
     loadItems(); // Không cần arg
 
     // If edit mode, load outfit
@@ -93,9 +85,8 @@ export default function OutfitFormPage() {
       clearCurrentOutfit();
       setIsLoading(false);
     }
-    //   }, [id, user]);
   }, [user, loadItems]);
-  
+
   // ========================================
   // POPULATE FORM IN EDIT MODE
   // ========================================
@@ -107,23 +98,19 @@ export default function OutfitFormPage() {
         occasion_id: currentOutfit.occasion_id?._id || "",
         season_id: currentOutfit.season_id?._id || "",
         weather_id: currentOutfit.weather_id?._id || "",
-        is_public:
-          currentOutfit.is_public !== undefined
-            ? currentOutfit.is_public
-            : true,
+        is_public: currentOutfit.is_public !== undefined ? currentOutfit.is_public : true,
         thumbnail_url: currentOutfit.thumbnail_url || "",
         full_image_url: currentOutfit.full_image_url || "",
         tags: currentOutfit.tags || [],
         description: currentOutfit.description || "",
         notes: currentOutfit.notes || "",
-        items:
-          currentOutfit.items?.map((oi) => ({
-            item_id: oi.item_id._id,
-            layer_position: oi.layer_position,
-            display_order: oi.display_order,
-            styling_note: oi.styling_note,
-            is_optional: oi.is_optional,
-          })) || [],
+        items: currentOutfit.items?.map((oi) => ({
+          item_id: oi.item_id._id,
+          layer_position: oi.layer_position,
+          display_order: oi.display_order,
+          styling_note: oi.styling_note,
+          is_optional: oi.is_optional,
+        })) || [],
       });
 
       setSelectedItems(currentOutfit.items?.map((oi) => oi.item_id._id) || []);
@@ -176,7 +163,7 @@ export default function OutfitFormPage() {
 
   const handleAddTag = () => {
     if (!tagInput.trim()) return;
-
+    
     if (formData.tags.length >= 20) {
       setErrors((prev) => ({
         ...prev,
@@ -221,11 +208,8 @@ export default function OutfitFormPage() {
 
   const getFilteredItems = () => {
     return items.filter((item) => {
-      const matchSearch = item.item_name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      const matchCategory =
-        filterCategory === "" || item.category_id?._id === filterCategory;
+      const matchSearch = item.item_name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchCategory = filterCategory === "" || item.category_id?._id === filterCategory;
       return matchSearch && matchCategory;
     });
   };
@@ -312,9 +296,7 @@ export default function OutfitFormPage() {
   };
 
   const getCategorySettings = () => {
-    return settings.filter(
-      (s) => s.type === "category" && s.status === "Active"
-    );
+    return settings.filter((s) => s.type === "category" && s.status === "Active");
   };
 
   // ========================================
@@ -346,9 +328,7 @@ export default function OutfitFormPage() {
               {isEditMode ? "Chỉnh sửa Outfit" : "Tạo Outfit Mới"}
             </h1>
             <p className="text-gray-600">
-              {isEditMode
-                ? "Cập nhật thông tin outfit"
-                : "Chọn items từ tủ đồ của bạn"}
+              {isEditMode ? "Cập nhật thông tin outfit" : "Chọn items từ tủ đồ của bạn"}
             </p>
           </div>
         </div>

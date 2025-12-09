@@ -1,77 +1,75 @@
-OOTDverse - Tủ Đồ Thời Trang Thông Minh & Bền Vững
-OOTDverse là nền tảng thời trang thông minh dành cho Gen Z, kết hợp công nghệ AI (Artificial Intelligence) và AR (Augmented Reality) để giải quyết vấn đề "không có gì để mặc", giảm thiểu rủi ro mua sắm online và thúc đẩy thời trang bền vững thông qua việc trao đổi quần áo cũ.
+# OOTDverse - Tủ Đồ Thời Trang Thông Minh & Bền Vững
 
-Dự án được phát triển bởi Nhóm 5 - Lớp SE1869-NJ - Đại học FPT.
+**OOTDverse** là nền tảng thời trang thông minh dành cho Gen Z, kết hợp công nghệ **AI (Artificial Intelligence)** và **AR (Augmented Reality)** để giải quyết vấn đề "không có gì để mặc", giảm thiểu rủi ro mua sắm online và thúc đẩy thời trang bền vững thông qua việc trao đổi quần áo cũ.
 
-🌟 Tính Năng Chính (Key Features)
-Tủ Đồ Ảo (Virtual Wardrobe):
+Dự án được phát triển bởi **Nhóm 5 - Lớp SE1869-NJ - Đại học FPT**.
 
-Số hóa tủ đồ cá nhân bằng cách upload ảnh.
+-----
 
-Tự động phân loại quần áo (Category, Color, Season) bằng AI.
+## 🌟 Tính Năng Chính (Key Features)
 
-Quản lý items dễ dàng (Thêm, sửa, xóa).
+1.  **Tủ Đồ Ảo (Virtual Wardrobe):**
 
-AI Stylist (Trợ lý phối đồ):
+      * Số hóa tủ đồ cá nhân bằng cách upload ảnh.
+      * Tự động phân loại quần áo (Category, Color, Season) bằng AI.
+      * Quản lý items dễ dàng (Thêm, sửa, xóa).
 
-Gợi ý outfit dựa trên thời tiết, dịp (đi học, đi tiệc, đi chơi) và phong cách cá nhân.
+2.  **AI Stylist (Trợ lý phối đồ):**
 
-Sử dụng công nghệ Google Gemini để phân tích và đưa ra lời khuyên phối đồ.
+      * Gợi ý outfit dựa trên thời tiết, dịp (đi học, đi tiệc, đi chơi) và phong cách cá nhân.
+      * Sử dụng công nghệ Google Gemini để phân tích và đưa ra lời khuyên phối đồ.
 
-AR Try-On (Thử đồ ảo):
+3.  **AR Try-On (Thử đồ ảo):**
 
-Cho phép người dùng ướm thử quần áo lên người thông qua Camera hoặc ảnh tải lên.
+      * Cho phép người dùng ướm thử quần áo lên người thông qua Camera hoặc ảnh tải lên.
+      * Giảm thiểu rủi ro mua sai kích cỡ hoặc không hợp kiểu dáng.
 
-Giảm thiểu rủi ro mua sai kích cỡ hoặc không hợp kiểu dáng.
+4.  **Marketplace (Sàn giao dịch 2hand):**
 
-Marketplace (Sàn giao dịch 2hand):
+      * Mua bán, trao đổi quần áo cũ trong cộng đồng sinh viên.
+      * Tính năng xác thực người dùng để đảm bảo an toàn giao dịch.
 
-Mua bán, trao đổi quần áo cũ trong cộng đồng sinh viên.
+5.  **Cộng Đồng & Gamification:**
 
-Tính năng xác thực người dùng để đảm bảo an toàn giao dịch.
+      * Chia sẻ OOTD (Outfit of the Day).
+      * Tham gia thử thách phối đồ nhận thưởng.
 
-Cộng Đồng & Gamification:
+-----
 
-Chia sẻ OOTD (Outfit of the Day).
+## 🛠️ Công Nghệ Sử Dụng (Tech Stack)
 
-Tham gia thử thách phối đồ nhận thưởng.
+### Frontend
 
-🛠️ Công Nghệ Sử Dụng (Tech Stack)
-Frontend
-Framework: Next.js 14
+  * **Framework:** Next.js 14
+  * **Styling:** TailwindCSS
+  * **AR/3D:** `@banuba/webar`, `@google/model-viewer`, `three.js`
+  * **State Management:** React Context API
 
-Styling: TailwindCSS
+### Backend
 
-AR/3D: @banuba/webar, @google/model-viewer, three.js
+  * **Runtime:** Node.js
+  * **Framework:** Express.js (Dự kiến dựa trên cấu trúc controller/route)
+  * **Database:** MongoDB (Dựa trên cấu trúc Mongoose Models)
+  * **Authentication:** JWT (JSON Web Token)
 
-State Management: React Context API
+### AI Service (Microservice)
 
-Backend
-Runtime: Node.js
+  * **Language:** Python
+  * **Framework:** FastAPI
+  * **AI Model:** Google Gemini (`gemini-flash-latest`)
+  * **Image Processing:** Pillow
 
-Framework: Express.js (Dự kiến dựa trên cấu trúc controller/route)
+-----
 
-Database: MongoDB (Dựa trên cấu trúc Mongoose Models)
+## 🚀 Hướng Dẫn Cài Đặt (Installation)
 
-Authentication: JWT (JSON Web Token)
+Dự án bao gồm 3 thành phần chính: `frontend`, `backend`, và `ai-service`. Bạn cần chạy cả 3 để hệ thống hoạt động đầy đủ.
 
-AI Service (Microservice)
-Language: Python
+### 1\. Khởi chạy AI Service (Python)
 
-Framework: FastAPI
-
-AI Model: Google Gemini (gemini-flash-latest)
-
-Image Processing: Pillow
-
-🚀 Hướng Dẫn Cài Đặt (Installation)
-Dự án bao gồm 3 thành phần chính: frontend, backend, và ai-service. Bạn cần chạy cả 3 để hệ thống hoạt động đầy đủ.
-
-1. Khởi chạy AI Service (Python)
 Đây là service xử lý phân tích ảnh và gợi ý phối đồ.
 
-Bash
-
+```bash
 cd ai-service
 # Cài đặt các thư viện
 pip install -r requirements.txt
@@ -82,9 +80,11 @@ pip install -r requirements.txt
 # Chạy server
 python main.py
 # AI Service sẽ chạy tại: http://localhost:8000
-2. Khởi chạy Backend (Node.js)
-Bash
+```
 
+### 2\. Khởi chạy Backend (Node.js)
+
+```bash
 cd backend
 # Cài đặt dependencies
 npm install
@@ -94,9 +94,11 @@ npm install
 # Chạy server
 npm start
 # Backend thường chạy tại: http://localhost:5000 (hoặc port bạn cấu hình)
-3. Khởi chạy Frontend (Next.js)
-Bash
+```
 
+### 3\. Khởi chạy Frontend (Next.js)
+
+```bash
 cd frontend
 # Cài đặt dependencies
 npm install
@@ -104,23 +106,50 @@ npm install
 # Chạy môi trường development
 npm run dev
 # Truy cập ứng dụng tại: http://localhost:3000
-⚙️ Cấu Hình Môi Trường (.env)
-Bạn cần tạo file .env (hoặc .env.local cho frontend) trong từng thư mục tương ứng.
+```
 
-1. ai-service/.env
-Đoạn mã
+-----
+
+## ⚙️ Cấu Hình Môi Trường (.env)
+
+Bạn cần tạo file `.env` (hoặc `.env.local` cho frontend) trong từng thư mục tương ứng.
+
+**1. ai-service/.env**
+
+```env
 GEMINI_API_KEY=your_google_gemini_api_key_here
+```
 
-2. backend/.env (Gợi ý)
-Đoạn mã
+**2. backend/.env** (Gợi ý)
+
+```env
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
 AI_SERVICE_URL=http://localhost:8000
+```
 
-3. frontend/.env.local
-Đoạn mã
+**3. frontend/.env.local**
+
+```env
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
 
-📄 License
+-----
+
+## 👥 Thành Viên Nhóm (Team Members)
+
+| STT | Họ và Tên | MSSV | Vai Trò |
+|:---:|:---|:---|:---|
+| 1 | Khuất Thị Thanh Thảo | HS180732 | - |
+| 2 | Lý Thị Ngọc Mai | HS180502 | - |
+| 3 | Nguyễn Nguyệt Anh | HE180051 | - |
+| 4 | Nguyễn Khánh Toàn | HE181528 | - |
+| 5 | Nguyễn Thanh Phong | HE182099 | - |
+| 6 | Nguyễn Duy Khiêm | HE181770 | - |
+
+-----
+
+## 📄 License
+
 Dự án thuộc khuôn khổ môn học EXE101 tại Đại học FPT. Bản quyền thuộc về Nhóm 5.

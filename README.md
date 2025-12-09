@@ -124,7 +124,3 @@ NEXT_PUBLIC_API_URL=http://localhost:5000/api
 
 📄 License
 Dự án thuộc khuôn khổ môn học EXE101 tại Đại học FPT. Bản quyền thuộc về Nhóm 5.
-
-Đoạn mã
-
-NEXT_PUBLIC_API_URL=http://localhost:5000/api

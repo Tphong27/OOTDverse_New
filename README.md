@@ -17,7 +17,7 @@ Dự án được phát triển bởi **Nhóm 5 - Lớp SE1869-NJ - Đại học
 2.  **AI Stylist (Trợ lý phối đồ):**
 
       * Gợi ý outfit dựa trên thời tiết, dịp (đi học, đi tiệc, đi chơi) và phong cách cá nhân.
-      * Sử dụng công nghệ Google Gemini để phân tích và đưa ra lời khuyên phối đồ.
+      * Sử dụng công nghệ AI để phân tích và đưa ra lời khuyên phối đồ.
 
 3.  **AR Try-On (Thử đồ ảo):**
 

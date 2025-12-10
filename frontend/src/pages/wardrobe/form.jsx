@@ -165,7 +165,17 @@ export default function ItemForm() {
       reader.onloadend = async () => {
         const base64Image = reader.result;
         setSelectedImage(base64Image);
-        setFormData((prev) => ({ ...prev, image_url: base64Image }));
+        // Reset fields when new image is uploaded to avoid mixing data
+        setFormData((prev) => ({
+          ...prev,
+          image_url: base64Image,
+          // Reset AI-related fields
+          category_id: "",
+          color_id: [],
+          season_id: [],
+          style_tags: [],
+          notes: "",
+        }));
         setErrors((prev) => ({ ...prev, image_url: null }));
 
         // === KÍCH HOẠT AI NẾU ĐANG TẠO MỚI ===
@@ -349,14 +359,14 @@ export default function ItemForm() {
             {!selectedImage ? (
               <label
                 className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-xl cursor-pointer hover:bg-gray-50 transition-colors group ${errors.image_url
-                    ? "border-red-300 bg-red-50"
-                    : "border-gray-300"
+                  ? "border-red-300 bg-red-50"
+                  : "border-gray-300"
                   }`}
               >
                 <div
                   className={`p-4 rounded-full mb-3 ${errors.image_url
-                      ? "bg-red-100"
-                      : "bg-purple-50 group-hover:bg-purple-100"
+                    ? "bg-red-100"
+                    : "bg-purple-50 group-hover:bg-purple-100"
                     } transition-colors`}
                 >
                   <Upload
@@ -524,8 +534,8 @@ export default function ItemForm() {
                     type="button"
                     onClick={() => handleMultiSelect("color_id", color._id)}
                     className={`px-4 py-2 rounded-lg border-2 transition-all ${formData.color_id.includes(color._id)
-                        ? "border-purple-600 bg-purple-50 text-purple-700 font-semibold"
-                        : "border-gray-200 hover:border-purple-300 text-gray-700"
+                      ? "border-purple-600 bg-purple-50 text-purple-700 font-semibold"
+                      : "border-gray-200 hover:border-purple-300 text-gray-700"
                       }`}
                   >
                     {color.name}
@@ -549,8 +559,8 @@ export default function ItemForm() {
                     type="button"
                     onClick={() => handleMultiSelect("season_id", season._id)}
                     className={`px-4 py-2 rounded-lg border-2 transition-all ${formData.season_id.includes(season._id)
-                        ? "border-blue-600 bg-blue-50 text-blue-700 font-semibold"
-                        : "border-gray-200 hover:border-blue-300 text-gray-700"
+                      ? "border-blue-600 bg-blue-50 text-blue-700 font-semibold"
+                      : "border-gray-200 hover:border-blue-300 text-gray-700"
                       }`}
                   >
                     {season.name}

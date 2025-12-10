@@ -8,6 +8,9 @@ import {
   Tag as TagIcon,
   AlertCircle,
   Sparkles,
+  CheckCircle,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { useRouter } from "next/router";
 import { useWardrobe } from "@/context/WardrobeContext";
@@ -26,6 +29,14 @@ export default function ItemForm() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [tagInput, setTagInput] = useState("");
   const [errors, setErrors] = useState({});
+
+  // Toast State
+  const [toast, setToast] = useState({ show: false, message: "", type: "info" });
+
+  const showToast = (message, type = "info") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+  };
 
   // Form data
   const [formData, setFormData] = useState({
@@ -82,7 +93,7 @@ export default function ItemForm() {
       }
     } catch (error) {
       console.error("Error loading item:", error);
-      alert("Lỗi tải dữ liệu món đồ");
+      showToast("Lỗi tải dữ liệu món đồ", "error");
     } finally {
       setIsLoading(false);
     }
@@ -104,7 +115,7 @@ export default function ItemForm() {
       const response = await axios.post(
         `${API_URL}/api/wardrobe/analyze`,
         { imageBase64: base64Image },
-        { timeout: 60000 } // Timeout 30s
+        { timeout: 60000 } // Timeout 60s
       );
 
       if (response.data.success) {
@@ -131,22 +142,20 @@ export default function ItemForm() {
           }));
 
           // Thông báo thành công
-          alert("✅ AI đã phân tích xong! Vui lòng kiểm tra lại thông tin.");
+          showToast("AI đã phân tích xong! Vui lòng kiểm tra lại thông tin.", "success");
         } else {
-          alert("⚠️ AI không nhận diện được, vui lòng nhập thủ công.");
+          showToast("AI không nhận diện được, vui lòng nhập thủ công.", "warning");
         }
       }
     } catch (error) {
       console.error("AI Analysis failed:", error);
       // Thông báo lỗi chi tiết hơn
       if (error.code === "ECONNABORTED") {
-        alert(
-          "⏱️ AI đang xử lý quá lâu. Vui lòng thử ảnh khác hoặc nhập thủ công."
-        );
+        showToast("AI đang xử lý quá lâu. Vui lòng thử lại hoặc nhập thủ công.", "error");
       } else if (error.response?.status === 503) {
-        alert("❌ AI Service chưa được khởi động. Vui lòng kiểm tra terminal.");
+        showToast("AI Service chưa được khởi động. Vui lòng kiểm tra terminal.", "error");
       } else {
-        alert("❌ Lỗi kết nối AI. Vui lòng thử lại hoặc nhập thủ công.");
+        showToast("Lỗi kết nối AI. Vui lòng thử lại hoặc nhập thủ công.", "error");
       }
     } finally {
       setIsAnalyzing(false);
@@ -158,7 +167,7 @@ export default function ItemForm() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("File ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.");
+        showToast("File ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.", "error");
         return;
       }
       const reader = new FileReader();
@@ -203,7 +212,7 @@ export default function ItemForm() {
     const tag = tagInput.trim();
     if (tag && !formData.style_tags.includes(tag)) {
       if (formData.style_tags.length >= 20) {
-        alert("Chỉ được thêm tối đa 20 tags");
+        showToast("Chỉ được thêm tối đa 20 tags", "warning");
         return;
       }
       setFormData((prev) => ({
@@ -266,7 +275,7 @@ export default function ItemForm() {
     e.preventDefault();
 
     if (!validateForm()) {
-      alert("Vui lòng kiểm tra lại thông tin");
+      showToast("Vui lòng kiểm tra lại thông tin", "error");
       return;
     }
 
@@ -297,16 +306,17 @@ export default function ItemForm() {
       }
 
       if (result.success) {
-        alert(id ? "Cập nhật thành công! 🎉" : "Thêm món đồ thành công! 🎉");
-        router.push("/wardrobe/wardrobe");
+        showToast(id ? "Cập nhật thành công!" : "Thêm món đồ thành công!", "success");
+        setTimeout(() => router.push("/wardrobe/wardrobe"), 1500); // Wait for toast
       } else {
         throw new Error(result.error || "Có lỗi xảy ra");
       }
     } catch (error) {
       console.error("❌ Error details:", error);
-      alert(
+      showToast(
         "Lỗi: " +
-        (error.response?.data?.message || error.message || "Vui lòng thử lại")
+        (error.response?.data?.message || error.message || "Vui lòng thử lại"),
+        "error"
       );
     } finally {
       setIsSubmitting(false);
@@ -359,14 +369,14 @@ export default function ItemForm() {
             {!selectedImage ? (
               <label
                 className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-xl cursor-pointer hover:bg-gray-50 transition-colors group ${errors.image_url
-                  ? "border-red-300 bg-red-50"
-                  : "border-gray-300"
+                    ? "border-red-300 bg-red-50"
+                    : "border-gray-300"
                   }`}
               >
                 <div
                   className={`p-4 rounded-full mb-3 ${errors.image_url
-                    ? "bg-red-100"
-                    : "bg-purple-50 group-hover:bg-purple-100"
+                      ? "bg-red-100"
+                      : "bg-purple-50 group-hover:bg-purple-100"
                     } transition-colors`}
                 >
                   <Upload
@@ -534,8 +544,8 @@ export default function ItemForm() {
                     type="button"
                     onClick={() => handleMultiSelect("color_id", color._id)}
                     className={`px-4 py-2 rounded-lg border-2 transition-all ${formData.color_id.includes(color._id)
-                      ? "border-purple-600 bg-purple-50 text-purple-700 font-semibold"
-                      : "border-gray-200 hover:border-purple-300 text-gray-700"
+                        ? "border-purple-600 bg-purple-50 text-purple-700 font-semibold"
+                        : "border-gray-200 hover:border-purple-300 text-gray-700"
                       }`}
                   >
                     {color.name}
@@ -559,8 +569,8 @@ export default function ItemForm() {
                     type="button"
                     onClick={() => handleMultiSelect("season_id", season._id)}
                     className={`px-4 py-2 rounded-lg border-2 transition-all ${formData.season_id.includes(season._id)
-                      ? "border-blue-600 bg-blue-50 text-blue-700 font-semibold"
-                      : "border-gray-200 hover:border-blue-300 text-gray-700"
+                        ? "border-blue-600 bg-blue-50 text-blue-700 font-semibold"
+                        : "border-gray-200 hover:border-blue-300 text-gray-700"
                       }`}
                   >
                     {season.name}
@@ -763,6 +773,38 @@ export default function ItemForm() {
           </div>
         </form>
       </div>
+
+      {/* TOAST NOTIFICATION */}
+      {toast.show && (
+        <div className="fixed top-24 right-6 z-[100] animate-in slide-in-from-right fade-in duration-300">
+          <div
+            className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${toast.type === "success"
+                ? "bg-white border-green-500 text-green-700"
+                : toast.type === "error"
+                  ? "bg-white border-red-500 text-red-700"
+                  : toast.type === "warning"
+                    ? "bg-white border-yellow-500 text-yellow-700"
+                    : "bg-white border-blue-500 text-blue-700"
+              }`}
+          >
+            {toast.type === "success" && <CheckCircle className="w-6 h-6 text-green-500" />}
+            {toast.type === "error" && <AlertCircle className="w-6 h-6 text-red-500" />}
+            {toast.type === "warning" && <AlertTriangle className="w-6 h-6 text-yellow-500" />}
+            {toast.type === "info" && <Info className="w-6 h-6 text-blue-500" />}
+
+            <div>
+              <p className="font-semibold text-sm">{toast.message}</p>
+            </div>
+
+            <button
+              onClick={() => setToast((prev) => ({ ...prev, show: false }))}
+              className="ml-4 hover:opacity-70 transition-opacity"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </LayoutUser>
   );
 }

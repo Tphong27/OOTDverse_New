@@ -95,7 +95,7 @@ export default function ProfilePage() {
     try {
       // Gọi song song: Lấy Settings và Lấy Profile User
       const [settingsRes, profileRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/setting"), // API lấy toàn bộ setting
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/setting`), // API lấy toàn bộ setting
         getUserProfile(userId),
       ]);
 
@@ -208,11 +208,10 @@ export default function ProfilePage() {
               key={opt._id}
               onClick={() => toggleSetting(field, opt._id)}
               disabled={!isEditing}
-              className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
-                isSelected
+              className={`px-3 py-1.5 rounded-full text-sm border transition-all ${isSelected
                   ? "bg-purple-600 text-white border-purple-600 shadow-md"
                   : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-              } ${!isEditing && !isSelected ? "hidden" : ""} `} // Khi không edit, ẩn những cái không chọn cho gọn
+                } ${!isEditing && !isSelected ? "hidden" : ""} `} // Khi không edit, ẩn những cái không chọn cho gọn
             >
               {opt.name}
             </button>
@@ -376,8 +375,8 @@ export default function ProfilePage() {
                   {metric === "height"
                     ? "Chiều cao"
                     : metric === "weight"
-                    ? "Cân nặng"
-                    : metric}
+                      ? "Cân nặng"
+                      : metric}
                 </label>
                 <input
                   type="number"

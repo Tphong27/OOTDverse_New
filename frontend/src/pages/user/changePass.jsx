@@ -82,7 +82,7 @@ export default function ChangePasswordPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await axios.post("http://localhost:5000/api/users/changePass", {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/users/changePass`, {
         userId: user._id,
         oldPassword: formData.oldPassword,
         newPassword: formData.newPassword,

@@ -296,7 +296,7 @@ export default function ItemForm() {
       console.error("❌ Error details:", error);
       alert(
         "Lỗi: " +
-          (error.response?.data?.message || error.message || "Vui lòng thử lại")
+        (error.response?.data?.message || error.message || "Vui lòng thử lại")
       );
     } finally {
       setIsSubmitting(false);
@@ -348,23 +348,20 @@ export default function ItemForm() {
 
             {!selectedImage ? (
               <label
-                className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-xl cursor-pointer hover:bg-gray-50 transition-colors group ${
-                  errors.image_url
+                className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-xl cursor-pointer hover:bg-gray-50 transition-colors group ${errors.image_url
                     ? "border-red-300 bg-red-50"
                     : "border-gray-300"
-                }`}
+                  }`}
               >
                 <div
-                  className={`p-4 rounded-full mb-3 ${
-                    errors.image_url
+                  className={`p-4 rounded-full mb-3 ${errors.image_url
                       ? "bg-red-100"
                       : "bg-purple-50 group-hover:bg-purple-100"
-                  } transition-colors`}
+                    } transition-colors`}
                 >
                   <Upload
-                    className={`w-8 h-8 ${
-                      errors.image_url ? "text-red-600" : "text-purple-600"
-                    }`}
+                    className={`w-8 h-8 ${errors.image_url ? "text-red-600" : "text-purple-600"
+                      }`}
                   />
                 </div>
                 <p className="text-sm font-medium text-gray-700">
@@ -434,9 +431,8 @@ export default function ItemForm() {
                   setFormData({ ...formData, item_name: e.target.value });
                   setErrors({ ...errors, item_name: null });
                 }}
-                className={`w-full px-4 py-3 rounded-lg border ${
-                  errors.item_name ? "border-red-300" : "border-gray-300"
-                } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
+                className={`w-full px-4 py-3 rounded-lg border ${errors.item_name ? "border-red-300" : "border-gray-300"
+                  } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
                 placeholder="Ví dụ: Áo sơ mi trắng Oxford"
               />
               {errors.item_name && (
@@ -456,9 +452,8 @@ export default function ItemForm() {
                     setFormData({ ...formData, category_id: e.target.value });
                     setErrors({ ...errors, category_id: null });
                   }}
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.category_id ? "border-red-300" : "border-gray-300"
-                  } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
+                  className={`w-full px-4 py-3 rounded-lg border ${errors.category_id ? "border-red-300" : "border-gray-300"
+                    } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
                 >
                   <option value="">-- Chọn danh mục --</option>
                   {categories.map((cat) => (
@@ -528,11 +523,10 @@ export default function ItemForm() {
                     key={color._id}
                     type="button"
                     onClick={() => handleMultiSelect("color_id", color._id)}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                      formData.color_id.includes(color._id)
+                    className={`px-4 py-2 rounded-lg border-2 transition-all ${formData.color_id.includes(color._id)
                         ? "border-purple-600 bg-purple-50 text-purple-700 font-semibold"
                         : "border-gray-200 hover:border-purple-300 text-gray-700"
-                    }`}
+                      }`}
                   >
                     {color.name}
                   </button>
@@ -554,11 +548,10 @@ export default function ItemForm() {
                     key={season._id}
                     type="button"
                     onClick={() => handleMultiSelect("season_id", season._id)}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                      formData.season_id.includes(season._id)
+                    className={`px-4 py-2 rounded-lg border-2 transition-all ${formData.season_id.includes(season._id)
                         ? "border-blue-600 bg-blue-50 text-blue-700 font-semibold"
                         : "border-gray-200 hover:border-blue-300 text-gray-700"
-                    }`}
+                      }`}
                   >
                     {season.name}
                   </button>
@@ -611,9 +604,8 @@ export default function ItemForm() {
                     setFormData({ ...formData, purchase_date: e.target.value });
                     setErrors({ ...errors, purchase_date: null }); // Xóa lỗi khi người dùng thay đổi
                   }}
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.purchase_date ? "border-red-300" : "border-gray-300"
-                  } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
+                  className={`w-full px-4 py-3 rounded-lg border ${errors.purchase_date ? "border-red-300" : "border-gray-300"
+                    } focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none`}
                 />
                 {errors.purchase_date && (
                   <p className="mt-1 text-sm text-red-600 flex items-center gap-1">

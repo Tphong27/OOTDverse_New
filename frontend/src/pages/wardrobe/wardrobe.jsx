@@ -222,22 +222,20 @@ export default function Wardrobe() {
             <div className="flex gap-2 bg-gray-50 p-1 rounded-lg">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`p-2 rounded-lg transition-all ${
-                  viewMode === "grid"
+                className={`p-2 rounded-lg transition-all ${viewMode === "grid"
                     ? "bg-white shadow-sm text-purple-600"
                     : "text-gray-400 hover:text-gray-600"
-                }`}
+                  }`}
                 title="Xem dạng lưới"
               >
                 <Grid3x3 className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={`p-2 rounded-lg transition-all ${
-                  viewMode === "list"
+                className={`p-2 rounded-lg transition-all ${viewMode === "list"
                     ? "bg-white shadow-sm text-purple-600"
                     : "text-gray-400 hover:text-gray-600"
-                }`}
+                  }`}
                 title="Xem dạng danh sách"
               >
                 <List className="w-5 h-5" />
@@ -252,21 +250,19 @@ export default function Wardrobe() {
             <button
               key={cat.id}
               onClick={() => handleCategoryChange(cat.id)}
-              className={`px-5 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${
-                (filters.category === cat.id && !filters.favorite) ||
-                (cat.id === "favorite" && filters.favorite)
+              className={`px-5 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${(filters.category === cat.id && !filters.favorite) ||
+                  (cat.id === "favorite" && filters.favorite)
                   ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg scale-105"
                   : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-              }`}
+                }`}
             >
               {cat.label}
               <span
-                className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                  (filters.category === cat.id && !filters.favorite) ||
-                  (cat.id === "favorite" && filters.favorite)
+                className={`ml-2 px-2 py-0.5 rounded-full text-xs ${(filters.category === cat.id && !filters.favorite) ||
+                    (cat.id === "favorite" && filters.favorite)
                     ? "bg-white/20"
                     : "bg-gray-100"
-                }`}
+                  }`}
               >
                 {cat.count}
               </span>
@@ -320,15 +316,13 @@ export default function Wardrobe() {
               {currentItems.map((item) => (
                 <div
                   key={item._id}
-                  className={`group relative bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:border-purple-200 transition-all duration-300 ${
-                    viewMode === "list" ? "flex gap-4" : ""
-                  }`}
+                  className={`group relative bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:border-purple-200 transition-all duration-300 ${viewMode === "list" ? "flex gap-4" : ""
+                    }`}
                 >
                   {/* Image */}
                   <div
-                    className={`relative overflow-hidden ${
-                      viewMode === "list" ? "w-40 h-40 shrink-0" : "aspect-[3/4]"
-                    }`}
+                    className={`relative overflow-hidden ${viewMode === "list" ? "w-40 h-40 shrink-0" : "aspect-[3/4]"
+                      }`}
                   >
                     <img
                       src={
@@ -348,11 +342,10 @@ export default function Wardrobe() {
                       className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all shadow-lg hover:scale-110 z-10"
                     >
                       <Heart
-                        className={`w-5 h-5 transition-colors ${
-                          item.is_favorite
+                        className={`w-5 h-5 transition-colors ${item.is_favorite
                             ? "fill-red-500 text-red-500"
                             : "text-gray-600"
-                        }`}
+                          }`}
                       />
                     </button>
 
@@ -388,11 +381,10 @@ export default function Wardrobe() {
 
                   {/* Info */}
                   <div
-                    className={`p-4 ${
-                      viewMode === "list"
+                    className={`p-4 ${viewMode === "list"
                         ? "flex-1 flex flex-col justify-center"
                         : ""
-                    }`}
+                      }`}
                   >
                     <h3 className="font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-purple-600 transition-colors text-lg">
                       {item.item_name}

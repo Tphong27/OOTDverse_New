@@ -42,6 +42,14 @@ model = genai.GenerativeModel(MODEL_NAME)
 class ImageRequest(BaseModel):
     image_base64: str
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "AI Service"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
 @app.post("/analyze")
 async def analyze_wardrobe_item(request: ImageRequest):
     try:

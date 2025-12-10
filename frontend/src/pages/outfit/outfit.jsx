@@ -112,7 +112,7 @@ export default function OutfitPage() {
       router.push("/login");
       return;
     }
-    router.push("/outfit/create");
+    router.push("/outfit/form");
   };
 
   // Filter outfits by search query

@@ -23,7 +23,8 @@ import {
 
 export default function OutfitFormPage() {
   const router = useRouter();
-  const { id } = router.query; // ID của outfit (nếu edit mode)
+
+  const id = router.query.id;
   const isEditMode = !!id;
 
   const { user } = useAuth();

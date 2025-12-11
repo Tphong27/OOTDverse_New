@@ -1,256 +1,207 @@
 import LayoutUser from "@/components/layout/LayoutUser";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import { useAuth } from "@/context/AuthContext";
 import { useOutfit } from "@/context/OutfitContext";
 import { useSettings } from "@/context/SettingContext";
-import { useAuth } from "@/context/AuthContext";
 import { useWardrobe } from "@/context/WardrobeContext";
 import {
-  Save,
   X,
   Plus,
-  Upload,
-  Tag,
-  AlertCircle,
-  ArrowLeft,
-  Sparkles,
-  Shirt,
-  Lock,
-  Globe,
-  Search,
-  Grid3x3,
+  Image as ImageIcon,
+  Save,
   Trash2,
+  Search,
+  Check,
+  Shirt,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 export default function OutfitFormPage() {
   const router = useRouter();
-  const { id } = router.query; // Nếu có id = Edit mode, không có = Create mode
+  const { id } = router.query; // ID của outfit (nếu edit mode)
+  const isEditMode = !!id;
+
   const { user } = useAuth();
-  const { currentOutfit, createOutfit, updateOutfit, fetchOutfitById, loading, clearCurrentOutfit } = useOutfit();
-  const { settings } = useSettings();
-  const { items, loadItems } = useWardrobe();
+  const { createOutfit, updateOutfit, fetchOutfitById, currentOutfit } =
+    useOutfit();
+  const { styles, occasions, seasons, weatherTypes } = useSettings();
+  const { items: wardrobeItems } = useWardrobe();
 
-  const isEditMode = Boolean(id);
-
+  // Form state
   const [formData, setFormData] = useState({
     outfit_name: "",
-    style_id: "",
-    occasion_id: "",
-    season_id: "",
-    weather_id: "",
+    style_id: null,
+    occasion_id: null,
+    season_id: null,
+    weather_id: null,
     is_public: true,
     thumbnail_url: "",
     full_image_url: "",
     tags: [],
     description: "",
     notes: "",
-    items: [], // [{ item_id, layer_position, display_order, styling_note, is_optional }]
+    items: [], // Array of selected items
   });
 
-  const [tagInput, setTagInput] = useState("");
-  const [errors, setErrors] = useState({});
-  const [previewImage, setPreviewImage] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Item Selection State
-  const [selectedItems, setSelectedItems] = useState([]); // Array of item IDs
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
+  const [newTag, setNewTag] = useState("");
+  const [showItemPicker, setShowItemPicker] = useState(false);
+  const [itemSearchQuery, setItemSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState([]);
 
-  // ========================================
-  // LOAD DATA
-  // ========================================
+  // Load outfit data if edit mode
   useEffect(() => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    // Load user's wardrobe items
-    loadItems(); // Không cần arg
-
-    // If edit mode, load outfit
     if (isEditMode && id) {
-      fetchOutfitById(id)
-        .then((outfit) => {
-          if (outfit && outfit.user_id?._id !== user._id) {
-            router.push(`/outfit/${id}`);
-          }
-          setIsLoading(false);
-        })
-        .catch(() => {
-          setIsLoading(false);
+      loadOutfitData();
+    }
+  }, [isEditMode, id]);
+
+  const loadOutfitData = async () => {
+    try {
+      const outfit = await fetchOutfitById(id);
+      if (outfit) {
+        setFormData({
+          outfit_name: outfit.outfit_name || "",
+          style_id: outfit.style_id?._id || null,
+          occasion_id: outfit.occasion_id?._id || null,
+          season_id: outfit.season_id?._id || null,
+          weather_id: outfit.weather_id?._id || null,
+          is_public: outfit.is_public !== undefined ? outfit.is_public : true,
+          thumbnail_url: outfit.thumbnail_url || "",
+          full_image_url: outfit.full_image_url || "",
+          tags: outfit.tags || [],
+          description: outfit.description || "",
+          notes: outfit.notes || "",
+          items:
+            outfit.items?.map((oi) => ({
+              item_id: oi.item_id._id,
+              item_data: oi.item_id,
+              layer_position: oi.layer_position,
+              display_order: oi.display_order,
+              styling_note: oi.styling_note,
+              is_optional: oi.is_optional,
+            })) || [],
         });
-    } else {
-      clearCurrentOutfit();
-      setIsLoading(false);
-    }
-  }, [user, loadItems]);
-
-  // ========================================
-  // POPULATE FORM IN EDIT MODE
-  // ========================================
-  useEffect(() => {
-    if (isEditMode && currentOutfit) {
-      setFormData({
-        outfit_name: currentOutfit.outfit_name || "",
-        style_id: currentOutfit.style_id?._id || "",
-        occasion_id: currentOutfit.occasion_id?._id || "",
-        season_id: currentOutfit.season_id?._id || "",
-        weather_id: currentOutfit.weather_id?._id || "",
-        is_public: currentOutfit.is_public !== undefined ? currentOutfit.is_public : true,
-        thumbnail_url: currentOutfit.thumbnail_url || "",
-        full_image_url: currentOutfit.full_image_url || "",
-        tags: currentOutfit.tags || [],
-        description: currentOutfit.description || "",
-        notes: currentOutfit.notes || "",
-        items: currentOutfit.items?.map((oi) => ({
-          item_id: oi.item_id._id,
-          layer_position: oi.layer_position,
-          display_order: oi.display_order,
-          styling_note: oi.styling_note,
-          is_optional: oi.is_optional,
-        })) || [],
-      });
-
-      setSelectedItems(currentOutfit.items?.map((oi) => oi.item_id._id) || []);
-
-      if (currentOutfit.thumbnail_url) {
-        setPreviewImage(currentOutfit.thumbnail_url);
       }
-    }
-  }, [currentOutfit, isEditMode]);
-
-  // ========================================
-  // FORM HANDLERS
-  // ========================================
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: null }));
+    } catch (error) {
+      console.error("Error loading outfit:", error);
+      alert("Không thể tải dữ liệu outfit");
     }
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      setErrors((prev) => ({
-        ...prev,
-        thumbnail_url: "Ảnh không được vượt quá 5MB",
-      }));
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result;
-      setFormData((prev) => ({
-        ...prev,
-        thumbnail_url: base64String,
-        full_image_url: base64String,
-      }));
-      setPreviewImage(base64String);
-      setErrors((prev) => ({ ...prev, thumbnail_url: null }));
-    };
-    reader.readAsDataURL(file);
+  // Handle form changes
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors([]); // Clear errors when user types
   };
 
+  // Handle add tag
   const handleAddTag = () => {
-    if (!tagInput.trim()) return;
-    
-    if (formData.tags.length >= 20) {
-      setErrors((prev) => ({
-        ...prev,
-        tags: "Không được thêm quá 20 tags",
-      }));
+    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+      handleChange("tags", [...formData.tags, newTag.trim()]);
+      setNewTag("");
+    }
+  };
+
+  // Handle remove tag
+  const handleRemoveTag = (tagToRemove) => {
+    handleChange(
+      "tags",
+      formData.tags.filter((tag) => tag !== tagToRemove)
+    );
+  };
+
+  // Handle add item to outfit
+  const handleAddItem = (item) => {
+    if (formData.items.some((i) => i.item_id === item._id)) {
+      alert("Item này đã có trong outfit");
       return;
     }
 
-    if (!formData.tags.includes(tagInput.trim())) {
-      setFormData((prev) => ({
-        ...prev,
-        tags: [...prev.tags, tagInput.trim()],
-      }));
-      setTagInput("");
-      setErrors((prev) => ({ ...prev, tags: null }));
+    if (formData.items.length >= 15) {
+      alert("Outfit không được vượt quá 15 items");
+      return;
     }
+
+    const newItem = {
+      item_id: item._id,
+      item_data: item,
+      layer_position: null,
+      display_order: formData.items.length,
+      styling_note: "",
+      is_optional: false,
+    };
+
+    handleChange("items", [...formData.items, newItem]);
   };
 
-  const handleRemoveTag = (tagToRemove) => {
-    setFormData((prev) => ({
-      ...prev,
-      tags: prev.tags.filter((tag) => tag !== tagToRemove),
-    }));
+  // Handle remove item
+  const handleRemoveItem = (itemId) => {
+    handleChange(
+      "items",
+      formData.items.filter((i) => i.item_id !== itemId)
+    );
   };
 
-  // ========================================
-  // ITEM SELECTION
-  // ========================================
-  const toggleItemSelection = (itemId) => {
-    setSelectedItems((prev) => {
-      if (prev.includes(itemId)) {
-        return prev.filter((id) => id !== itemId);
-      } else {
-        if (prev.length >= 15) {
-          alert("Outfit không được vượt quá 15 items");
-          return prev;
-        }
-        return [...prev, itemId];
-      }
+  // Handle update item details
+  const handleUpdateItemDetail = (itemId, field, value) => {
+    handleChange(
+      "items",
+      formData.items.map((item) =>
+        item.item_id === itemId ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  // Handle reorder items
+  const handleMoveItem = (index, direction) => {
+    const newItems = [...formData.items];
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+
+    if (newIndex < 0 || newIndex >= newItems.length) return;
+
+    [newItems[index], newItems[newIndex]] = [
+      newItems[newIndex],
+      newItems[index],
+    ];
+
+    // Update display_order
+    newItems.forEach((item, idx) => {
+      item.display_order = idx;
     });
+
+    handleChange("items", newItems);
   };
 
-  const getFilteredItems = () => {
-    return items.filter((item) => {
-      const matchSearch = item.item_name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchCategory = filterCategory === "" || item.category_id?._id === filterCategory;
-      return matchSearch && matchCategory;
-    });
-  };
-
-  // ========================================
-  // VALIDATION
-  // ========================================
+  // Validate form
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors = [];
 
     if (!formData.outfit_name.trim()) {
-      newErrors.outfit_name = "Tên outfit là bắt buộc";
-    } else if (formData.outfit_name.length < 2) {
-      newErrors.outfit_name = "Tên phải có ít nhất 2 ký tự";
-    } else if (formData.outfit_name.length > 150) {
-      newErrors.outfit_name = "Tên không được quá 150 ký tự";
+      newErrors.push("Tên outfit là bắt buộc");
+    } else if (formData.outfit_name.trim().length < 2) {
+      newErrors.push("Tên outfit phải có ít nhất 2 ký tự");
     }
 
-    if (selectedItems.length < 2) {
-      newErrors.items = "Outfit phải có ít nhất 2 items";
+    if (formData.items.length < 2) {
+      newErrors.push("Outfit phải có ít nhất 2 items");
     }
 
-    if (selectedItems.length > 15) {
-      newErrors.items = "Outfit không được vượt quá 15 items";
-    }
-
-    if (formData.description && formData.description.length > 1000) {
-      newErrors.description = "Mô tả không được quá 1000 ký tự";
-    }
-
-    if (formData.notes && formData.notes.length > 1000) {
-      newErrors.notes = "Ghi chú không được quá 1000 ký tự";
+    if (formData.items.length > 15) {
+      newErrors.push("Outfit không được vượt quá 15 items");
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors.length === 0;
   };
 
-  // ========================================
-  // SUBMIT
-  // ========================================
+  // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -258,315 +209,152 @@ export default function OutfitFormPage() {
       return;
     }
 
-    // Build items array
-    const itemsData = selectedItems.map((itemId, index) => ({
-      item_id: itemId,
-      layer_position: null,
-      display_order: index,
-      styling_note: null,
-      is_optional: false,
-    }));
+    setLoading(true);
 
-    const submitData = {
-      ...formData,
-      user_id: user._id,
-      items: itemsData,
-    };
+    try {
+      const submitData = {
+        user_id: user._id,
+        ...formData,
+        items: formData.items.map((item) => ({
+          item_id: item.item_id,
+          layer_position: item.layer_position,
+          display_order: item.display_order,
+          styling_note: item.styling_note,
+          is_optional: item.is_optional,
+        })),
+      };
 
-    let result;
-    if (isEditMode) {
-      result = await updateOutfit(id, submitData);
-    } else {
-      result = await createOutfit(submitData);
+      let response;
+      if (isEditMode) {
+        response = await updateOutfit(id, submitData);
+      } else {
+        response = await createOutfit(submitData);
+      }
+
+      if (response.success) {
+        alert(`${isEditMode ? "Cập nhật" : "Tạo"} outfit thành công!`);
+        // router.push(`/outfits/${response.data._id}`);
+        router.push("/outfit/outfit");
+      }
+    } catch (error) {
+      console.error("Error submitting outfit:", error);
+      alert(`Lỗi: ${error.message || "Không thể lưu outfit"}`);
+    } finally {
+      setLoading(false);
     }
-
-    if (result?.success) {
-      // Navigate to outfit detail page
-      router.push(`/outfit/${result.data._id}`);
-    } else if (result?.errors) {
-      setErrors(result.errors);
-    }
   };
 
-  // ========================================
-  // SETTINGS HELPERS
-  // ========================================
-  const getSettingsByType = (type) => {
-    return settings.filter((s) => s.type === type && s.status === "Active");
-  };
+  // Filter wardrobe items
+  const filteredWardrobeItems = wardrobeItems.filter((item) => {
+    const matchesSearch = item.item_name
+      ?.toLowerCase()
+      .includes(itemSearchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "all" || item.category_id?._id === selectedCategory;
+    const notSelected = !formData.items.some((i) => i.item_id === item._id);
 
-  const getCategorySettings = () => {
-    return settings.filter((s) => s.type === "category" && s.status === "Active");
-  };
+    return matchesSearch && matchesCategory && notSelected;
+  });
 
-  // ========================================
-  // RENDER
-  // ========================================
-  if (!user || isLoading) {
+  // Get unique categories from wardrobe
+  const categories = Array.from(
+    new Set(wardrobeItems.map((item) => item.category_id?._id).filter(Boolean))
+  ).map(
+    (catId) =>
+      wardrobeItems.find((item) => item.category_id?._id === catId)?.category_id
+  );
+
+  if (!user) {
     return (
-      <LayoutUser>
-        <div className="flex items-center justify-center py-40">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600"></div>
-        </div>
-      </LayoutUser>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Vui lòng đăng nhập để tạo outfit</p>
+      </div>
     );
   }
 
   return (
     <LayoutUser>
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-6 max-w-6xl">
+          {/* Header */}
+          <div className="mb-6">
+            <button
+              onClick={() => router.back()}
+              className="text-gray-600 hover:text-gray-800 mb-4"
+            >
+              ← Quay lại
+            </button>
+            <h1 className="text-3xl font-bold">
               {isEditMode ? "Chỉnh sửa Outfit" : "Tạo Outfit Mới"}
             </h1>
-            <p className="text-gray-600">
-              {isEditMode ? "Cập nhật thông tin outfit" : "Chọn items từ tủ đồ của bạn"}
-            </p>
           </div>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column: Item Selection */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Item Picker */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold flex items-center gap-2">
-                    <Shirt className="w-5 h-5 text-purple-600" />
-                    Chọn items cho outfit
-                  </h2>
-                  <span className="text-sm font-medium text-purple-600">
-                    {selectedItems.length}/15 items
-                  </span>
-                </div>
-
-                {errors.items && (
-                  <p className="mb-4 text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" />
-                    {errors.items}
-                  </p>
-                )}
-
-                {/* Search & Filter */}
-                <div className="flex gap-3 mb-4">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm items..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                  <select
-                    value={filterCategory}
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                    className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">Tất cả</option>
-                    {getCategorySettings().map((cat) => (
-                      <option key={cat._id} value={cat._id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Items Grid */}
-                <div className="grid grid-cols-3 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
-                  {getFilteredItems().map((item) => (
-                    <div
-                      key={item._id}
-                      onClick={() => toggleItemSelection(item._id)}
-                      className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
-                        selectedItems.includes(item._id)
-                          ? "border-purple-500 ring-2 ring-purple-200"
-                          : "border-gray-200 hover:border-purple-300"
-                      }`}
-                    >
-                      <img
-                        src={item.image_url || "/placeholder-item.jpg"}
-                        alt={item.item_name}
-                        className="w-full h-full object-cover"
-                      />
-                      {selectedItems.includes(item._id) && (
-                        <div className="absolute inset-0 bg-purple-600/30 flex items-center justify-center">
-                          <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold">
-                            ✓
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {getFilteredItems().length === 0 && (
-                  <p className="text-center text-gray-500 py-8">
-                    Không tìm thấy item nào
-                  </p>
-                )}
-              </div>
-
-              {/* Selected Items Preview */}
-              {selectedItems.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                  <h3 className="font-semibold mb-4">
-                    Items đã chọn ({selectedItems.length})
-                  </h3>
-                  <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
-                    {selectedItems.map((itemId) => {
-                      const item = items.find((i) => i._id === itemId);
-                      if (!item) return null;
-                      return (
-                        <div key={itemId} className="relative aspect-square">
-                          <img
-                            src={item.image_url || "/placeholder-item.jpg"}
-                            alt={item.item_name}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => toggleItemSelection(itemId)}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+          {/* Error Messages */}
+          {errors.length > 0 && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <ul className="list-disc list-inside text-red-700">
+                {errors.map((error, idx) => (
+                  <li key={idx}>{error}</li>
+                ))}
+              </ul>
             </div>
+          )}
 
-            {/* Right Column: Outfit Details */}
-            <div className="space-y-6">
-              {/* Basic Info */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-xl font-semibold mb-4">Thông tin outfit</h2>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Information */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Thông tin cơ bản</h2>
 
+              <div className="space-y-4">
                 {/* Outfit Name */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
                     Tên Outfit <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    name="outfit_name"
                     value={formData.outfit_name}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-                      errors.outfit_name
-                        ? "border-red-300 focus:ring-red-500"
-                        : "border-gray-200 focus:ring-purple-500"
-                    }`}
+                    onChange={(e) =>
+                      handleChange("outfit_name", e.target.value)
+                    }
+                    placeholder="VD: Outfit công sở lịch sự"
+                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   />
-                  {errors.outfit_name && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.outfit_name}
-                    </p>
-                  )}
                 </div>
 
-                {/* Image Upload */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ảnh Outfit
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Mô tả
                   </label>
-                  {previewImage ? (
-                    <div className="relative w-full aspect-square rounded-xl overflow-hidden border-2 border-gray-200">
-                      <img
-                        src={previewImage}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPreviewImage(null);
-                          setFormData((prev) => ({
-                            ...prev,
-                            thumbnail_url: "",
-                            full_image_url: "",
-                          }));
-                        }}
-                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="w-full aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-purple-500 transition-colors">
-                      <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-600">Upload ảnh</span>
-                      <span className="text-xs text-gray-400 mt-1">
-                        PNG, JPG (max 5MB)
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) =>
+                      handleChange("description", e.target.value)
+                    }
+                    placeholder="Mô tả outfit của bạn..."
+                    rows={3}
+                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
 
-                {/* Privacy */}
-                <div className="mb-4">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="is_public"
-                      checked={formData.is_public}
-                      onChange={handleChange}
-                      className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
-                    />
-                    <div className="flex items-center gap-2">
-                      {formData.is_public ? (
-                        <Globe className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <Lock className="w-5 h-5 text-gray-600" />
-                      )}
-                      <span className="font-medium text-gray-700">
-                        {formData.is_public ? "Công khai" : "Riêng tư"}
-                      </span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Categories */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                  Phân loại
-                </h2>
-
-                <div className="space-y-3">
+                {/* Settings Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Style */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium mb-2">
                       Phong cách
                     </label>
                     <select
-                      name="style_id"
-                      value={formData.style_id}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-sm"
+                      value={formData.style_id || ""}
+                      onChange={(e) =>
+                        handleChange("style_id", e.target.value || null)
+                      }
+                      className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Chọn phong cách</option>
-                      {getSettingsByType("style").map((style) => (
+                      {styles.map((style) => (
                         <option key={style._id} value={style._id}>
                           {style.name}
                         </option>
@@ -574,18 +362,20 @@ export default function OutfitFormPage() {
                     </select>
                   </div>
 
+                  {/* Occasion */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Dịp mặc
+                    <label className="block text-sm font-medium mb-2">
+                      Dịp
                     </label>
                     <select
-                      name="occasion_id"
-                      value={formData.occasion_id}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-sm"
+                      value={formData.occasion_id || ""}
+                      onChange={(e) =>
+                        handleChange("occasion_id", e.target.value || null)
+                      }
+                      className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">Chọn dịp mặc</option>
-                      {getSettingsByType("occasion").map((occasion) => (
+                      <option value="">Chọn dịp</option>
+                      {occasions.map((occasion) => (
                         <option key={occasion._id} value={occasion._id}>
                           {occasion.name}
                         </option>
@@ -593,18 +383,20 @@ export default function OutfitFormPage() {
                     </select>
                   </div>
 
+                  {/* Season */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium mb-2">
                       Mùa
                     </label>
                     <select
-                      name="season_id"
-                      value={formData.season_id}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-sm"
+                      value={formData.season_id || ""}
+                      onChange={(e) =>
+                        handleChange("season_id", e.target.value || null)
+                      }
+                      className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Chọn mùa</option>
-                      {getSettingsByType("season").map((season) => (
+                      {seasons.map((season) => (
                         <option key={season._id} value={season._id}>
                           {season.name}
                         </option>
@@ -612,18 +404,20 @@ export default function OutfitFormPage() {
                     </select>
                   </div>
 
+                  {/* Weather */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium mb-2">
                       Thời tiết
                     </label>
                     <select
-                      name="weather_id"
-                      value={formData.weather_id}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-sm"
+                      value={formData.weather_id || ""}
+                      onChange={(e) =>
+                        handleChange("weather_id", e.target.value || null)
+                      }
+                      className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Chọn thời tiết</option>
-                      {getSettingsByType("weather").map((weather) => (
+                      {weatherTypes.map((weather) => (
                         <option key={weather._id} value={weather._id}>
                           {weather.name}
                         </option>
@@ -631,130 +425,328 @@ export default function OutfitFormPage() {
                     </select>
                   </div>
                 </div>
-              </div>
 
-              {/* Tags */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                  <Tag className="w-5 h-5 text-purple-600" />
-                  Tags
-                </h2>
-
-                <div className="flex gap-2 mb-3">
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddTag();
+                {/* Tags */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Tags</label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      onKeyPress={(e) =>
+                        e.key === "Enter" &&
+                        (e.preventDefault(), handleAddTag())
                       }
-                    }}
-                    placeholder="Thêm tag..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddTag}
-                    className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {formData.tags.length > 0 && (
+                      placeholder="Thêm tag..."
+                      className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddTag}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  </div>
                   <div className="flex flex-wrap gap-2">
-                    {formData.tags.map((tag, index) => (
+                    {formData.tags.map((tag, idx) => (
                       <span
-                        key={index}
-                        className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium flex items-center gap-2"
+                        key={idx}
+                        className="px-3 py-1 bg-gray-100 rounded-full flex items-center gap-2"
                       >
-                        {tag}
+                        #{tag}
                         <button
                           type="button"
                           onClick={() => handleRemoveTag(tag)}
-                          className="hover:text-purple-900"
+                          className="text-gray-500 hover:text-red-500"
                         >
-                          <X className="w-3 h-3" />
+                          <X size={14} />
                         </button>
                       </span>
                     ))}
                   </div>
-                )}
-              </div>
-
-              {/* Description & Notes */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mô tả
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
-                    maxLength={1000}
-                  />
-                  <p className="text-xs text-gray-400 mt-1 text-right">
-                    {formData.description.length}/1000
-                  </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ghi chú cá nhân
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
-                    maxLength={1000}
+                {/* Privacy */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is_public"
+                    checked={formData.is_public}
+                    onChange={(e) =>
+                      handleChange("is_public", e.target.checked)
+                    }
+                    className="w-4 h-4"
                   />
-                  <p className="text-xs text-gray-400 mt-1 text-right">
-                    {formData.notes.length}/1000
-                  </p>
+                  <label htmlFor="is_public" className="text-sm">
+                    Công khai outfit (người khác có thể xem)
+                  </label>
                 </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => router.back()}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
-                    loading
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : "bg-gradient-to-r from-purple-600 to-pink-500 text-white hover:shadow-lg"
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                      {isEditMode ? "Đang lưu..." : "Đang tạo..."}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-5 h-5" />
-                      {isEditMode ? "Lưu" : "Tạo Outfit"}
-                    </>
-                  )}
-                </button>
               </div>
             </div>
-          </div>
-        </form>
+
+            {/* Items Selection */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">
+                  Món đồ trong Outfit ({formData.items.length}/15)
+                  <span className="text-red-500 ml-1">*</span>
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowItemPicker(!showItemPicker)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <Plus size={20} />
+                  Thêm món đồ
+                </button>
+              </div>
+
+              {/* Item Picker Modal */}
+              {showItemPicker && (
+                <div className="mb-4 p-4 border rounded-lg bg-gray-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium">Chọn món đồ từ tủ đồ</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowItemPicker(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Search & Filter */}
+                  <div className="flex gap-2 mb-3">
+                    <div className="flex-1 relative">
+                      <Search
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        size={18}
+                      />
+                      <input
+                        type="text"
+                        value={itemSearchQuery}
+                        onChange={(e) => setItemSearchQuery(e.target.value)}
+                        placeholder="Tìm kiếm..."
+                        className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="p-2 border rounded-lg"
+                    >
+                      <option value="all">Tất cả danh mục</option>
+                      {categories.map((cat) => (
+                        <option key={cat._id} value={cat._id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Items Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
+                    {filteredWardrobeItems.map((item) => (
+                      <div
+                        key={item._id}
+                        onClick={() => handleAddItem(item)}
+                        className="cursor-pointer bg-white rounded-lg overflow-hidden border hover:border-blue-500 hover:shadow transition-all"
+                      >
+                        <div className="aspect-square bg-gray-100">
+                          <img
+                            src={item.image_url}
+                            alt={item.item_name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="p-2">
+                          <p className="text-sm font-medium truncate">
+                            {item.item_name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {item.category_id?.name}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {filteredWardrobeItems.length === 0 && (
+                    <p className="text-center text-gray-500 py-8">
+                      Không tìm thấy món đồ phù hợp
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Selected Items List */}
+              {formData.items.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Shirt size={48} className="mx-auto mb-3 opacity-50" />
+                  <p>Chưa có món đồ nào. Hãy thêm ít nhất 2 món đồ!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {formData.items.map((item, index) => (
+                    <div
+                      key={item.item_id}
+                      className="flex gap-3 p-3 border rounded-lg hover:bg-gray-50"
+                    >
+                      {/* Reorder buttons */}
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveItem(index, "up")}
+                          disabled={index === 0}
+                          className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
+                        >
+                          <ChevronUp size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveItem(index, "down")}
+                          disabled={index === formData.items.length - 1}
+                          className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
+                        >
+                          <ChevronDown size={16} />
+                        </button>
+                      </div>
+
+                      {/* Item image */}
+                      <div className="w-20 h-20 flex-shrink-0 rounded overflow-hidden bg-gray-100">
+                        <img
+                          src={item.item_data?.image_url}
+                          alt={item.item_data?.item_name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      {/* Item details */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {item.item_data?.item_name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {item.item_data?.category_id?.name}
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          {/* Layer Position */}
+                          <select
+                            value={item.layer_position || ""}
+                            onChange={(e) =>
+                              handleUpdateItemDetail(
+                                item.item_id,
+                                "layer_position",
+                                e.target.value || null
+                              )
+                            }
+                            className="text-sm p-1 border rounded"
+                          >
+                            <option value="">Layer</option>
+                            <option value="base">Base</option>
+                            <option value="mid">Mid</option>
+                            <option value="outer">Outer</option>
+                          </select>
+
+                          {/* Optional toggle */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateItemDetail(
+                                item.item_id,
+                                "is_optional",
+                                !item.is_optional
+                              )
+                            }
+                            className={`text-xs px-2 py-1 rounded flex items-center gap-1 justify-center ${
+                              item.is_optional
+                                ? "bg-orange-100 text-orange-700"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {item.is_optional ? (
+                              <EyeOff size={12} />
+                            ) : (
+                              <Eye size={12} />
+                            )}
+                            {item.is_optional ? "Optional" : "Required"}
+                          </button>
+                        </div>
+
+                        {/* Styling Note */}
+                        <input
+                          type="text"
+                          value={item.styling_note || ""}
+                          onChange={(e) =>
+                            handleUpdateItemDetail(
+                              item.item_id,
+                              "styling_note",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Ghi chú styling..."
+                          className="w-full mt-2 p-1 text-sm border rounded"
+                        />
+                      </div>
+
+                      {/* Remove button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(item.item_id)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Ghi chú riêng tư</h2>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => handleChange("notes", e.target.value)}
+                placeholder="Ghi chú cá nhân về outfit này (chỉ bạn nhìn thấy)..."
+                rows={3}
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Submit Buttons */}
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="px-6 py-3 border rounded-lg hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Đang lưu...
+                  </>
+                ) : (
+                  <>
+                    <Save size={20} />
+                    {isEditMode ? "Cập nhật" : "Tạo Outfit"}
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </LayoutUser>
   );

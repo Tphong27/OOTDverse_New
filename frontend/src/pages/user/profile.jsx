@@ -95,7 +95,7 @@ export default function ProfilePage() {
     try {
       // Gọi song song: Lấy Settings và Lấy Profile User
       const [settingsRes, profileRes] = await Promise.all([
-        axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/setting`), // API lấy toàn bộ setting
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/setting`), // API lấy toàn bộ setting
         getUserProfile(userId),
       ]);
 
@@ -175,10 +175,30 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
-      await updateUserProfile({
+      // Chỉ gửi các trường có thể chỉnh sửa, loại bỏ các trường read-only
+      const editableFields = {
         userId: currentUser._id,
-        ...profile,
-      });
+        fullName: profile.fullName,
+        phone: profile.phone,
+        birthday: profile.birthday,
+        bio: profile.bio,
+        gender: profile.gender,
+        age: profile.age,
+        height: profile.height,
+        weight: profile.weight,
+        bust: profile.bust,
+        waist: profile.waist,
+        hips: profile.hips,
+        favoriteStyles: profile.favoriteStyles,
+        favoriteBrands: profile.favoriteBrands,
+        favoriteColors: profile.favoriteColors,
+        favoriteOccasions: profile.favoriteOccasions,
+        avoidColors: profile.avoidColors,
+        budget: profile.budget,
+        sustainableFashion: profile.sustainableFashion,
+      };
+
+      await updateUserProfile(editableFields);
 
       setShowSuccess(true);
       setIsEditing(false);
@@ -209,8 +229,8 @@ export default function ProfilePage() {
               onClick={() => toggleSetting(field, opt._id)}
               disabled={!isEditing}
               className={`px-3 py-1.5 rounded-full text-sm border transition-all ${isSelected
-                  ? "bg-purple-600 text-white border-purple-600 shadow-md"
-                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                ? "bg-purple-600 text-white border-purple-600 shadow-md"
+                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
                 } ${!isEditing && !isSelected ? "hidden" : ""} `} // Khi không edit, ẩn những cái không chọn cho gọn
             >
               {opt.name}
@@ -251,7 +271,7 @@ export default function ProfilePage() {
               <h1 className="text-3xl font-bold mb-1">
                 {profile.fullName || profile.name}
               </h1>
-              <p className="text-purple-100">@{profile.email?.split("@")[0]}</p>
+              <p className="text-purple-100">{profile.email ? `@${profile.email.split("@")[0]}` : ""}</p>
             </div>
           </div>
           <button

@@ -111,7 +111,7 @@ export default function OutfitDetailPage() {
   };
 
   const handleEdit = () => {
-    router.push(`/outfits/edit/${id}`);
+    router.push(`/outfit/${id}`);
   };
 
   const handleDelete = async () => {

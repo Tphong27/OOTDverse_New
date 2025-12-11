@@ -80,7 +80,6 @@ export default function HomePage() {
   return (
     <Layout>
       {/* Hero Section */}
-      {/* Hero Section */}
       <section className="pt-24 sm:pt-32 pb-12 sm:pb-20 bg-gradient-to-b from-purple-50 via-pink-50 to-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-center">

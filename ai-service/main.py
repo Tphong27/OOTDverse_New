@@ -47,6 +47,7 @@ async def root():
     return {"status": "ok", "service": "AI Service"}
 
 @app.get("/health")
+@app.head("/health")
 async def health_check():
     return {"status": "ok"}
 

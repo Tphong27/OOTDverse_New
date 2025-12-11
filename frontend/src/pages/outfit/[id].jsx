@@ -1,34 +1,33 @@
+// frontend/src/pages/outfit/[id].jsx
 import LayoutUser from "@/components/layout/LayoutUser";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { useOutfit } from "@/context/OutfitContext";
 import { useAuth } from "@/context/AuthContext";
+import { useOutfit } from "@/context/OutfitContext";
 import {
   Heart,
   Bookmark,
   Eye,
   Star,
-  Edit2,
-  Trash2,
   Share2,
-  AlertCircle,
-  ArrowLeft,
+  Edit,
+  Trash2,
   Calendar,
-  Cloud,
+  User,
   Sparkles,
-  TrendingUp,
-  Clock,
+  ShoppingBag,
   Shirt,
-  Lock,
-  Globe,
+  ArrowLeft,
+  MoreVertical,
+  Clock,
   CheckCircle,
-  X,
 } from "lucide-react";
 
-export default function OutfitDetail() {
+export default function OutfitDetailPage() {
   const router = useRouter();
   const { id } = router.query;
   const { user } = useAuth();
+
   const {
     currentOutfit,
     loading,
@@ -40,88 +39,102 @@ export default function OutfitDetail() {
     recordWear,
     updateRating,
     groupCurrentOutfitItems,
-    getOutfitScore,
   } = useOutfit();
 
-  const [userRating, setUserRating] = useState(0);
-  const [showRatingModal, setShowRatingModal] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [userRating, setUserRating] = useState(0);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Load outfit data
   useEffect(() => {
     if (id) {
-      // Increment view khi load trang
-      fetchOutfitById(id, true);
+      fetchOutfitById(id, true); // increment view count
     }
   }, [id]);
 
+  // Initialize user interactions
   useEffect(() => {
     if (currentOutfit) {
       setUserRating(currentOutfit.user_rating || 0);
     }
   }, [currentOutfit]);
 
-  // Handle actions
+  const isOwner = user?._id === currentOutfit?.user_id?._id;
+  const groupedItems = groupCurrentOutfitItems();
+
+  // Handlers
   const handleLike = async () => {
     if (!user) {
-      router.push("/login");
+      alert("Vui lòng đăng nhập");
       return;
     }
-    const increment = !isLiked;
-    await toggleLike(id, increment);
+    await toggleLike(id, !isLiked);
     setIsLiked(!isLiked);
   };
 
   const handleSave = async () => {
     if (!user) {
-      router.push("/login");
+      alert("Vui lòng đăng nhập");
       return;
     }
-    const increment = !isSaved;
-    await toggleSave(id, increment);
+    await toggleSave(id, !isSaved);
     setIsSaved(!isSaved);
   };
 
-  const handleRecordWear = async () => {
+  const handleWear = async () => {
     if (!user) {
-      router.push("/login");
+      alert("Vui lòng đăng nhập");
       return;
     }
-    await recordWear(id);
-    alert("Đã ghi nhận mặc outfit!");
+    const result = await recordWear(id);
+    if (result.success) {
+      alert("Đã ghi nhận mặc outfit!");
+    }
   };
 
   const handleRating = async (rating) => {
     if (!user) {
-      router.push("/login");
+      alert("Vui lòng đăng nhập");
       return;
     }
+    if (!isOwner) {
+      alert("Chỉ chủ sở hữu mới có thể đánh giá");
+      return;
+    }
+
     await updateRating(id, rating);
     setUserRating(rating);
-    setShowRatingModal(false);
+    setShowRating(false);
   };
 
   const handleEdit = () => {
-    router.push(`/outfit/edit/${id}`);
+    router.push(`/outfits/edit/${id}`);
   };
 
   const handleDelete = async () => {
-    if (confirm("Bạn có chắc muốn xóa outfit này?")) {
-      const result = await deleteOutfit(id);
-      if (result.success) {
-        router.push("/outfit");
-      }
+    const result = await deleteOutfit(id);
+    if (result.success) {
+      alert("Đã xóa outfit!");
+      router.push("/outfits");
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (navigator.share) {
-      navigator.share({
-        title: currentOutfit.outfit_name,
-        text: currentOutfit.description,
-        url: window.location.href,
-      });
+      try {
+        await navigator.share({
+          title: currentOutfit.outfit_name,
+          text: currentOutfit.description,
+          url: window.location.href,
+        });
+      } catch (err) {
+        console.log("Share failed:", err);
+      }
     } else {
+      // Fallback: copy link
       navigator.clipboard.writeText(window.location.href);
       alert("Đã copy link!");
     }
@@ -129,427 +142,452 @@ export default function OutfitDetail() {
 
   if (loading) {
     return (
-      <LayoutUser>
-        <div className="flex items-center justify-center py-40">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600"></div>
-        </div>
-      </LayoutUser>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
     );
   }
 
   if (error || !currentOutfit) {
     return (
-      <LayoutUser>
-        <div className="text-center py-20 bg-white rounded-2xl">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Không tìm thấy outfit
-          </h3>
-          <p className="text-gray-600 mb-6">
-            Outfit này không tồn tại hoặc đã bị xóa.
-          </p>
-          <button
-            onClick={() => router.push("/outfit")}
-            className="px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-all"
-          >
-            Quay lại danh sách
-          </button>
-        </div>
-      </LayoutUser>
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <p className="text-red-600 mb-4">{error || "Không tìm thấy outfit"}</p>
+        <button
+          onClick={() => router.back()}
+          className="text-blue-600 hover:underline"
+        >
+          Quay lại
+        </button>
+      </div>
     );
   }
 
-  const isOwner = user && currentOutfit.user_id?._id === user._id;
-  const groupedItems = groupCurrentOutfitItems();
-  const score = getOutfitScore(currentOutfit);
-
   return (
     <LayoutUser>
-      <div className="space-y-6">
-        {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Quay lại</span>
-        </button>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => router.back()}
+                className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+              >
+                <ArrowLeft size={20} />
+                Quay lại
+              </button>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: Image */}
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="relative aspect-square">
-              <img
-                src={
-                  currentOutfit.full_image_url ||
-                  currentOutfit.thumbnail_url ||
-                  "/placeholder-outfit.jpg"
-                }
-                alt={currentOutfit.outfit_name}
-                className="w-full h-full object-cover"
-              />
+              <div className="flex items-center gap-2">
+                {/* Share */}
+                <button
+                  onClick={handleShare}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <Share2 size={20} />
+                </button>
 
-              {currentOutfit.is_featured && (
-                <div className="absolute top-4 left-4 px-4 py-2 bg-yellow-400 text-black font-bold rounded-full shadow-lg">
-                  ⭐ Featured
-                </div>
-              )}
+                {/* Owner actions */}
+                {isOwner && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowMenu(!showMenu)}
+                      className="p-2 hover:bg-gray-100 rounded-full"
+                    >
+                      <MoreVertical size={20} />
+                    </button>
 
-              {!currentOutfit.is_public && (
-                <div className="absolute top-4 right-4 px-4 py-2 bg-black/70 text-white font-medium rounded-full shadow-lg flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  Riêng tư
-                </div>
-              )}
-            </div>
-
-            {/* Stats Bar */}
-            <div className="p-4 bg-gray-50 border-t flex justify-between items-center">
-              <div className="flex gap-4 text-sm text-gray-600">
-                <span className="flex items-center gap-1">
-                  <Eye className="w-4 h-4" />
-                  {currentOutfit.view_count || 0}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Heart className="w-4 h-4" />
-                  {currentOutfit.like_count || 0}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Bookmark className="w-4 h-4" />
-                  {currentOutfit.save_count || 0}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Shirt className="w-4 h-4" />
-                  Mặc {currentOutfit.wear_count || 0} lần
-                </span>
+                    {showMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-20">
+                        <button
+                          onClick={() => {
+                            handleEdit();
+                            setShowMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-50 text-left"
+                        >
+                          <Edit size={16} />
+                          Chỉnh sửa
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowDeleteConfirm(true);
+                            setShowMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-50 text-left text-red-600"
+                        >
+                          <Trash2 size={16} />
+                          Xóa outfit
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <span className="text-sm font-semibold text-purple-600">
-                Score: {score}%
-              </span>
             </div>
           </div>
+        </div>
 
-          {/* Right: Details */}
-          <div className="space-y-6">
-            {/* Header */}
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {currentOutfit.outfit_name}
-              </h1>
+        <div className="container mx-auto px-4 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: Image & Stats */}
+            <div className="space-y-4">
+              {/* Main Image */}
+              <div className="bg-white rounded-lg overflow-hidden shadow">
+                <div className="aspect-[3/4] bg-gray-100">
+                  {currentOutfit.full_image_url ||
+                  currentOutfit.thumbnail_url ? (
+                    <img
+                      src={
+                        currentOutfit.full_image_url ||
+                        currentOutfit.thumbnail_url
+                      }
+                      alt={currentOutfit.outfit_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <Shirt size={64} />
+                    </div>
+                  )}
+                </div>
 
-              {/* User Info */}
-              <div className="flex items-center gap-3 mb-4">
-                <img
-                  src={currentOutfit.user_id?.avatar || "/default-avatar.png"}
-                  alt={currentOutfit.user_id?.fullName}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                <div>
-                  <p className="font-medium text-gray-900">
-                    {currentOutfit.user_id?.fullName}
+                {/* Action Buttons */}
+                <div className="p-4 flex gap-3">
+                  <button
+                    onClick={handleLike}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-medium ${
+                      isLiked
+                        ? "bg-red-50 text-red-600"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    <Heart size={20} fill={isLiked ? "currentColor" : "none"} />
+                    {currentOutfit.like_count || 0}
+                  </button>
+
+                  <button
+                    onClick={handleSave}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-medium ${
+                      isSaved
+                        ? "bg-blue-50 text-blue-600"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    <Bookmark
+                      size={20}
+                      fill={isSaved ? "currentColor" : "none"}
+                    />
+                    {currentOutfit.save_count || 0}
+                  </button>
+
+                  {isOwner && (
+                    <button
+                      onClick={handleWear}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-100 text-green-700 rounded-lg font-medium hover:bg-green-200"
+                    >
+                      <CheckCircle size={20} />
+                      Đã mặc
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="bg-white rounded-lg shadow p-4">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="flex items-center justify-center gap-1 text-gray-600 mb-1">
+                      <Eye size={18} />
+                    </div>
+                    <p className="text-2xl font-bold">
+                      {currentOutfit.view_count || 0}
+                    </p>
+                    <p className="text-sm text-gray-500">Lượt xem</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-center gap-1 text-gray-600 mb-1">
+                      <Heart size={18} />
+                    </div>
+                    <p className="text-2xl font-bold">
+                      {currentOutfit.like_count || 0}
+                    </p>
+                    <p className="text-sm text-gray-500">Thích</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-center gap-1 text-gray-600 mb-1">
+                      <ShoppingBag size={18} />
+                    </div>
+                    <p className="text-2xl font-bold">
+                      {currentOutfit.wear_count || 0}
+                    </p>
+                    <p className="text-sm text-gray-500">Đã mặc</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Details */}
+            <div className="space-y-4">
+              {/* Basic Info */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h1 className="text-3xl font-bold mb-2">
+                      {currentOutfit.outfit_name}
+                    </h1>
+
+                    {currentOutfit.user_id && (
+                      <div className="flex items-center gap-2 text-gray-600 mb-3">
+                        <User size={18} />
+                        <span>{currentOutfit.user_id.fullName}</span>
+                      </div>
+                    )}
+
+                    {currentOutfit.ai_suggested && (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+                        <Sparkles size={14} />
+                        AI Suggest
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Rating */}
+                  {isOwner && (
+                    <div className="text-right">
+                      <button
+                        onClick={() => setShowRating(!showRating)}
+                        className="flex items-center gap-1 text-yellow-600 hover:text-yellow-700"
+                      >
+                        <Star
+                          size={20}
+                          fill={userRating > 0 ? "currentColor" : "none"}
+                        />
+                        <span className="text-lg font-semibold">
+                          {userRating > 0 ? `${userRating}/5` : "Đánh giá"}
+                        </span>
+                      </button>
+
+                      {showRating && (
+                        <div className="mt-2 flex gap-1">
+                          {[1, 2, 3, 4, 5].map((rating) => (
+                            <button
+                              key={rating}
+                              onClick={() => handleRating(rating)}
+                              className="hover:scale-110 transition-transform"
+                            >
+                              <Star
+                                size={24}
+                                fill={rating <= userRating ? "#EAB308" : "none"}
+                                className={
+                                  rating <= userRating
+                                    ? "text-yellow-500"
+                                    : "text-gray-300"
+                                }
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                {currentOutfit.description && (
+                  <p className="text-gray-700 mb-4">
+                    {currentOutfit.description}
                   </p>
-                  <p className="text-sm text-gray-500">
+                )}
+
+                {/* Tags */}
+                {currentOutfit.tags && currentOutfit.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {currentOutfit.tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Metadata */}
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t">
+                  {currentOutfit.style_id && (
+                    <div>
+                      <p className="text-sm text-gray-500">Phong cách</p>
+                      <p className="font-medium">
+                        {currentOutfit.style_id.name}
+                      </p>
+                    </div>
+                  )}
+                  {currentOutfit.occasion_id && (
+                    <div>
+                      <p className="text-sm text-gray-500">Dịp</p>
+                      <p className="font-medium">
+                        {currentOutfit.occasion_id.name}
+                      </p>
+                    </div>
+                  )}
+                  {currentOutfit.season_id && (
+                    <div>
+                      <p className="text-sm text-gray-500">Mùa</p>
+                      <p className="font-medium">
+                        {currentOutfit.season_id.name}
+                      </p>
+                    </div>
+                  )}
+                  {currentOutfit.weather_id && (
+                    <div>
+                      <p className="text-sm text-gray-500">Thời tiết</p>
+                      <p className="font-medium">
+                        {currentOutfit.weather_id.name}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dates */}
+                <div className="flex items-center gap-4 mt-4 pt-4 border-t text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <Calendar size={16} />
+                    Tạo:{" "}
                     {new Date(currentOutfit.created_date).toLocaleDateString(
                       "vi-VN"
                     )}
-                  </p>
-                </div>
-              </div>
-
-              {/* Tags */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {currentOutfit.style_id && (
-                  <span className="px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-full font-medium flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    {currentOutfit.style_id.name}
-                  </span>
-                )}
-                {currentOutfit.occasion_id && (
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full font-medium flex items-center gap-1">
-                    <Star className="w-3 h-3" />
-                    {currentOutfit.occasion_id.name}
-                  </span>
-                )}
-                {currentOutfit.season_id && (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full font-medium flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    {currentOutfit.season_id.name}
-                  </span>
-                )}
-                {currentOutfit.weather_id && (
-                  <span className="px-3 py-1 bg-orange-100 text-orange-700 text-sm rounded-full font-medium flex items-center gap-1">
-                    <Cloud className="w-3 h-3" />
-                    {currentOutfit.weather_id.name}
-                  </span>
-                )}
-              </div>
-
-              {/* Description */}
-              {currentOutfit.description && (
-                <div className="mb-4">
-                  <p className="text-gray-700 leading-relaxed">
-                    {currentOutfit.description}
-                  </p>
-                </div>
-              )}
-
-              {/* Custom Tags */}
-              {currentOutfit.tags && currentOutfit.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {currentOutfit.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Rating */}
-              <div className="flex items-center gap-2 mb-6">
-                <span className="text-sm text-gray-600">Đánh giá:</span>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-5 h-5 cursor-pointer transition-all ${
-                        star <= (userRating || 0)
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-gray-300"
-                      }`}
-                      onClick={() => isOwner && setShowRatingModal(true)}
-                    />
-                  ))}
-                </div>
-                {isOwner && (
-                  <button
-                    onClick={() => setShowRatingModal(true)}
-                    className="text-xs text-purple-600 hover:text-purple-700 font-medium"
-                  >
-                    Đánh giá
-                  </button>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-3">
-                {isOwner ? (
-                  <>
-                    <button
-                      onClick={handleEdit}
-                      className="px-4 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      Chỉnh sửa
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      className="px-4 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Xóa
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleLike}
-                      className={`px-4 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                        isLiked
-                          ? "bg-red-600 text-white"
-                          : "bg-red-50 text-red-600 hover:bg-red-100"
-                      }`}
-                    >
-                      <Heart className={isLiked ? "fill-white" : ""} />
-                      Like
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      className={`px-4 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                        isSaved
-                          ? "bg-blue-600 text-white"
-                          : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                      }`}
-                    >
-                      <Bookmark className={isSaved ? "fill-white" : ""} />
-                      Save
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {isOwner && (
-                <button
-                  onClick={handleRecordWear}
-                  className="w-full mt-3 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Ghi nhận mặc hôm nay
-                </button>
-              )}
-
-              <button
-                onClick={handleShare}
-                className="w-full mt-3 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
-              >
-                <Share2 className="w-4 h-4" />
-                Chia sẻ
-              </button>
-            </div>
-
-            {/* Additional Info */}
-            {(currentOutfit.notes || currentOutfit.last_worn_date) && (
-              <div className="bg-white rounded-2xl shadow-sm p-6">
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  Thông tin thêm
-                </h3>
-
-                {currentOutfit.last_worn_date && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                    <Clock className="w-4 h-4" />
-                    <span>
+                  </div>
+                  {currentOutfit.last_worn_date && (
+                    <div className="flex items-center gap-1">
+                      <Clock size={16} />
                       Mặc lần cuối:{" "}
                       {new Date(
                         currentOutfit.last_worn_date
                       ).toLocaleDateString("vi-VN")}
-                    </span>
-                  </div>
-                )}
-
-                {currentOutfit.notes && (
-                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-gray-700">
-                      {currentOutfit.notes}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Outfit Items */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <Shirt className="w-6 h-6" />
-            Items trong outfit ({currentOutfit.items?.length || 0})
-          </h2>
-
-          {currentOutfit.items && currentOutfit.items.length > 0 ? (
-            <div className="space-y-6">
-              {Object.entries(groupedItems).map(([position, items]) => {
-                if (items.length === 0) return null;
-
-                return (
-                  <div key={position}>
-                    <h3 className="font-semibold text-gray-700 mb-3 capitalize">
-                      {position} ({items.length})
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {items.map((outfitItem) => (
-                        <OutfitItemCard
-                          key={outfitItem._id}
-                          outfitItem={outfitItem}
-                        />
-                      ))}
                     </div>
-                  </div>
-                );
-              })}
+                  )}
+                </div>
+              </div>
+
+              {/* Items in Outfit */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-xl font-semibold mb-4">
+                  Món đồ trong Outfit ({currentOutfit.items?.length || 0})
+                </h2>
+
+                <div className="space-y-4">
+                  {Object.entries(groupedItems).map(([position, items]) => {
+                    if (items.length === 0) return null;
+
+                    const positionLabels = {
+                      head: "Đầu",
+                      top: "Trên",
+                      bottom: "Dưới",
+                      footwear: "Giày dép",
+                      accessories: "Phụ kiện",
+                      other: "Khác",
+                    };
+
+                    return (
+                      <div key={position}>
+                        <h3 className="text-sm font-medium text-gray-500 mb-2">
+                          {positionLabels[position]}
+                        </h3>
+                        <div className="space-y-2">
+                          {items.map((outfitItem) => {
+                            const item = outfitItem.item_id;
+                            return (
+                              <div
+                                key={outfitItem._id}
+                                className="flex gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                                onClick={() =>
+                                  router.push(`/wardrobe/${item._id}`)
+                                }
+                              >
+                                <div className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-gray-100">
+                                  <img
+                                    src={item.image_url}
+                                    alt={item.item_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">
+                                    {item.item_name}
+                                  </p>
+                                  <p className="text-sm text-gray-500">
+                                    {item.category_id?.name}
+                                  </p>
+
+                                  {outfitItem.styling_note && (
+                                    <p className="text-xs text-gray-400 mt-1 italic">
+                                      "{outfitItem.styling_note}"
+                                    </p>
+                                  )}
+
+                                  <div className="flex gap-2 mt-1">
+                                    {outfitItem.layer_position && (
+                                      <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded">
+                                        {outfitItem.layer_position}
+                                      </span>
+                                    )}
+                                    {outfitItem.is_optional && (
+                                      <span className="text-xs px-2 py-0.5 bg-orange-50 text-orange-700 rounded">
+                                        Optional
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Private Notes (Owner only) */}
+              {isOwner && currentOutfit.notes && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                  <h3 className="font-semibold mb-2">Ghi chú riêng tư</h3>
+                  <p className="text-gray-700">{currentOutfit.notes}</p>
+                </div>
+              )}
             </div>
-          ) : (
-            <p className="text-gray-500 text-center py-8">
-              Không có item nào trong outfit này
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Rating Modal */}
-      {showRatingModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900">
-                Đánh giá outfit
-              </h3>
-              <button
-                onClick={() => setShowRatingModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-gray-600 mb-6">
-              Bạn đánh giá outfit này như thế nào?
-            </p>
-
-            <div className="flex justify-center gap-2 mb-6">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star
-                  key={star}
-                  className={`w-12 h-12 cursor-pointer transition-all hover:scale-110 ${
-                    star <= userRating
-                      ? "fill-yellow-400 text-yellow-400"
-                      : "text-gray-300 hover:text-yellow-400"
-                  }`}
-                  onClick={() => handleRating(star)}
-                />
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowRatingModal(false)}
-              className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all"
-            >
-              Hủy
-            </button>
           </div>
         </div>
-      )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full">
+              <h3 className="text-xl font-bold mb-3">Xác nhận xóa</h3>
+              <p className="text-gray-600 mb-6">
+                Bạn có chắc muốn xóa outfit "{currentOutfit.outfit_name}"? Hành
+                động này không thể hoàn tác.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </LayoutUser>
   );
 }
-
-// Outfit Item Card Component
-const OutfitItemCard = ({ outfitItem }) => {
-  const item = outfitItem.item_id;
-
-  return (
-    <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 hover:shadow-md transition-all">
-      <div className="relative aspect-square">
-        <img
-          src={item.image_url || "/placeholder-item.jpg"}
-          alt={item.name}
-          className="w-full h-full object-cover"
-        />
-        {outfitItem.is_optional && (
-          <div className="absolute top-2 right-2 px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded">
-            Optional
-          </div>
-        )}
-        {outfitItem.layer_position && (
-          <div className="absolute top-2 left-2 px-2 py-1 bg-black/70 text-white text-xs font-medium rounded">
-            {outfitItem.layer_position}
-          </div>
-        )}
-      </div>
-
-      <div className="p-3">
-        <p className="font-medium text-gray-900 text-sm truncate mb-1">
-          {item.item_name}
-        </p>
-        <p className="text-xs text-gray-500">{item.category_id?.name}</p>
-        {outfitItem.styling_note && (
-          <p className="text-xs text-gray-600 mt-2 italic line-clamp-2">
-            "{outfitItem.styling_note}"
-          </p>
-        )}
-      </div>
-    </div>
-  );
-};

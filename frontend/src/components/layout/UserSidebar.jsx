@@ -104,12 +104,14 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
       {/* Overlay */}
       {isSidebarOpen && (
         <div
+          suppressHydrationWarning={true}
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-20 lg:hidden animate-fade-in"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       <aside
+        suppressHydrationWarning={true}
         className={`fixed top-0 left-0 z-30 h-full w-72 bg-white border-r overflow-y-auto transition-transform duration-300 ease-in-out lg:static lg:translate-x-0
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
         `}
@@ -139,28 +141,25 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
                 onClick={() =>
                   window.innerWidth < 1024 && setIsSidebarOpen(false)
                 }
-                className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-medium transition-all duration-200 group relative ${
-                  isActive
-                    ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-200"
-                    : "text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700"
-                }`}
+                className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-medium transition-all duration-200 group relative ${isActive
+                  ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-200"
+                  : "text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700"
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <Icon
-                    className={`w-5 h-5 transition-transform group-hover:scale-110 ${
-                      isActive
-                        ? "text-white"
-                        : "text-gray-400 group-hover:text-purple-600"
-                    }`}
+                    className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive
+                      ? "text-white"
+                      : "text-gray-400 group-hover:text-purple-600"
+                      }`}
                   />
                   <span>{item.label}</span>
                 </div>
                 <ChevronRight
-                  className={`w-4 h-4 transition-all ${
-                    isActive
-                      ? "opacity-100 translate-x-0"
-                      : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
-                  }`}
+                  className={`w-4 h-4 transition-all ${isActive
+                    ? "opacity-100 translate-x-0"
+                    : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
+                    }`}
                 />
               </Link>
             );

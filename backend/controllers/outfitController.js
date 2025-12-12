@@ -472,16 +472,38 @@ exports.updateRating = async (req, res) => {
 exports.getUserOutfits = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { is_public, page = 1, limit = 20 } = req.query;
+    const { 
+      is_public, 
+      page = 1, 
+      limit = 20,
+      style_id,
+      occasion_id,
+      season_id,
+      weather_id,
+      sort_by = "newest"
+    } = req.query;
 
     const filter = { user_id: userId };
+    
+    // Optional filters
     if (is_public !== undefined) filter.is_public = is_public === "true";
+    if (style_id) filter.style_id = style_id;
+    if (occasion_id) filter.occasion_id = occasion_id;
+    if (season_id) filter.season_id = season_id;
+    if (weather_id) filter.weather_id = weather_id;
+
+    // Sort options
+    let sortOption = { created_date: -1 }; // Default: newest
+    if (sort_by === "popular") sortOption = { view_count: -1, like_count: -1 };
+    if (sort_by === "rating") sortOption = { user_rating: -1 };
+    if (sort_by === "most_worn") sortOption = { wear_count: -1 };
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const outfits = await Outfit.find(filter)
+      .populate("user_id", "fullName avatar") // ← Populate user info
       .populate("style_id occasion_id season_id weather_id", "name value")
-      .sort({ created_date: -1 })
+      .sort(sortOption)
       .skip(skip)
       .limit(parseInt(limit));
 

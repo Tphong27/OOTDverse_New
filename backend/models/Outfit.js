@@ -21,27 +21,27 @@ const OutfitSchema = new mongoose.Schema(
 
     // === References to Settings ===
     style_id: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: [mongoose.Schema.Types.ObjectId],
       ref: "Setting",
-      default: null,
+      default: [],
     },
 
     occasion_id: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: [mongoose.Schema.Types.ObjectId],
       ref: "Setting",
-      default: null,
+      default: [],
     },
 
     season_id: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: [mongoose.Schema.Types.ObjectId],
       ref: "Setting",
-      default: null,
+      default: [],
     },
 
     weather_id: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: [mongoose.Schema.Types.ObjectId],
       ref: "Setting",
-      default: null,
+      default: [],
     },
 
     // === Visibility & Features ===

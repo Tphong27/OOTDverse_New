@@ -169,10 +169,10 @@ export default function OutfitPage() {
             <div>
               <h1 className="text-3xl md:text-4xl font-bold mb-2 flex items-center gap-3">
                 <Shirt className="w-8 h-8" />
-                Outfit Collection
+                Bộ sưu tập thời trang
               </h1>
               <p className="text-white/90 text-lg">
-                {filteredOutfits.length} outfits
+                {filteredOutfits.length} trang phục
               </p>
             </div>
             <button
@@ -180,7 +180,7 @@ export default function OutfitPage() {
               className="bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold hover:bg-purple-50 transition-all shadow-lg hover:shadow-xl flex items-center gap-2 group"
             >
               <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-              Tạo Outfit
+              Phối đồ
             </button>
           </div>
 

@@ -54,6 +54,14 @@ export default function OutfitPage() {
   });
   const [searchQuery, setSearchQuery] = useState("");
 
+  useEffect(() => {
+    if (user) {
+      setActiveTab("my-outfits");
+    } else {
+      setActiveTab("explore");
+    }
+  }, [user]);
+  
   // Lấy outfits theo tab
   useEffect(() => {
     if (activeTab === "explore") {

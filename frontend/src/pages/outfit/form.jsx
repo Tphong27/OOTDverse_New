@@ -8,45 +8,41 @@ import { useWardrobe } from "@/context/WardrobeContext";
 import {
   X,
   Plus,
-  Image as ImageIcon,
   Save,
   Trash2,
   Search,
-  Check,
-  Shirt,
   ChevronDown,
   ChevronUp,
-  GripVertical,
   Eye,
   EyeOff,
+  Shirt,
+  Check,
 } from "lucide-react";
 
 export default function OutfitFormPage() {
   const router = useRouter();
-
   const id = router.query.id;
   const isEditMode = !!id;
 
   const { user } = useAuth();
-  const { createOutfit, updateOutfit, fetchOutfitById, currentOutfit } =
-    useOutfit();
+  const { createOutfit, updateOutfit, fetchOutfitById } = useOutfit();
   const { styles, occasions, seasons, weatherTypes } = useSettings();
   const { items: wardrobeItems } = useWardrobe();
 
   // Form state
   const [formData, setFormData] = useState({
     outfit_name: "",
-    style_id: null,
-    occasion_id: null,
-    season_id: null,
-    weather_id: null,
+    style_id: [],
+    occasion_id: [],
+    season_id: [],
+    weather_id: [],
     is_public: true,
     thumbnail_url: "",
     full_image_url: "",
     tags: [],
     description: "",
     notes: "",
-    items: [], // Array of selected items
+    items: [],
   });
 
   const [newTag, setNewTag] = useState("");
@@ -69,10 +65,26 @@ export default function OutfitFormPage() {
       if (outfit) {
         setFormData({
           outfit_name: outfit.outfit_name || "",
-          style_id: outfit.style_id?._id || null,
-          occasion_id: outfit.occasion_id?._id || null,
-          season_id: outfit.season_id?._id || null,
-          weather_id: outfit.weather_id?._id || null,
+          style_id: Array.isArray(outfit.style_id)
+            ? outfit.style_id.map((s) => s._id || s)
+            : outfit.style_id?._id
+            ? [outfit.style_id._id]
+            : [],
+          occasion_id: Array.isArray(outfit.occasion_id)
+            ? outfit.occasion_id.map((o) => o._id || o)
+            : outfit.occasion_id?._id
+            ? [outfit.occasion_id._id]
+            : [],
+          season_id: Array.isArray(outfit.season_id)
+            ? outfit.season_id.map((season) => season._id || season)
+            : outfit.season_id?._id
+            ? [outfit.season_id._id]
+            : [],
+          weather_id: Array.isArray(outfit.weather_id)
+            ? outfit.weather_id.map((w) => w._id || w)
+            : outfit.weather_id?._id
+            ? [outfit.weather_id._id]
+            : [],
           is_public: outfit.is_public !== undefined ? outfit.is_public : true,
           thumbnail_url: outfit.thumbnail_url || "",
           full_image_url: outfit.full_image_url || "",
@@ -96,13 +108,22 @@ export default function OutfitFormPage() {
     }
   };
 
-  // Handle form changes
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors([]); // Clear errors when user types
+    setErrors([]);
   };
 
-  // Handle add tag
+  // Toggle checkbox for multi-select fields
+  const handleToggleCheckbox = (field, id) => {
+    setFormData((prev) => {
+      const currentArray = prev[field] || [];
+      const newArray = currentArray.includes(id)
+        ? currentArray.filter((item) => item !== id)
+        : [...currentArray, id];
+      return { ...prev, [field]: newArray };
+    });
+  };
+
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
       handleChange("tags", [...formData.tags, newTag.trim()]);
@@ -110,7 +131,6 @@ export default function OutfitFormPage() {
     }
   };
 
-  // Handle remove tag
   const handleRemoveTag = (tagToRemove) => {
     handleChange(
       "tags",
@@ -118,7 +138,6 @@ export default function OutfitFormPage() {
     );
   };
 
-  // Handle add item to outfit
   const handleAddItem = (item) => {
     if (formData.items.some((i) => i.item_id === item._id)) {
       alert("Item này đã có trong outfit");
@@ -142,7 +161,6 @@ export default function OutfitFormPage() {
     handleChange("items", [...formData.items, newItem]);
   };
 
-  // Handle remove item
   const handleRemoveItem = (itemId) => {
     handleChange(
       "items",
@@ -150,7 +168,6 @@ export default function OutfitFormPage() {
     );
   };
 
-  // Handle update item details
   const handleUpdateItemDetail = (itemId, field, value) => {
     handleChange(
       "items",
@@ -160,7 +177,6 @@ export default function OutfitFormPage() {
     );
   };
 
-  // Handle reorder items
   const handleMoveItem = (index, direction) => {
     const newItems = [...formData.items];
     const newIndex = direction === "up" ? index - 1 : index + 1;
@@ -172,7 +188,6 @@ export default function OutfitFormPage() {
       newItems[index],
     ];
 
-    // Update display_order
     newItems.forEach((item, idx) => {
       item.display_order = idx;
     });
@@ -180,7 +195,6 @@ export default function OutfitFormPage() {
     handleChange("items", newItems);
   };
 
-  // Validate form
   const validateForm = () => {
     const newErrors = [];
 
@@ -202,7 +216,6 @@ export default function OutfitFormPage() {
     return newErrors.length === 0;
   };
 
-  // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -234,7 +247,6 @@ export default function OutfitFormPage() {
 
       if (response.success) {
         alert(`${isEditMode ? "Cập nhật" : "Tạo"} outfit thành công!`);
-        // router.push(`/outfits/${response.data._id}`);
         router.push("/outfit/outfit");
       }
     } catch (error) {
@@ -245,7 +257,6 @@ export default function OutfitFormPage() {
     }
   };
 
-  // Filter wardrobe items
   const filteredWardrobeItems = wardrobeItems.filter((item) => {
     const matchesSearch = item.item_name
       ?.toLowerCase()
@@ -257,7 +268,6 @@ export default function OutfitFormPage() {
     return matchesSearch && matchesCategory && notSelected;
   });
 
-  // Get unique categories from wardrobe
   const categories = Array.from(
     new Set(wardrobeItems.map((item) => item.category_id?._id).filter(Boolean))
   ).map(
@@ -277,7 +287,6 @@ export default function OutfitFormPage() {
     <LayoutUser>
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-6 max-w-6xl">
-          {/* Header */}
           <div className="mb-6">
             <button
               onClick={() => router.back()}
@@ -290,7 +299,6 @@ export default function OutfitFormPage() {
             </h1>
           </div>
 
-          {/* Error Messages */}
           {errors.length > 0 && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <ul className="list-disc list-inside text-red-700">
@@ -307,7 +315,6 @@ export default function OutfitFormPage() {
               <h2 className="text-xl font-semibold mb-4">Thông tin cơ bản</h2>
 
               <div className="space-y-4">
-                {/* Outfit Name */}
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     Tên Outfit <span className="text-red-500">*</span>
@@ -324,7 +331,6 @@ export default function OutfitFormPage() {
                   />
                 </div>
 
-                {/* Description */}
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     Mô tả
@@ -340,90 +346,140 @@ export default function OutfitFormPage() {
                   />
                 </div>
 
-                {/* Settings Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Style */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
+                {/* Checkboxes Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Style Checkboxes */}
+                  <div className="border rounded-lg p-4">
+                    <label className="block text-sm font-medium mb-3">
                       Phong cách
                     </label>
-                    <select
-                      value={formData.style_id || ""}
-                      onChange={(e) =>
-                        handleChange("style_id", e.target.value || null)
-                      }
-                      className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Chọn phong cách</option>
+                    <div className="space-y-2 h-48 overflow-y-auto">
                       {styles.map((style) => (
-                        <option key={style._id} value={style._id}>
-                          {style.name}
-                        </option>
+                        <label
+                          key={style._id}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.style_id.includes(style._id)}
+                            onChange={() =>
+                              handleToggleCheckbox("style_id", style._id)
+                            }
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">{style.name}</span>
+                          {formData.style_id.includes(style._id) && (
+                            <Check className="w-4 h-4 text-blue-600 ml-auto" />
+                          )}
+                        </label>
                       ))}
-                    </select>
+                    </div>
+                    {formData.style_id.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Đã chọn: {formData.style_id.length}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Occasion */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
+                  {/* Occasion Checkboxes */}
+                  <div className="border rounded-lg p-4">
+                    <label className="block text-sm font-medium mb-3">
                       Dịp
                     </label>
-                    <select
-                      value={formData.occasion_id || ""}
-                      onChange={(e) =>
-                        handleChange("occasion_id", e.target.value || null)
-                      }
-                      className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Chọn dịp</option>
+                    <div className="space-y-2 h-48 overflow-y-auto">
                       {occasions.map((occasion) => (
-                        <option key={occasion._id} value={occasion._id}>
-                          {occasion.name}
-                        </option>
+                        <label
+                          key={occasion._id}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.occasion_id.includes(
+                              occasion._id
+                            )}
+                            onChange={() =>
+                              handleToggleCheckbox("occasion_id", occasion._id)
+                            }
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">{occasion.name}</span>
+                          {formData.occasion_id.includes(occasion._id) && (
+                            <Check className="w-4 h-4 text-blue-600 ml-auto" />
+                          )}
+                        </label>
                       ))}
-                    </select>
+                    </div>
+                    {formData.occasion_id.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Đã chọn: {formData.occasion_id.length}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Season */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
+                  {/* Season Checkboxes */}
+                  <div className="border rounded-lg p-4">
+                    <label className="block text-sm font-medium mb-3">
                       Mùa
                     </label>
-                    <select
-                      value={formData.season_id || ""}
-                      onChange={(e) =>
-                        handleChange("season_id", e.target.value || null)
-                      }
-                      className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Chọn mùa</option>
+                    <div className="space-y-2 h-48 overflow-y-auto">
                       {seasons.map((season) => (
-                        <option key={season._id} value={season._id}>
-                          {season.name}
-                        </option>
+                        <label
+                          key={season._id}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.season_id.includes(season._id)}
+                            onChange={() =>
+                              handleToggleCheckbox("season_id", season._id)
+                            }
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">{season.name}</span>
+                          {formData.season_id.includes(season._id) && (
+                            <Check className="w-4 h-4 text-blue-600 ml-auto" />
+                          )}
+                        </label>
                       ))}
-                    </select>
+                    </div>
+                    {formData.season_id.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Đã chọn: {formData.season_id.length}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Weather */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
+                  {/* Weather Checkboxes */}
+                  <div className="border rounded-lg p-4">
+                    <label className="block text-sm font-medium mb-3">
                       Thời tiết
                     </label>
-                    <select
-                      value={formData.weather_id || ""}
-                      onChange={(e) =>
-                        handleChange("weather_id", e.target.value || null)
-                      }
-                      className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Chọn thời tiết</option>
+                    <div className="space-y-2 h-48 overflow-y-auto">
                       {weatherTypes.map((weather) => (
-                        <option key={weather._id} value={weather._id}>
-                          {weather.name}
-                        </option>
+                        <label
+                          key={weather._id}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.weather_id.includes(weather._id)}
+                            onChange={() =>
+                              handleToggleCheckbox("weather_id", weather._id)
+                            }
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">{weather.name}</span>
+                          {formData.weather_id.includes(weather._id) && (
+                            <Check className="w-4 h-4 text-blue-600 ml-auto" />
+                          )}
+                        </label>
                       ))}
-                    </select>
+                    </div>
+                    {formData.weather_id.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Đã chọn: {formData.weather_id.length}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -487,7 +543,7 @@ export default function OutfitFormPage() {
               </div>
             </div>
 
-            {/* Items Selection */}
+            {/* Items Selection - Keep existing code */}
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">
@@ -504,7 +560,6 @@ export default function OutfitFormPage() {
                 </button>
               </div>
 
-              {/* Item Picker Modal */}
               {showItemPicker && (
                 <div className="mb-4 p-4 border rounded-lg bg-gray-50">
                   <div className="flex items-center justify-between mb-3">
@@ -518,7 +573,6 @@ export default function OutfitFormPage() {
                     </button>
                   </div>
 
-                  {/* Search & Filter */}
                   <div className="flex gap-2 mb-3">
                     <div className="flex-1 relative">
                       <Search
@@ -547,7 +601,6 @@ export default function OutfitFormPage() {
                     </select>
                   </div>
 
-                  {/* Items Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
                     {filteredWardrobeItems.map((item) => (
                       <div
@@ -582,7 +635,6 @@ export default function OutfitFormPage() {
                 </div>
               )}
 
-              {/* Selected Items List */}
               {formData.items.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <Shirt size={48} className="mx-auto mb-3 opacity-50" />
@@ -595,7 +647,6 @@ export default function OutfitFormPage() {
                       key={item.item_id}
                       className="flex gap-3 p-3 border rounded-lg hover:bg-gray-50"
                     >
-                      {/* Reorder buttons */}
                       <div className="flex flex-col gap-1">
                         <button
                           type="button"
@@ -615,7 +666,6 @@ export default function OutfitFormPage() {
                         </button>
                       </div>
 
-                      {/* Item image */}
                       <div className="w-20 h-20 flex-shrink-0 rounded overflow-hidden bg-gray-100">
                         <img
                           src={item.item_data?.image_url}
@@ -624,7 +674,6 @@ export default function OutfitFormPage() {
                         />
                       </div>
 
-                      {/* Item details */}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">
                           {item.item_data?.item_name}
@@ -634,7 +683,6 @@ export default function OutfitFormPage() {
                         </p>
 
                         <div className="grid grid-cols-2 gap-2 mt-2">
-                          {/* Layer Position */}
                           <select
                             value={item.layer_position || ""}
                             onChange={(e) =>
@@ -647,12 +695,11 @@ export default function OutfitFormPage() {
                             className="text-sm p-1 border rounded"
                           >
                             <option value="">Layer</option>
-                            <option value="base">Base</option>
-                            <option value="mid">Mid</option>
-                            <option value="outer">Outer</option>
+                            <option value="base">Lớp trong</option>
+                            <option value="mid">Lớp giữa</option>
+                            <option value="outer">Lớp ngoài</option>
                           </select>
 
-                          {/* Optional toggle */}
                           <button
                             type="button"
                             onClick={() =>
@@ -677,7 +724,6 @@ export default function OutfitFormPage() {
                           </button>
                         </div>
 
-                        {/* Styling Note */}
                         <input
                           type="text"
                           value={item.styling_note || ""}
@@ -693,7 +739,6 @@ export default function OutfitFormPage() {
                         />
                       </div>
 
-                      {/* Remove button */}
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(item.item_id)}

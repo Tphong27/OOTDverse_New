@@ -120,7 +120,7 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
         <div className="h-16 flex items-center px-6 border-b border-purple-50 bg-gradient-to-r from-purple-50 to-pink-50">
           <Link href="/user/dashboard" className="flex items-center gap-3 group">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:shadow-purple-300 group-hover:scale-110 transition-all">
-              O
+              Logo
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
               OOTDverse

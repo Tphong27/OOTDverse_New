@@ -237,7 +237,7 @@ export default function OutfitPage() {
                 }`}
               >
                 <Grid3x3 className="w-4 h-4" />
-                Lưới
+                
               </button>
               <button
                 onClick={() => setViewMode("list")}
@@ -248,7 +248,6 @@ export default function OutfitPage() {
                 }`}
               >
                 <List className="w-4 h-4" />
-                Danh sách
               </button>
             </div>
           </div>

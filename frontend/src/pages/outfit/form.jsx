@@ -124,6 +124,16 @@ export default function OutfitFormPage() {
     });
   };
 
+  // Toggle all checkboxes for a field
+  const handleToggleAll = (field, itemsList) => {
+    setFormData((prev) => {
+      const allIds = itemsList.map((item) => item._id);
+      const currentArray = prev[field] || [];
+      const isAllSelected = currentArray.length === itemsList.length;
+      return { ...prev, [field]: isAllSelected ? [] : allIds };
+    });
+  };
+
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
       handleChange("tags", [...formData.tags, newTag.trim()]);
@@ -350,9 +360,16 @@ export default function OutfitFormPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Style Checkboxes */}
                   <div className="border rounded-lg p-4">
-                    <label className="block text-sm font-medium mb-3">
-                      Phong cách
-                    </label>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-medium">Phong cách</label>
+                      <div
+                        className="text-sm font-bold cursor-pointer hover:text-blue-600"
+                        onClick={() => handleToggleAll("style_id", styles)}
+                      >
+                        Tất cả
+                      </div>
+                    </div>
+                    <hr></hr>
                     <div className="space-y-2 h-48 overflow-y-auto">
                       {styles.map((style) => (
                         <label
@@ -365,27 +382,36 @@ export default function OutfitFormPage() {
                             onChange={() =>
                               handleToggleCheckbox("style_id", style._id)
                             }
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                            className="w-4 h-4 text-blue-600 rounded"
                           />
                           <span className="text-sm">{style.name}</span>
+
                           {formData.style_id.includes(style._id) && (
                             <Check className="w-4 h-4 text-blue-600 ml-auto" />
                           )}
                         </label>
                       ))}
                     </div>
-                    {formData.style_id.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Đã chọn: {formData.style_id.length}
-                      </p>
-                    )}
                   </div>
 
                   {/* Occasion Checkboxes */}
                   <div className="border rounded-lg p-4">
-                    <label className="block text-sm font-medium mb-3">
-                      Dịp
-                    </label>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-medium">Dịp</label>
+                      <span
+                        className={`text-sm font-bold cursor-pointer ${
+                          formData.occasion_id.length === occasions.length
+                            ? "text-blue-600"
+                            : "hover:text-blue-600"
+                        }`}
+                        onClick={() =>
+                          handleToggleAll("occasion_id", occasions)
+                        }
+                      >
+                        Tất cả
+                      </span>
+                    </div>
+                    <hr></hr>
                     <div className="space-y-2 h-48 overflow-y-auto">
                       {occasions.map((occasion) => (
                         <label
@@ -400,27 +426,34 @@ export default function OutfitFormPage() {
                             onChange={() =>
                               handleToggleCheckbox("occasion_id", occasion._id)
                             }
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                            className="w-4 h-4 text-blue-600 rounded"
                           />
                           <span className="text-sm">{occasion.name}</span>
+
                           {formData.occasion_id.includes(occasion._id) && (
                             <Check className="w-4 h-4 text-blue-600 ml-auto" />
                           )}
                         </label>
                       ))}
                     </div>
-                    {formData.occasion_id.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Đã chọn: {formData.occasion_id.length}
-                      </p>
-                    )}
                   </div>
 
                   {/* Season Checkboxes */}
                   <div className="border rounded-lg p-4">
-                    <label className="block text-sm font-medium mb-3">
-                      Mùa
-                    </label>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-medium">Mùa</label>
+                      <span
+                        className={`text-sm font-bold cursor-pointer ${
+                          formData.season_id.length === seasons.length
+                            ? "text-blue-600"
+                            : "hover:text-blue-600"
+                        }`}
+                        onClick={() => handleToggleAll("season_id", seasons)}
+                      >
+                        Tất cả
+                      </span>
+                    </div>
+                    <hr></hr>
                     <div className="space-y-2 h-48 overflow-y-auto">
                       {seasons.map((season) => (
                         <label
@@ -433,27 +466,36 @@ export default function OutfitFormPage() {
                             onChange={() =>
                               handleToggleCheckbox("season_id", season._id)
                             }
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                            className="w-4 h-4 text-blue-600 rounded"
                           />
                           <span className="text-sm">{season.name}</span>
+
                           {formData.season_id.includes(season._id) && (
                             <Check className="w-4 h-4 text-blue-600 ml-auto" />
                           )}
                         </label>
                       ))}
                     </div>
-                    {formData.season_id.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Đã chọn: {formData.season_id.length}
-                      </p>
-                    )}
                   </div>
 
                   {/* Weather Checkboxes */}
                   <div className="border rounded-lg p-4">
-                    <label className="block text-sm font-medium mb-3">
-                      Thời tiết
-                    </label>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-medium">Thời tiết</label>
+                      <span
+                        className={`text-sm font-bold cursor-pointer ${
+                          formData.weather_id.length === weatherTypes.length
+                            ? "text-blue-600"
+                            : "hover:text-blue-600"
+                        }`}
+                        onClick={() =>
+                          handleToggleAll("weather_id", weatherTypes)
+                        }
+                      >
+                        Tất cả
+                      </span>
+                    </div>
+                    <hr></hr>
                     <div className="space-y-2 h-48 overflow-y-auto">
                       {weatherTypes.map((weather) => (
                         <label
@@ -466,23 +508,18 @@ export default function OutfitFormPage() {
                             onChange={() =>
                               handleToggleCheckbox("weather_id", weather._id)
                             }
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                            className="w-4 h-4 text-blue-600 rounded"
                           />
                           <span className="text-sm">{weather.name}</span>
+
                           {formData.weather_id.includes(weather._id) && (
                             <Check className="w-4 h-4 text-blue-600 ml-auto" />
                           )}
                         </label>
                       ))}
                     </div>
-                    {formData.weather_id.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Đã chọn: {formData.weather_id.length}
-                      </p>
-                    )}
                   </div>
                 </div>
-
                 {/* Tags */}
                 <div>
                   <label className="block text-sm font-medium mb-2">Tags</label>

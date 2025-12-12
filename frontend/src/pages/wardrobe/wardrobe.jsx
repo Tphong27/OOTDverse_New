@@ -42,7 +42,7 @@ export default function Wardrobe() {
   const [dynamicCategories, setDynamicCategories] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 12;
 
   // ===== LOAD CATEGORIES FROM SETTINGS =====
   useEffect(() => {

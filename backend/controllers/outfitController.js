@@ -26,13 +26,14 @@ exports.getOutfits = async (req, res) => {
     const filter = {};
 
     if (user_id) filter.user_id = user_id;
-    if (style_id) filter.style_id = style_id;
-    if (occasion_id) filter.occasion_id = occasion_id;
-    if (season_id) filter.season_id = season_id;
-    if (weather_id) filter.weather_id = weather_id;
+    if (style_id) filter.style_id = { $in: style_id.split(",") };
+    if (occasion_id) filter.occasion_id = { $in: occasion_id.split(",") };
+    if (season_id) filter.season_id = { $in: season_id.split(",") };
+    if (weather_id) filter.weather_id = { $in: weather_id.split(",") };
     if (is_public !== undefined) filter.is_public = is_public === "true";
     if (is_featured !== undefined) filter.is_featured = is_featured === "true";
-    if (ai_suggested !== undefined) filter.ai_suggested = ai_suggested === "true";
+    if (ai_suggested !== undefined)
+      filter.ai_suggested = ai_suggested === "true";
     if (min_rating) filter.user_rating = { $gte: parseInt(min_rating) };
 
     let sortOption = { created_date: -1 };
@@ -80,7 +81,9 @@ exports.getOutfitById = async (req, res) => {
       .populate("style_id occasion_id season_id weather_id", "name value");
 
     if (!outfit) {
-      return res.status(404).json({ success: false, error: "Outfit không tồn tại" });
+      return res
+        .status(404)
+        .json({ success: false, error: "Outfit không tồn tại" });
     }
 
     // Get outfit items - Populate category từ item
@@ -151,7 +154,9 @@ exports.createOutfit = async (req, res) => {
     // Kiểm tra user tồn tại
     const user = await User.findById(user_id);
     if (!user) {
-      return res.status(404).json({ success: false, error: "User không tồn tại" });
+      return res
+        .status(404)
+        .json({ success: false, error: "User không tồn tại" });
     }
 
     // Kiểm tra tất cả items tồn tại và thuộc về user
@@ -192,7 +197,8 @@ exports.createOutfit = async (req, res) => {
       outfit_id: outfit._id,
       item_id: item.item_id,
       layer_position: item.layer_position || null,
-      display_order: item.display_order !== undefined ? item.display_order : index,
+      display_order:
+        item.display_order !== undefined ? item.display_order : index,
       styling_note: item.styling_note || null,
       is_optional: item.is_optional || false,
     }));
@@ -207,7 +213,7 @@ exports.createOutfit = async (req, res) => {
     const outfitItems = await OutfitItem.find({ outfit_id: outfit._id })
       .populate({
         path: "item_id",
-        populate: { path: "category_id", select: "name value priority" }
+        populate: { path: "category_id", select: "name value priority" },
       })
       .sort({ display_order: 1 });
 
@@ -250,7 +256,9 @@ exports.updateOutfit = async (req, res) => {
 
     const outfit = await Outfit.findById(id);
     if (!outfit) {
-      return res.status(404).json({ success: false, error: "Outfit không tồn tại" });
+      return res
+        .status(404)
+        .json({ success: false, error: "Outfit không tồn tại" });
     }
 
     // Update outfit fields
@@ -294,7 +302,8 @@ exports.updateOutfit = async (req, res) => {
         outfit_id: id,
         item_id: item.item_id,
         layer_position: item.layer_position || null,
-        display_order: item.display_order !== undefined ? item.display_order : index,
+        display_order:
+          item.display_order !== undefined ? item.display_order : index,
         styling_note: item.styling_note || null,
         is_optional: item.is_optional || false,
       }));
@@ -310,7 +319,7 @@ exports.updateOutfit = async (req, res) => {
     const outfitItems = await OutfitItem.find({ outfit_id: id })
       .populate({
         path: "item_id",
-        populate: { path: "category_id", select: "name value priority" }
+        populate: { path: "category_id", select: "name value priority" },
       })
       .sort({ display_order: 1 });
 
@@ -337,7 +346,9 @@ exports.deleteOutfit = async (req, res) => {
 
     const outfit = await Outfit.findById(id);
     if (!outfit) {
-      return res.status(404).json({ success: false, error: "Outfit không tồn tại" });
+      return res
+        .status(404)
+        .json({ success: false, error: "Outfit không tồn tại" });
     }
 
     await OutfitItem.deleteMany({ outfit_id: id });
@@ -363,7 +374,9 @@ exports.toggleLike = async (req, res) => {
 
     const outfit = await Outfit.findById(id);
     if (!outfit) {
-      return res.status(404).json({ success: false, error: "Outfit không tồn tại" });
+      return res
+        .status(404)
+        .json({ success: false, error: "Outfit không tồn tại" });
     }
 
     await outfit.toggleLike(increment);
@@ -389,7 +402,9 @@ exports.toggleSave = async (req, res) => {
 
     const outfit = await Outfit.findById(id);
     if (!outfit) {
-      return res.status(404).json({ success: false, error: "Outfit không tồn tại" });
+      return res
+        .status(404)
+        .json({ success: false, error: "Outfit không tồn tại" });
     }
 
     await outfit.toggleSave(increment);
@@ -414,7 +429,9 @@ exports.recordWear = async (req, res) => {
 
     const outfit = await Outfit.findById(id);
     if (!outfit) {
-      return res.status(404).json({ success: false, error: "Outfit không tồn tại" });
+      return res
+        .status(404)
+        .json({ success: false, error: "Outfit không tồn tại" });
     }
 
     await outfit.recordWear();
@@ -450,7 +467,9 @@ exports.updateRating = async (req, res) => {
 
     const outfit = await Outfit.findById(id);
     if (!outfit) {
-      return res.status(404).json({ success: false, error: "Outfit không tồn tại" });
+      return res
+        .status(404)
+        .json({ success: false, error: "Outfit không tồn tại" });
     }
 
     await outfit.updateRating(rating);
@@ -472,19 +491,19 @@ exports.updateRating = async (req, res) => {
 exports.getUserOutfits = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { 
-      is_public, 
-      page = 1, 
+    const {
+      is_public,
+      page = 1,
       limit = 20,
       style_id,
       occasion_id,
       season_id,
       weather_id,
-      sort_by = "newest"
+      sort_by = "newest",
     } = req.query;
 
     const filter = { user_id: userId };
-    
+
     // Optional filters
     if (is_public !== undefined) filter.is_public = is_public === "true";
     if (style_id) filter.style_id = style_id;
@@ -532,14 +551,16 @@ exports.getOutfitsByItem = async (req, res) => {
   try {
     const { itemId } = req.params;
 
-    const outfitItems = await OutfitItem.find({ item_id: itemId })
-      .populate({
-        path: "outfit_id",
-        populate: [
-          { path: "user_id", select: "fullName avatar" },
-          { path: "style_id occasion_id season_id weather_id", select: "name value" },
-        ],
-      });
+    const outfitItems = await OutfitItem.find({ item_id: itemId }).populate({
+      path: "outfit_id",
+      populate: [
+        { path: "user_id", select: "fullName avatar" },
+        {
+          path: "style_id occasion_id season_id weather_id",
+          select: "name value",
+        },
+      ],
+    });
 
     const outfits = outfitItems.map((oi) => oi.outfit_id);
 
@@ -561,7 +582,10 @@ exports.getOutfitStats = async (req, res) => {
     const { userId } = req.params;
 
     const totalOutfits = await Outfit.countDocuments({ user_id: userId });
-    const publicOutfits = await Outfit.countDocuments({ user_id: userId, is_public: true });
+    const publicOutfits = await Outfit.countDocuments({
+      user_id: userId,
+      is_public: true,
+    });
     const privateOutfits = totalOutfits - publicOutfits;
 
     const totalViews = await Outfit.aggregate([
@@ -575,7 +599,12 @@ exports.getOutfitStats = async (req, res) => {
     ]);
 
     const avgRating = await Outfit.aggregate([
-      { $match: { user_id: mongoose.Types.ObjectId(userId), user_rating: { $ne: null } } },
+      {
+        $match: {
+          user_id: mongoose.Types.ObjectId(userId),
+          user_rating: { $ne: null },
+        },
+      },
       { $group: { _id: null, avg: { $avg: "$user_rating" } } },
     ]);
 

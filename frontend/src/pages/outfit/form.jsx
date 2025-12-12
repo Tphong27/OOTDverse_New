@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useOutfit } from "@/context/OutfitContext";
 import { useSettings } from "@/context/SettingContext";
 import { useWardrobe } from "@/context/WardrobeContext";
+import CheckboxGroup from "@/components/common/CheckboxGroup";
 import {
   X,
   Plus,
@@ -359,167 +360,43 @@ export default function OutfitFormPage() {
                 {/* Checkboxes Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Style Checkboxes */}
-                  <div className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-sm font-medium">Phong cách</label>
-                      <div
-                        className="text-sm font-bold cursor-pointer hover:text-blue-600"
-                        onClick={() => handleToggleAll("style_id", styles)}
-                      >
-                        Tất cả
-                      </div>
-                    </div>
-                    <hr></hr>
-                    <div className="space-y-2 h-48 overflow-y-auto">
-                      {styles.map((style) => (
-                        <label
-                          key={style._id}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.style_id.includes(style._id)}
-                            onChange={() =>
-                              handleToggleCheckbox("style_id", style._id)
-                            }
-                            className="w-4 h-4 text-blue-600 rounded"
-                          />
-                          <span className="text-sm">{style.name}</span>
+                  <CheckboxGroup
+                    label="Phong cách"
+                    items={styles}
+                    field="style_id"
+                    formData={formData}
+                    handleToggleAll={handleToggleAll}
+                    handleToggleCheckbox={handleToggleCheckbox}
+                  />
 
-                          {formData.style_id.includes(style._id) && (
-                            <Check className="w-4 h-4 text-blue-600 ml-auto" />
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
+                  <CheckboxGroup
+                    label="Dịp"
+                    items={occasions}
+                    field="occasion_id"
+                    formData={formData}
+                    handleToggleAll={handleToggleAll}
+                    handleToggleCheckbox={handleToggleCheckbox}
+                  />
 
-                  {/* Occasion Checkboxes */}
-                  <div className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-sm font-medium">Dịp</label>
-                      <span
-                        className={`text-sm font-bold cursor-pointer ${
-                          formData.occasion_id.length === occasions.length
-                            ? "text-blue-600"
-                            : "hover:text-blue-600"
-                        }`}
-                        onClick={() =>
-                          handleToggleAll("occasion_id", occasions)
-                        }
-                      >
-                        Tất cả
-                      </span>
-                    </div>
-                    <hr></hr>
-                    <div className="space-y-2 h-48 overflow-y-auto">
-                      {occasions.map((occasion) => (
-                        <label
-                          key={occasion._id}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.occasion_id.includes(
-                              occasion._id
-                            )}
-                            onChange={() =>
-                              handleToggleCheckbox("occasion_id", occasion._id)
-                            }
-                            className="w-4 h-4 text-blue-600 rounded"
-                          />
-                          <span className="text-sm">{occasion.name}</span>
+                  <CheckboxGroup
+                    label="Mùa"
+                    items={seasons}
+                    field="season_id"
+                    formData={formData}
+                    handleToggleAll={handleToggleAll}
+                    handleToggleCheckbox={handleToggleCheckbox}
+                  />
 
-                          {formData.occasion_id.includes(occasion._id) && (
-                            <Check className="w-4 h-4 text-blue-600 ml-auto" />
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Season Checkboxes */}
-                  <div className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-sm font-medium">Mùa</label>
-                      <span
-                        className={`text-sm font-bold cursor-pointer ${
-                          formData.season_id.length === seasons.length
-                            ? "text-blue-600"
-                            : "hover:text-blue-600"
-                        }`}
-                        onClick={() => handleToggleAll("season_id", seasons)}
-                      >
-                        Tất cả
-                      </span>
-                    </div>
-                    <hr></hr>
-                    <div className="space-y-2 h-48 overflow-y-auto">
-                      {seasons.map((season) => (
-                        <label
-                          key={season._id}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.season_id.includes(season._id)}
-                            onChange={() =>
-                              handleToggleCheckbox("season_id", season._id)
-                            }
-                            className="w-4 h-4 text-blue-600 rounded"
-                          />
-                          <span className="text-sm">{season.name}</span>
-
-                          {formData.season_id.includes(season._id) && (
-                            <Check className="w-4 h-4 text-blue-600 ml-auto" />
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Weather Checkboxes */}
-                  <div className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-sm font-medium">Thời tiết</label>
-                      <span
-                        className={`text-sm font-bold cursor-pointer ${
-                          formData.weather_id.length === weatherTypes.length
-                            ? "text-blue-600"
-                            : "hover:text-blue-600"
-                        }`}
-                        onClick={() =>
-                          handleToggleAll("weather_id", weatherTypes)
-                        }
-                      >
-                        Tất cả
-                      </span>
-                    </div>
-                    <hr></hr>
-                    <div className="space-y-2 h-48 overflow-y-auto">
-                      {weatherTypes.map((weather) => (
-                        <label
-                          key={weather._id}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.weather_id.includes(weather._id)}
-                            onChange={() =>
-                              handleToggleCheckbox("weather_id", weather._id)
-                            }
-                            className="w-4 h-4 text-blue-600 rounded"
-                          />
-                          <span className="text-sm">{weather.name}</span>
-
-                          {formData.weather_id.includes(weather._id) && (
-                            <Check className="w-4 h-4 text-blue-600 ml-auto" />
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
+                  <CheckboxGroup
+                    label="Thời tiết"
+                    items={weatherTypes}
+                    field="weather_id"
+                    formData={formData}
+                    handleToggleAll={handleToggleAll}
+                    handleToggleCheckbox={handleToggleCheckbox}
+                  />
                 </div>
+                
                 {/* Tags */}
                 <div>
                   <label className="block text-sm font-medium mb-2">Tags</label>

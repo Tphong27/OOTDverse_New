@@ -633,8 +633,8 @@ const OutfitCard = ({
         <Image
           src={outfit.thumbnail_url || "/assets/placeholder-outfit.png"}
           alt={outfit.outfit_name}
-          width={400}
-          height={500}
+          width={320}
+          height={300}
           className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
 

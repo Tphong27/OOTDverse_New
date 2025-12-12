@@ -111,7 +111,6 @@ export default function OutfitDetailPage() {
   };
 
   const handleEdit = () => {
-    // router.push(`/outfit/${id}`);
     router.push(`/outfit/form?id=${id}`);
   };
 
@@ -416,35 +415,39 @@ export default function OutfitDetailPage() {
 
                 {/* Metadata */}
                 <div className="grid grid-cols-2 gap-3 pt-4 border-t">
-                  {currentOutfit.style_id && (
+                  {currentOutfit.style_id?.length > 0 && (
                     <div>
                       <p className="text-sm text-gray-500">Phong cách</p>
                       <p className="font-medium">
-                        {currentOutfit.style_id.name}
+                        {currentOutfit.style_id.map((s) => s.name).join(", ")}
                       </p>
                     </div>
                   )}
-                  {currentOutfit.occasion_id && (
+                  {currentOutfit.occasion_id?.length > 0 && (
                     <div>
                       <p className="text-sm text-gray-500">Dịp</p>
                       <p className="font-medium">
-                        {currentOutfit.occasion_id.name}
+                        {currentOutfit.occasion_id
+                          .map((o) => o.name)
+                          .join(", ")}
                       </p>
                     </div>
                   )}
-                  {currentOutfit.season_id && (
+                  {currentOutfit.season_id?.length > 0 && (
                     <div>
                       <p className="text-sm text-gray-500">Mùa</p>
                       <p className="font-medium">
-                        {currentOutfit.season_id.name}
+                        {currentOutfit.season_id
+                          .map((se) => se.name)
+                          .join(", ")}
                       </p>
                     </div>
                   )}
-                  {currentOutfit.weather_id && (
+                  {currentOutfit.weather_id?.length > 0 && (
                     <div>
                       <p className="text-sm text-gray-500">Thời tiết</p>
                       <p className="font-medium">
-                        {currentOutfit.weather_id.name}
+                        {currentOutfit.weather_id.map((w) => w.name).join(", ")}
                       </p>
                     </div>
                   )}

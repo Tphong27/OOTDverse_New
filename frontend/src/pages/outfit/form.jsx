@@ -786,7 +786,7 @@ export default function OutfitFormPage() {
                 ) : (
                   <>
                     <Save size={20} />
-                    {isEditMode ? "Cập nhật" : "Tạo Outfit"}
+                    {isEditMode ? "Cập nhật" : "Tạo Trang phục"}
                   </>
                 )}
               </button>

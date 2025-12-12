@@ -237,7 +237,6 @@ export default function OutfitPage() {
                 }`}
               >
                 <Grid3x3 className="w-4 h-4" />
-                
               </button>
               <button
                 onClick={() => setViewMode("list")}
@@ -426,14 +425,13 @@ export default function OutfitPage() {
               <>
                 <div className="mb-4 flex justify-between items-center">
                   <p className="text-sm text-gray-600">
-                    Hiển thị{" "}
+                    {" "}
                     <span className="font-semibold">
                       {filteredOutfits.length}
                     </span>{" "}
                     outfits
                     {activeTab === "explore" && (
                       <span className="text-gray-400 ml-2">
-                        (chỉ công khai)
                       </span>
                     )}
                   </p>
@@ -556,14 +554,24 @@ const OutfitCard = ({
           )}
 
           <div className="flex gap-2 mb-2 flex-wrap">
-            {outfit.style_id && (
+            {outfit.style_id?.length > 0 && (
               <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
-                {outfit.style_id.name}
+                {outfit.style_id.map((s) => s.name).join(", ")}
               </span>
             )}
-            {outfit.occasion_id && (
+            {outfit.occasion_id?.length > 0 && (
               <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                {outfit.occasion_id.name}
+                {outfit.occasion_id.map((o) => o.name).join(", ")}
+              </span>
+            )}
+            {outfit.season_id?.length > 0 && (
+              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                {outfit.season_id.map((se) => se.name).join(", ")}
+              </span>
+            )}
+            {outfit.weather_id?.length > 0 && (
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-medium">
+                {outfit.weather_id.map((w) => w.name).join(", ")}
               </span>
             )}
           </div>

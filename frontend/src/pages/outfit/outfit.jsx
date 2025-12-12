@@ -61,7 +61,7 @@ export default function OutfitPage() {
       setActiveTab("explore");
     }
   }, [user]);
-  
+
   // Lấy outfits theo tab
   useEffect(() => {
     if (activeTab === "explore") {
@@ -439,8 +439,7 @@ export default function OutfitPage() {
                     </span>{" "}
                     outfits
                     {activeTab === "explore" && (
-                      <span className="text-gray-400 ml-2">
-                      </span>
+                      <span className="text-gray-400 ml-2"></span>
                     )}
                   </p>
                 </div>
@@ -498,7 +497,7 @@ const OutfitCard = ({
       >
         <div className="relative w-32 h-32 flex-shrink-0">
           <img
-            src={outfit.thumbnail_url || "/placeholder-outfit.jpg"}
+            src={outfit.thumbnail_url || "/assets/placeholder-outfit.png"}
             alt={outfit.outfit_name}
             className="w-full h-full object-cover rounded-lg"
           />
@@ -629,7 +628,7 @@ const OutfitCard = ({
     >
       <div className="relative aspect-square">
         <img
-          src={outfit.thumbnail_url || "/placeholder-outfit.jpg"}
+          src={outfit.thumbnail_url || "/assets/placeholder-outfit.png"}
           alt={outfit.outfit_name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />

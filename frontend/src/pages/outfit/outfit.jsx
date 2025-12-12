@@ -4,6 +4,7 @@ import { useOutfit } from "@/context/OutfitContext";
 import { useSettings } from "@/context/SettingContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/router";
+import Image from "next/image";
 import {
   Plus,
   Search,
@@ -496,10 +497,12 @@ const OutfitCard = ({
         className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer p-4 flex gap-4 border border-gray-100"
       >
         <div className="relative w-32 h-32 flex-shrink-0">
-          <img
+          <Image
             src={outfit.thumbnail_url || "/assets/placeholder-outfit.png"}
             alt={outfit.outfit_name}
-            className="w-full h-full object-cover rounded-lg"
+            width={128}
+            height={128}
+            className="object-cover rounded-lg"
           />
           <div className="absolute top-1 right-1">
             {showPrivacyToggle ? (
@@ -627,10 +630,12 @@ const OutfitCard = ({
       className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all cursor-pointer overflow-hidden border border-gray-100 group"
     >
       <div className="relative aspect-square">
-        <img
+        <Image
           src={outfit.thumbnail_url || "/assets/placeholder-outfit.png"}
           alt={outfit.outfit_name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          width={400}
+          height={500}
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
 
         <div className="absolute top-2 left-2 z-10">

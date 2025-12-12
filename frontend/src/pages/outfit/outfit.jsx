@@ -20,7 +20,9 @@ import {
   Cloud,
   Sparkles,
   TrendingUp,
-  Clock,
+  User,
+  Globe,
+  Lock,
 } from "lucide-react";
 
 export default function OutfitPage() {
@@ -31,37 +33,40 @@ export default function OutfitPage() {
     loading,
     error,
     fetchOutfits,
+    fetchUserOutfits,
     toggleLike,
     toggleSave,
     getOutfitScore,
+    updateOutfit,
   } = useOutfit();
 
   const { settings } = useSettings();
 
-  const [viewMode, setViewMode] = useState("grid"); // grid | list
+  const [viewMode, setViewMode] = useState("grid");
+  const [activeTab, setActiveTab] = useState("explore");
+
   const [selectedFilters, setSelectedFilters] = useState({
     style_id: "",
     occasion_id: "",
     season_id: "",
     weather_id: "",
     sort_by: "newest",
-    is_public: "all",
   });
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Lấy outfits khi component mount hoặc filters thay đổi
+  // Lấy outfits theo tab
   useEffect(() => {
-    const filterParams = {
-      ...selectedFilters,
-      is_public:
-        selectedFilters.is_public === "all"
-          ? undefined
-          : selectedFilters.is_public === "true",
-    };
-    fetchOutfits(filterParams);
-  }, [selectedFilters]);
+    if (activeTab === "explore") {
+      const filterParams = {
+        ...selectedFilters,
+        is_public: true,
+      };
+      fetchOutfits(filterParams);
+    } else if (activeTab === "my-outfits" && user) {
+      fetchUserOutfits(user._id, selectedFilters);
+    }
+  }, [selectedFilters, activeTab, user]);
 
-  // Handle filter change
   const handleFilterChange = (key, value) => {
     setSelectedFilters((prev) => ({
       ...prev,
@@ -69,20 +74,18 @@ export default function OutfitPage() {
     }));
   };
 
-  // Clear all filters
-  const handleClearFilters = () => {
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
     setSelectedFilters({
       style_id: "",
       occasion_id: "",
       season_id: "",
       weather_id: "",
       sort_by: "newest",
-      is_public: "all",
     });
     setSearchQuery("");
   };
 
-  // Handle like/save
   const handleLike = async (e, outfitId) => {
     e.stopPropagation();
     if (!user) {
@@ -101,12 +104,34 @@ export default function OutfitPage() {
     await toggleSave(outfitId, true);
   };
 
-  // Navigate to outfit detail
+  const handleTogglePrivacy = async (e, outfitId, currentStatus) => {
+    e.stopPropagation();
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const result = await updateOutfit(outfitId, {
+        is_public: !currentStatus,
+      });
+
+      if (result.success) {
+        if (activeTab === "my-outfits") {
+          fetchUserOutfits(user._id, selectedFilters);
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling privacy:", error);
+      alert("Lỗi khi thay đổi quyền riêng tư");
+    }
+  };
+
   const handleOutfitClick = (outfitId) => {
     router.push(`/outfit/${outfitId}`);
   };
 
-  // Navigate to create outfit
   const handleCreateOutfit = () => {
     if (!user) {
       router.push("/login");
@@ -115,7 +140,6 @@ export default function OutfitPage() {
     router.push("/outfit/form");
   };
 
-  // Filter outfits by search query
   const filteredOutfits = outfits.filter((outfit) => {
     const matchSearch =
       outfit.outfit_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -123,10 +147,15 @@ export default function OutfitPage() {
       outfit.tags?.some((tag) =>
         tag.toLowerCase().includes(searchQuery.toLowerCase())
       );
+
+    if (activeTab === "explore" && user) {
+      const notMyOutfit = outfit.user_id?._id !== user._id;
+      return matchSearch && notMyOutfit;
+    }
+
     return matchSearch;
   });
 
-  // Get settings by type
   const getSettingsByType = (type) => {
     return settings.filter((s) => s.type === type && s.status === "Active");
   };
@@ -134,17 +163,16 @@ export default function OutfitPage() {
   return (
     <LayoutUser>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Header with Tabs */}
         <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 rounded-2xl p-8 text-white shadow-xl">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold mb-2 flex items-center gap-3">
                 <Shirt className="w-8 h-8" />
                 Outfit Collection
               </h1>
               <p className="text-white/90 text-lg">
-                {filteredOutfits.length} outfits •{" "}
-                {filteredOutfits.filter((o) => o.is_public).length} công khai
+                {filteredOutfits.length} outfits
               </p>
             </div>
             <button
@@ -155,12 +183,39 @@ export default function OutfitPage() {
               Tạo Outfit
             </button>
           </div>
+
+          {/* Tabs */}
+          <div className="flex gap-3">
+            {user && (
+              <button
+                onClick={() => handleTabChange("my-outfits")}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                  activeTab === "my-outfits"
+                    ? "bg-white text-purple-600 shadow-lg"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
+              >
+                <User className="w-5 h-5" />
+                Của tôi
+              </button>
+            )}
+            <button
+              onClick={() => handleTabChange("explore")}
+              className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                activeTab === "explore"
+                  ? "bg-white text-purple-600 shadow-lg"
+                  : "bg-white/20 text-white hover:bg-white/30"
+              }`}
+            >
+              <Globe className="w-5 h-5" />
+              Khám phá
+            </button>
+          </div>
         </div>
 
         {/* Search & View Mode */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -172,7 +227,6 @@ export default function OutfitPage() {
               />
             </div>
 
-            {/* View Mode Toggle */}
             <div className="flex gap-2">
               <button
                 onClick={() => setViewMode("grid")}
@@ -209,15 +263,8 @@ export default function OutfitPage() {
                   <Filter className="w-4 h-4" />
                   Bộ lọc
                 </h3>
-                {/* <button
-                  onClick={handleClearFilters}
-                  className="text-sm text-purple-600 hover:text-purple-700 font-medium"
-                >
-                  Xóa
-                </button> */}
               </div>
 
-              {/* Style Filter */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
@@ -225,7 +272,9 @@ export default function OutfitPage() {
                 </label>
                 <select
                   value={selectedFilters.style_id}
-                  onChange={(e) => handleFilterChange("style_id", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("style_id", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                 >
                   <option value="">Tất cả</option>
@@ -237,7 +286,6 @@ export default function OutfitPage() {
                 </select>
               </div>
 
-              {/* Occasion Filter */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <Star className="w-4 h-4" />
@@ -245,7 +293,9 @@ export default function OutfitPage() {
                 </label>
                 <select
                   value={selectedFilters.occasion_id}
-                  onChange={(e) => handleFilterChange("occasion_id", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("occasion_id", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                 >
                   <option value="">Tất cả</option>
@@ -257,7 +307,6 @@ export default function OutfitPage() {
                 </select>
               </div>
 
-              {/* Season Filter */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
@@ -265,7 +314,9 @@ export default function OutfitPage() {
                 </label>
                 <select
                   value={selectedFilters.season_id}
-                  onChange={(e) => handleFilterChange("season_id", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("season_id", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                 >
                   <option value="">Tất cả</option>
@@ -277,7 +328,6 @@ export default function OutfitPage() {
                 </select>
               </div>
 
-              {/* Weather Filter */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <Cloud className="w-4 h-4" />
@@ -299,25 +349,6 @@ export default function OutfitPage() {
                 </select>
               </div>
 
-              {/* Visibility Filter */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Quyền riêng tư
-                </label>
-                <select
-                  value={selectedFilters.is_public}
-                  onChange={(e) =>
-                    handleFilterChange("is_public", e.target.value)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                >
-                  <option value="all">Tất cả</option>
-                  <option value="true">Công khai</option>
-                  <option value="false">Riêng tư</option>
-                </select>
-              </div>
-
-              {/* Sort By */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4" />
@@ -325,7 +356,9 @@ export default function OutfitPage() {
                 </label>
                 <select
                   value={selectedFilters.sort_by}
-                  onChange={(e) => handleFilterChange("sort_by", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("sort_by", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                 >
                   <option value="newest">Mới nhất</option>
@@ -339,14 +372,12 @@ export default function OutfitPage() {
 
           {/* Main Content */}
           <div className="flex-1">
-            {/* Loading State */}
             {loading && (
               <div className="flex items-center justify-center py-20">
                 <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600"></div>
               </div>
             )}
 
-            {/* Error State */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -357,21 +388,30 @@ export default function OutfitPage() {
               </div>
             )}
 
-            {/* Empty State */}
             {!loading && !error && filteredOutfits.length === 0 && (
               <div className="text-center py-20 bg-white rounded-2xl">
                 <div className="text-6xl mb-4">👔</div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  {searchQuery || Object.values(selectedFilters).some((v) => v && v !== "newest" && v !== "all")
+                  {activeTab === "my-outfits"
+                    ? "Bạn chưa có outfit nào"
+                    : searchQuery ||
+                      Object.values(selectedFilters).some(
+                        (v) => v && v !== "newest"
+                      )
                     ? "Không tìm thấy outfit nào"
-                    : "Chưa có outfit nào"}
+                    : "Chưa có outfit công khai nào"}
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  {searchQuery || Object.values(selectedFilters).some((v) => v && v !== "newest" && v !== "all")
+                  {activeTab === "my-outfits"
+                    ? "Hãy tạo outfit đầu tiên của bạn!"
+                    : searchQuery ||
+                      Object.values(selectedFilters).some(
+                        (v) => v && v !== "newest"
+                      )
                     ? "Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm"
-                    : "Hãy tạo outfit đầu tiên của bạn!"}
+                    : "Chờ người dùng khác chia sẻ outfit nhé!"}
                 </p>
-                {!searchQuery && !Object.values(selectedFilters).some((v) => v && v !== "newest" && v !== "all") && (
+                {activeTab === "my-outfits" && (
                   <button
                     onClick={handleCreateOutfit}
                     className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all inline-flex items-center gap-2"
@@ -383,12 +423,20 @@ export default function OutfitPage() {
               </div>
             )}
 
-            {/* Outfits Grid/List */}
             {!loading && !error && filteredOutfits.length > 0 && (
               <>
                 <div className="mb-4 flex justify-between items-center">
                   <p className="text-sm text-gray-600">
-                    Hiển thị <span className="font-semibold">{filteredOutfits.length}</span> outfits
+                    Hiển thị{" "}
+                    <span className="font-semibold">
+                      {filteredOutfits.length}
+                    </span>{" "}
+                    outfits
+                    {activeTab === "explore" && (
+                      <span className="text-gray-400 ml-2">
+                        (chỉ công khai)
+                      </span>
+                    )}
                   </p>
                 </div>
 
@@ -406,8 +454,11 @@ export default function OutfitPage() {
                       viewMode={viewMode}
                       onLike={handleLike}
                       onSave={handleSave}
+                      onTogglePrivacy={handleTogglePrivacy}
                       onClick={() => handleOutfitClick(outfit._id)}
                       getScore={getOutfitScore}
+                      currentUserId={user?._id}
+                      showPrivacyToggle={activeTab === "my-outfits"}
                     />
                   ))}
                 </div>
@@ -420,9 +471,19 @@ export default function OutfitPage() {
   );
 }
 
-// Outfit Card Component
-const OutfitCard = ({ outfit, viewMode, onLike, onSave, onClick, getScore }) => {
-  const score = getScore(outfit);
+const OutfitCard = ({
+  outfit,
+  viewMode,
+  onLike,
+  onSave,
+  onTogglePrivacy,
+  onClick,
+  getScore,
+  currentUserId,
+  showPrivacyToggle = false,
+}) => {
+  const score = getScore ? getScore(outfit) : 0;
+  const isOwner = currentUserId === outfit.user_id?._id;
 
   if (viewMode === "list") {
     return (
@@ -436,17 +497,64 @@ const OutfitCard = ({ outfit, viewMode, onLike, onSave, onClick, getScore }) => 
             alt={outfit.outfit_name}
             className="w-full h-full object-cover rounded-lg"
           />
-          {outfit.is_featured && (
-            <div className="absolute top-1 right-1 bg-yellow-400 text-black text-xs font-bold px-2 py-0.5 rounded">
-              ⭐
-            </div>
-          )}
+          <div className="absolute top-1 right-1">
+            {showPrivacyToggle ? (
+              <button
+                onClick={(e) =>
+                  onTogglePrivacy(e, outfit._id, outfit.is_public)
+                }
+                className={`text-xs font-bold px-2 py-1 rounded flex items-center gap-1 transition-all hover:scale-110 ${
+                  outfit.is_public
+                    ? "bg-green-500 hover:bg-green-600 text-white"
+                    : "bg-gray-500 hover:bg-gray-600 text-white"
+                }`}
+                title={
+                  outfit.is_public
+                    ? "Click để đặt riêng tư"
+                    : "Click để công khai"
+                }
+              >
+                {outfit.is_public ? (
+                  <Globe className="w-3 h-3" />
+                ) : (
+                  <Lock className="w-3 h-3" />
+                )}
+              </button>
+            ) : (
+              <div
+                className={`text-xs font-bold px-2 py-1 rounded flex items-center gap-1 ${
+                  outfit.is_public
+                    ? "bg-green-500 text-white"
+                    : "bg-gray-500 text-white"
+                }`}
+              >
+                {outfit.is_public ? (
+                  <Globe className="w-3 h-3" />
+                ) : (
+                  <Lock className="w-3 h-3" />
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-lg text-gray-900 mb-1 truncate">
-            {outfit.outfit_name}
-          </h3>
+          <div className="flex items-start justify-between mb-1">
+            <h3 className="font-semibold text-lg text-gray-900 truncate">
+              {outfit.outfit_name}
+            </h3>
+            {isOwner && (
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium ml-2">
+                Của tôi
+              </span>
+            )}
+          </div>
+
+          {outfit.user_id && (
+            <p className="text-sm text-gray-500 mb-2">
+              Bởi {outfit.user_id.fullName}
+            </p>
+          )}
 
           <div className="flex gap-2 mb-2 flex-wrap">
             {outfit.style_id && (
@@ -478,10 +586,6 @@ const OutfitCard = ({ outfit, viewMode, onLike, onSave, onClick, getScore }) => 
               <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
               {outfit.user_rating || "N/A"}
             </span>
-            <span className="flex items-center gap-1">
-              <Shirt className="w-4 h-4" />
-              {outfit.items?.length || 0} items
-            </span>
           </div>
         </div>
 
@@ -503,7 +607,6 @@ const OutfitCard = ({ outfit, viewMode, onLike, onSave, onClick, getScore }) => 
     );
   }
 
-  // Grid View
   return (
     <div
       onClick={onClick}
@@ -516,11 +619,55 @@ const OutfitCard = ({ outfit, viewMode, onLike, onSave, onClick, getScore }) => 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
 
-        {outfit.is_featured && (
-          <div className="absolute top-2 left-2 px-3 py-1 bg-yellow-400 text-black text-xs font-bold rounded-full shadow-lg">
-            ⭐ Featured
-          </div>
-        )}
+        <div className="absolute top-2 left-2 z-10">
+          {showPrivacyToggle ? (
+            <button
+              onClick={(e) => onTogglePrivacy(e, outfit._id, outfit.is_public)}
+              className={`text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1 transition-all hover:scale-110 ${
+                outfit.is_public
+                  ? "bg-green-500 hover:bg-green-600 text-white"
+                  : "bg-gray-500 hover:bg-gray-600 text-white"
+              }`}
+              title={
+                outfit.is_public
+                  ? "Click để đặt riêng tư"
+                  : "Click để công khai"
+              }
+            >
+              {outfit.is_public ? (
+                <>
+                  <Globe className="w-3 h-3" />
+                  Công khai
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3 h-3" />
+                  Riêng tư
+                </>
+              )}
+            </button>
+          ) : (
+            <div
+              className={`text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1 ${
+                outfit.is_public
+                  ? "bg-green-500 text-white"
+                  : "bg-gray-500 text-white"
+              }`}
+            >
+              {outfit.is_public ? (
+                <>
+                  <Globe className="w-3 h-3" />
+                  Công khai
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3 h-3" />
+                  Riêng tư
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
           <div className="absolute bottom-2 right-2 flex gap-2">
@@ -541,9 +688,22 @@ const OutfitCard = ({ outfit, viewMode, onLike, onSave, onClick, getScore }) => 
       </div>
 
       <div className="p-4">
-        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-1 group-hover:text-purple-600 transition-colors">
-          {outfit.outfit_name}
-        </h3>
+        <div className="flex items-start justify-between mb-2">
+          <h3 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-purple-600 transition-colors flex-1">
+            {outfit.outfit_name}
+          </h3>
+          {isOwner && (
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium ml-2">
+              Của tôi
+            </span>
+          )}
+        </div>
+
+        {outfit.user_id && (
+          <p className="text-sm text-gray-500 mb-2 truncate">
+            {outfit.user_id.fullName}
+          </p>
+        )}
 
         <div className="flex gap-2 mb-3 flex-wrap">
           {outfit.style_id && (

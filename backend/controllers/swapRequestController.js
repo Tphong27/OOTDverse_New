@@ -1,5 +1,5 @@
 const SwapRequest = require("../models/SwapRequest");
-const MarketplaceListing = require("../models/MarketplaceListing");
+const MarketplaceListing = require("../models/Marketplace");
 const User = require("../models/User");
 
 // ========================================

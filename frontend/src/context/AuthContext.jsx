@@ -17,7 +17,8 @@ export function AuthProvider({ children }) {
         : null;
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
       } catch (error) {
         console.error("Lỗi parse user:", error);
         localStorage.removeItem("currentUser");
@@ -27,9 +28,15 @@ export function AuthProvider({ children }) {
   }, []);
 
   // 2. Hàm Đăng nhập (Gọi hàm này ở trang Login)
-  const login = (userData) => {
-    localStorage.setItem("currentUser", JSON.stringify(userData));
-    setUser(userData); // Cập nhật state ngay lập tức -> Các context khác sẽ biết
+  const login = (userData, token) => {
+    //Lưu cả user data VÀ token
+    const userWithToken = {
+      ...userData,
+      token, // JWT token từ backend
+    };
+    
+    localStorage.setItem("currentUser", JSON.stringify(userWithToken));
+    setUser(userWithToken);
   };
 
   // 3. Hàm Đăng xuất
@@ -39,9 +46,42 @@ export function AuthProvider({ children }) {
     router.push("/login");
   };
 
+  // 4. Hàm update user info (không mất token)
+  const updateUser = (updatedData) => {
+    if (user) {
+      const updatedUser = {
+        ...user,
+        ...updatedData,
+        token: user.token, // Giữ nguyên token
+      };
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    }
+  };
+
+  // 5. Hàm kiểm tra token còn hạn không
+  const isTokenValid = () => {
+    if (!user || !user.token) return false;
+    
+    try {
+      // Decode JWT token (phần payload)
+      const tokenParts = user.token.split(".");
+      if (tokenParts.length !== 3) return false;
+      
+      const payload = JSON.parse(atob(tokenParts[1]));
+      const expirationTime = payload.exp * 1000; // Convert to milliseconds
+      
+      return Date.now() < expirationTime;
+    } catch (error) {
+      console.error("Error checking token validity:", error);
+      return false;
+    }
+  };
+
   // Thêm cờ kiểm tra quyền truy cập (Access Control)
   const isAdmin = user?.role?.name === "Admin";
   const isCustomer = user?.role?.name === "Customer";
+  const isAuthenticated = user !== null && isTokenValid();
 
   return (
     <AuthContext.Provider
@@ -49,9 +89,12 @@ export function AuthProvider({ children }) {
         user,
         login,
         logout,
+        updateUser,
         loading,
         isAdmin,
         isCustomer,
+        isAuthenticated,
+        isTokenValid,
       }}
     >
       {children}
@@ -60,5 +103,9 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
 }

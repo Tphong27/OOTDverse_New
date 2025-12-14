@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
-import { Eye, EyeOff, Mail, Lock, User, Check, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Eye, EyeOff, Mail, Lock, User, Check, Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { registerUser } from "@/services/userService";
+import Script from "next/script";
+import { registerUser, verifyEmail, resendVerificationCode, googleLoginUser } from "@/services/userService";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -11,7 +12,10 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [step, setStep] = useState(1); // 1: Form, 2: OTP, 3: Success
+  const [otpCode, setOtpCode] = useState(["", "", "", "", "", ""]);
+  const [countdown, setCountdown] = useState(0);
+  const otpInputs = useRef([]);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -20,6 +24,51 @@ export default function RegisterPage() {
     confirmPassword: "",
     terms: false,
   });
+
+  // Countdown timer for resend button
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  // Handle Google credential response
+  const handleGoogleCredentialResponse = async (response) => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const res = await googleLoginUser(response.credential);
+
+      if (res.isNewUser && res.requireVerification) {
+        // New user - need OTP verification
+        setFormData((prev) => ({
+          ...prev,
+          email: res.email,
+          fullName: res.fullName,
+        }));
+        setStep(2);
+        setCountdown(60);
+      } else if (res.user) {
+        // Existing user - login directly
+        localStorage.setItem("user", JSON.stringify(res.user));
+        router.push(res.user.hasProfile ? "/user/dashboard" : "/user/profile");
+      }
+    } catch (err) {
+      console.error("Google Login Error:", err);
+      setError(
+        err.response?.data?.error || "Đăng nhập Google thất bại. Vui lòng thử lại."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Make handleGoogleCredentialResponse available globally for Google SDK
+  useEffect(() => {
+    window.handleGoogleCredentialResponse = handleGoogleCredentialResponse;
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -42,11 +91,11 @@ export default function RegisterPage() {
     return null;
   };
 
+  // Step 1: Submit registration form
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
 
-    // 1. Validate cơ bản
     if (!formData.fullName || !formData.email || !formData.password) {
       setError("Vui lòng điền đầy đủ thông tin.");
       return;
@@ -68,23 +117,18 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      // 2. Gọi API đăng ký
-      // Lưu ý: Hàm registerUser trong userService.js cần nhận đúng format (email, password, fullName)
       const res = await registerUser({
         email: formData.email,
         password: formData.password,
         fullName: formData.fullName,
       });
 
-      // 3. Xử lý thành công
-      setSuccess(true);
-
-      // Chuyển sang trang login sau 2 giây
-      setTimeout(() => {
-        router.push("/login");
-      }, 2000);
+      if (res.requireVerification) {
+        // Move to OTP step
+        setStep(2);
+        setCountdown(60); // Start 60s countdown for resend
+      }
     } catch (err) {
-      // 4. Xử lý lỗi từ Backend (VD: Email đã tồn tại)
       console.error("Register Error:", err);
       setError(
         err.response?.data?.error || "Đăng ký thất bại. Vui lòng thử lại."
@@ -94,11 +138,98 @@ export default function RegisterPage() {
     }
   };
 
-  // Giao diện thông báo thành công
-  if (success) {
+  // Handle OTP input
+  const handleOtpChange = (index, value) => {
+    if (value.length > 1) {
+      value = value.slice(-1);
+    }
+    if (!/^\d*$/.test(value)) return;
+
+    const newOtp = [...otpCode];
+    newOtp[index] = value;
+    setOtpCode(newOtp);
+
+    // Auto focus next input
+    if (value && index < 5) {
+      otpInputs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !otpCode[index] && index > 0) {
+      otpInputs.current[index - 1]?.focus();
+    }
+  };
+
+  // Handle paste OTP
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").slice(0, 6);
+    if (!/^\d+$/.test(pastedData)) return;
+
+    const newOtp = [...otpCode];
+    for (let i = 0; i < pastedData.length; i++) {
+      newOtp[i] = pastedData[i];
+    }
+    setOtpCode(newOtp);
+    otpInputs.current[Math.min(pastedData.length, 5)]?.focus();
+  };
+
+  // Step 2: Verify OTP
+  const handleVerifyOtp = async () => {
+    const code = otpCode.join("");
+    if (code.length !== 6) {
+      setError("Vui lòng nhập đủ 6 chữ số.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const res = await verifyEmail(formData.email, code);
+      if (res.success) {
+        setStep(3); // Success
+        setTimeout(() => {
+          router.push("/login");
+        }, 2000);
+      }
+    } catch (err) {
+      console.error("Verify Error:", err);
+      setError(
+        err.response?.data?.error || "Xác thực thất bại. Vui lòng thử lại."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Resend OTP
+  const handleResendOtp = async () => {
+    if (countdown > 0) return;
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await resendVerificationCode(formData.email);
+      setCountdown(60);
+      setOtpCode(["", "", "", "", "", ""]);
+    } catch (err) {
+      console.error("Resend Error:", err);
+      setError(
+        err.response?.data?.error || "Gửi lại mã thất bại. Vui lòng thử lại."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Step 3: Success screen
+  if (step === 3) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center py-12 px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center animate-fade-in-up">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
           <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
             <Check className="h-8 w-8 text-green-600" />
           </div>
@@ -106,7 +237,7 @@ export default function RegisterPage() {
             Đăng ký thành công!
           </h1>
           <p className="text-gray-600 mb-6">
-            Tài khoản của bạn đã được tạo. Đang chuyển hướng...
+            Tài khoản của bạn đã được xác thực. Đang chuyển hướng...
           </p>
           <Loader2 className="animate-spin mx-auto text-purple-600" />
         </div>
@@ -114,6 +245,89 @@ export default function RegisterPage() {
     );
   }
 
+  // Step 2: OTP Verification screen
+  if (step === 2) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+          <button
+            onClick={() => setStep(1)}
+            className="flex items-center text-gray-600 hover:text-purple-600 transition-colors text-sm mb-6"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Quay lại
+          </button>
+
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-4">
+              <Mail className="w-8 h-8 text-purple-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Xác thực Email
+            </h1>
+            <p className="text-gray-600">
+              Chúng tôi đã gửi mã 6 chữ số đến
+            </p>
+            <p className="font-medium text-purple-600">{formData.email}</p>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">
+              {error}
+            </div>
+          )}
+
+          {/* OTP Input */}
+          <div className="flex justify-center gap-2 mb-6">
+            {otpCode.map((digit, index) => (
+              <input
+                key={index}
+                ref={(el) => (otpInputs.current[index] = el)}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleOtpChange(index, e.target.value)}
+                onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                onPaste={handleOtpPaste}
+                className="w-12 h-14 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all"
+              />
+            ))}
+          </div>
+
+          <button
+            onClick={handleVerifyOtp}
+            disabled={isLoading || otpCode.join("").length !== 6}
+            className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-full font-semibold hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <Loader2 className="animate-spin w-5 h-5" />
+            ) : (
+              "Xác thực"
+            )}
+          </button>
+
+          <div className="text-center mt-6">
+            <p className="text-sm text-gray-600 mb-2">
+              Không nhận được mã?
+            </p>
+            <button
+              onClick={handleResendOtp}
+              disabled={countdown > 0 || isLoading}
+              className={`text-sm font-semibold ${countdown > 0
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-purple-600 hover:text-purple-500"
+                }`}
+            >
+              {countdown > 0 ? `Gửi lại sau ${countdown}s` : "Gửi lại mã"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 1: Registration form
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Form */}
@@ -158,40 +372,62 @@ export default function RegisterPage() {
             </div>
 
             {/* Email */}
-            <div className="relative">
-              <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-              <input
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                type="email"
-                className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all"
-                placeholder="Email"
-              />
+            <div>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                <input
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  type="email"
+                  className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                  placeholder="Email"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1.5">
+                Chúng tôi khuyên bạn nên sử dụng email cá nhân.
+              </p>
             </div>
 
             {/* Password */}
-            <div className="relative">
-              <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-              <input
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                type={showPassword ? "text" : "password"}
-                className="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all"
-                placeholder="Mật khẩu"
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-3.5"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-400" />
-                ) : (
-                  <Eye className="h-5 w-5 text-gray-400" />
-                )}
-              </button>
+            <div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                <input
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  type={showPassword ? "text" : "password"}
+                  className="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                  placeholder="Mật khẩu"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-3.5"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+              </div>
+              {/* Password Requirements */}
+              <ul className="mt-2 space-y-1 text-xs text-gray-500">
+                <li className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${formData.password.length >= 8 ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                  Gồm ít nhất 8 ký tự
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${/[A-Z]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                  Ít nhất một chữ in hoa
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                  Bao gồm ít nhất một ký tự đặc biệt
+                </li>
+              </ul>
             </div>
 
             {/* Confirm Password */}
@@ -229,13 +465,23 @@ export default function RegisterPage() {
               />
               <label className="ml-2 text-sm text-gray-600">
                 Tôi đồng ý với{" "}
-                <span className="text-purple-600 cursor-pointer">
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-600 hover:underline"
+                >
                   Điều khoản sử dụng
-                </span>{" "}
+                </a>{" "}
                 và{" "}
-                <span className="text-purple-600 cursor-pointer">
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-600 hover:underline"
+                >
                   Chính sách bảo mật
-                </span>
+                </a>
               </label>
             </div>
 
@@ -247,9 +493,22 @@ export default function RegisterPage() {
               {isLoading ? (
                 <Loader2 className="animate-spin w-5 h-5" />
               ) : (
-                "Đăng ký"
+                "Tiếp tục"
               )}
             </button>
+
+            {/* Divider */}
+            <div className="relative my-2">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white text-gray-500">Tiếp tục với:</span>
+              </div>
+            </div>
+
+            {/* Google Login */}
+            <div id="google-signin-button" className="w-full flex justify-center"></div>
 
             <div className="text-center pt-4">
               <p className="text-sm text-gray-600">
@@ -276,6 +535,24 @@ export default function RegisterPage() {
           />
         </div>
       </div>
+
+      {/* Google Identity Services Script */}
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={() => {
+          if (window.google) {
+            window.google.accounts.id.initialize({
+              client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+              callback: handleGoogleCredentialResponse,
+            });
+            window.google.accounts.id.renderButton(
+              document.getElementById("google-signin-button"),
+              { theme: "outline", size: "large", width: 350, text: "continue_with" }
+            );
+          }
+        }}
+      />
     </div>
   );
 }

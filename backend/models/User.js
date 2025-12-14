@@ -60,6 +60,17 @@ const UserSchema = new mongoose.Schema(
       enum: ["local", "google"],
       default: "local",
     },
+    // Email verification
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationCode: {
+      type: String,
+    },
+    emailVerificationExpires: {
+      type: Date,
+    },
     //Thông tin Marketplace và Swap
     seller_rating: {
       type: Number,

@@ -68,7 +68,6 @@ const loginSuccessTemplate = (userName, loginTime, ipAddress, device) => {
   `;
 };
 
-// Hàm gửi email đăng nhập thành công
 const sendLoginSuccessEmail = async (userEmail, userName, req) => {
   try {
     const loginTime = new Date().toLocaleString("vi-VN", {
@@ -99,6 +98,69 @@ const sendLoginSuccessEmail = async (userEmail, userName, req) => {
   }
 };
 
+// Template email xác thực OTP
+const verificationEmailTemplate = (userName, otpCode) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #9333ea, #ec4899); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .otp-box { background: linear-gradient(135deg, #9333ea, #ec4899); color: white; font-size: 32px; font-weight: bold; letter-spacing: 8px; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0; }
+        .info-text { color: #666; font-size: 14px; text-align: center; }
+        .footer { text-align: center; margin-top: 20px; color: #999; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>✨ Xác thực Email</h1>
+          <p>OOTDverse</p>
+        </div>
+        <div class="content">
+          <p>Xin chào <strong>${userName}</strong>,</p>
+          <p>Cảm ơn bạn đã đăng ký tài khoản OOTDverse! Để hoàn tất quá trình đăng ký, vui lòng nhập mã xác thực bên dưới:</p>
+          
+          <div class="otp-box">${otpCode}</div>
+          
+          <p class="info-text">⏰ Mã này sẽ hết hạn sau <strong>10 phút</strong></p>
+          <p class="info-text">🔒 Không chia sẻ mã này với bất kỳ ai</p>
+          
+          <p style="margin-top: 20px;">Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>
+        </div>
+        <div class="footer">
+          <p>© 2025 OOTDverse. All rights reserved.</p>
+          <p>Email này được gửi tự động, vui lòng không trả lời.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+// Hàm gửi email xác thực OTP
+const sendVerificationEmail = async (userEmail, userName, otpCode) => {
+  try {
+    const mailOptions = {
+      from: process.env.EMAIL_FROM,
+      to: userEmail,
+      subject: "🔐 Mã xác thực OOTDverse của bạn",
+      html: verificationEmailTemplate(userName, otpCode),
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Verification email sent successfully:", info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("Error sending verification email:", error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendLoginSuccessEmail,
+  sendVerificationEmail,
 };

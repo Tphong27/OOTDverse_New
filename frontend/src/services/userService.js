@@ -30,3 +30,13 @@ export const googleLoginUser = async (token) => {
   const response = await axios.post(`${API_URL}/google-login`, { token });
   return response.data;
 };
+
+export const verifyEmail = async (email, code) => {
+  const response = await axios.post(`${API_URL}/verify-email`, { email, code });
+  return response.data;
+};
+
+export const resendVerificationCode = async (email) => {
+  const response = await axios.post(`${API_URL}/resend-verification`, { email });
+  return response.data;
+};

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useEffect } from "react";
 import {
   Home,
   Shirt,
@@ -13,12 +14,15 @@ import {
   User,
   LayoutDashboard,
 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useAuth } from "@/context/AuthContext";
 
 export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
   const router = useRouter();
-  // const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
   const { isAdmin, isCustomer } = useAuth();
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [router.pathname]);
 
   const ALL_MENU_ITEMS = [
     // CUSTOMER ROUTES
@@ -118,7 +122,10 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
       >
         {/* Logo Area with gradient */}
         <div className="h-16 flex items-center px-6 border-b border-purple-50 bg-gradient-to-r from-purple-50 to-pink-50">
-          <Link href="/user/dashboard" className="flex items-center gap-3 group">
+          <Link
+            href="/user/dashboard"
+            className="flex items-center gap-3 group"
+          >
             <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:shadow-purple-300 group-hover:scale-110 transition-all">
               Logo
             </div>
@@ -141,25 +148,28 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
                 onClick={() =>
                   window.innerWidth < 1024 && setIsSidebarOpen(false)
                 }
-                className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-medium transition-all duration-200 group relative ${isActive
-                  ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-200"
-                  : "text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700"
-                  }`}
+                className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-medium transition-all duration-200 group relative ${
+                  isActive
+                    ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-200"
+                    : "text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700"
+                }`}
               >
                 <div className="flex items-center gap-3">
                   <Icon
-                    className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive
-                      ? "text-white"
-                      : "text-gray-400 group-hover:text-purple-600"
-                      }`}
+                    className={`w-5 h-5 transition-transform group-hover:scale-110 ${
+                      isActive
+                        ? "text-white"
+                        : "text-gray-400 group-hover:text-purple-600"
+                    }`}
                   />
                   <span>{item.label}</span>
                 </div>
                 <ChevronRight
-                  className={`w-4 h-4 transition-all ${isActive
-                    ? "opacity-100 translate-x-0"
-                    : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
-                    }`}
+                  className={`w-4 h-4 transition-all ${
+                    isActive
+                      ? "opacity-100 translate-x-0"
+                      : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
+                  }`}
                 />
               </Link>
             );

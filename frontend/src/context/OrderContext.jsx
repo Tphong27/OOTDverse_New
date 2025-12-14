@@ -11,7 +11,7 @@ import {
   cancelOrder,
   rateSeller,
   rateBuyer,
-} from "@/services/marketplace";
+} from "@/services/marketplace-index";
 
 const OrderContext = createContext();
 

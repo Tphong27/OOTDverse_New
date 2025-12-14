@@ -2,30 +2,30 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import {
-  createOrder,
-  getOrderById,
-  getUserOrders,
-  getOrderStats,
-  updateOrderStatus,
-  updatePaymentStatus,
-  cancelOrder,
-  rateSeller,
-  rateBuyer,
-} from "@/services/marketplace";
+  createSwapRequest,
+  getSwapRequestById,
+  getUserSwapRequests,
+  getSwapStats,
+  acceptSwapRequest,
+  rejectSwapRequest,
+  cancelSwapRequest,
+  updateShipping,
+  markDelivered,
+  rateSwapPartner,
+} from "@/services/marketplace-index";
 
-const OrderContext = createContext();
+const SwapContext = createContext();
 
-export function OrderProvider({ children }) {
+export function SwapProvider({ children }) {
   const { user } = useAuth();
 
   // ========================================
   // STATE
   // ========================================
-  const [myOrders, setMyOrders] = useState([]); // Orders as buyer
-  const [mySales, setMySales] = useState([]); // Orders as seller
-  const [currentOrder, setCurrentOrder] = useState(null);
-  const [buyerStats, setBuyerStats] = useState(null);
-  const [sellerStats, setSellerStats] = useState(null);
+  const [sentRequests, setSentRequests] = useState([]); // Swap requests sent by user
+  const [receivedRequests, setReceivedRequests] = useState([]); // Swap requests received by user
+  const [currentSwap, setCurrentSwap] = useState(null);
+  const [stats, setStats] = useState(null);
 
   const [filters, setFilters] = useState({
     status: null,
@@ -44,71 +44,71 @@ export function OrderProvider({ children }) {
   const [error, setError] = useState(null);
 
   // ========================================
-  // LOAD MY ORDERS (as Buyer)
+  // LOAD SENT REQUESTS (as Requester)
   // ========================================
-  const loadMyOrders = async (customFilters = {}) => {
+  const loadSentRequests = async (customFilters = {}) => {
     if (!user) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      const response = await getUserOrders(user._id, {
-        role: "buyer",
+      const response = await getUserSwapRequests(user._id, {
+        role: "requester",
         ...filters,
         ...customFilters,
       });
 
-      setMyOrders(response.data);
+      setSentRequests(response.data);
       setPagination(response.pagination);
     } catch (err) {
-      console.error("Error loading orders:", err);
-      setError(err.error || "Không thể tải đơn hàng");
+      console.error("Error loading sent requests:", err);
+      setError(err.error || "Không thể tải yêu cầu đã gửi");
     } finally {
       setLoading(false);
     }
   };
 
   // ========================================
-  // LOAD MY SALES (as Seller)
+  // LOAD RECEIVED REQUESTS (as Receiver)
   // ========================================
-  const loadMySales = async (customFilters = {}) => {
+  const loadReceivedRequests = async (customFilters = {}) => {
     if (!user) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      const response = await getUserOrders(user._id, {
-        role: "seller",
+      const response = await getUserSwapRequests(user._id, {
+        role: "receiver",
         ...filters,
         ...customFilters,
       });
 
-      setMySales(response.data);
+      setReceivedRequests(response.data);
       setPagination(response.pagination);
     } catch (err) {
-      console.error("Error loading sales:", err);
-      setError(err.error || "Không thể tải đơn bán");
+      console.error("Error loading received requests:", err);
+      setError(err.error || "Không thể tải yêu cầu đã nhận");
     } finally {
       setLoading(false);
     }
   };
 
   // ========================================
-  // LOAD ORDER BY ID
+  // LOAD SWAP BY ID
   // ========================================
-  const loadOrderById = async (id) => {
+  const loadSwapById = async (id) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await getOrderById(id);
-      setCurrentOrder(response.data);
+      const response = await getSwapRequestById(id);
+      setCurrentSwap(response.data);
       return response.data;
     } catch (err) {
-      console.error("Error loading order:", err);
-      setError(err.error || "Không thể tải đơn hàng");
+      console.error("Error loading swap:", err);
+      setError(err.error || "Không thể tải swap request");
       return null;
     } finally {
       setLoading(false);
@@ -116,25 +116,25 @@ export function OrderProvider({ children }) {
   };
 
   // ========================================
-  // CREATE ORDER
+  // CREATE SWAP REQUEST
   // ========================================
-  const placeOrder = async (orderData) => {
+  const sendSwapRequest = async (swapData) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await createOrder({
-        ...orderData,
-        buyer_id: user._id,
+      const response = await createSwapRequest({
+        ...swapData,
+        requester_id: user._id,
       });
 
-      // Add to myOrders
-      setMyOrders((prev) => [response.data, ...prev]);
+      // Add to sentRequests
+      setSentRequests((prev) => [response.data, ...prev]);
 
       return response.data;
     } catch (err) {
-      console.error("Error creating order:", err);
-      setError(err.error || "Không thể tạo đơn hàng");
+      console.error("Error creating swap request:", err);
+      setError(err.error || "Không thể gửi yêu cầu swap");
       throw err;
     } finally {
       setLoading(false);
@@ -142,31 +142,29 @@ export function OrderProvider({ children }) {
   };
 
   // ========================================
-  // UPDATE ORDER STATUS
+  // ACCEPT SWAP REQUEST
   // ========================================
-  const changeOrderStatus = async (id, status, trackingNumber = null) => {
+  const acceptSwap = async (id, receiverMessage = null, receiverAddress) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await updateOrderStatus(id, status, trackingNumber);
+      const response = await acceptSwapRequest(id, receiverMessage, receiverAddress);
 
-      // Update in myOrders or mySales
-      const updateOrder = (prev) =>
-        prev.map((o) => (o._id === id ? response.data : o));
+      // Update in receivedRequests
+      setReceivedRequests((prev) =>
+        prev.map((s) => (s._id === id ? response.data : s))
+      );
 
-      setMyOrders(updateOrder);
-      setMySales(updateOrder);
-
-      // Update current order
-      if (currentOrder?._id === id) {
-        setCurrentOrder(response.data);
+      // Update current swap
+      if (currentSwap?._id === id) {
+        setCurrentSwap(response.data);
       }
 
       return response.data;
     } catch (err) {
-      console.error("Error updating order status:", err);
-      setError(err.error || "Không thể cập nhật trạng thái");
+      console.error("Error accepting swap:", err);
+      setError(err.error || "Không thể chấp nhận swap");
       throw err;
     } finally {
       setLoading(false);
@@ -174,29 +172,29 @@ export function OrderProvider({ children }) {
   };
 
   // ========================================
-  // UPDATE PAYMENT STATUS
+  // REJECT SWAP REQUEST
   // ========================================
-  const changePaymentStatus = async (id, paymentStatus, transactionId = null) => {
+  const rejectSwap = async (id, rejectionReason) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await updatePaymentStatus(id, paymentStatus, transactionId);
+      const response = await rejectSwapRequest(id, rejectionReason);
 
-      // Update in myOrders
-      setMyOrders((prev) =>
-        prev.map((o) => (o._id === id ? response.data : o))
+      // Update in receivedRequests
+      setReceivedRequests((prev) =>
+        prev.map((s) => (s._id === id ? response.data : s))
       );
 
-      // Update current order
-      if (currentOrder?._id === id) {
-        setCurrentOrder(response.data);
+      // Update current swap
+      if (currentSwap?._id === id) {
+        setCurrentSwap(response.data);
       }
 
       return response.data;
     } catch (err) {
-      console.error("Error updating payment status:", err);
-      setError(err.error || "Không thể cập nhật thanh toán");
+      console.error("Error rejecting swap:", err);
+      setError(err.error || "Không thể từ chối swap");
       throw err;
     } finally {
       setLoading(false);
@@ -204,31 +202,29 @@ export function OrderProvider({ children }) {
   };
 
   // ========================================
-  // CANCEL ORDER
+  // CANCEL SWAP REQUEST
   // ========================================
-  const cancelOrderFunc = async (id, reason, cancelledBy) => {
+  const cancelSwap = async (id) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await cancelOrder(id, reason, cancelledBy);
+      const response = await cancelSwapRequest(id);
 
-      // Update in myOrders or mySales
-      const updateOrder = (prev) =>
-        prev.map((o) => (o._id === id ? response.data : o));
+      // Update in sentRequests
+      setSentRequests((prev) =>
+        prev.map((s) => (s._id === id ? response.data : s))
+      );
 
-      setMyOrders(updateOrder);
-      setMySales(updateOrder);
-
-      // Update current order
-      if (currentOrder?._id === id) {
-        setCurrentOrder(response.data);
+      // Update current swap
+      if (currentSwap?._id === id) {
+        setCurrentSwap(response.data);
       }
 
       return response.data;
     } catch (err) {
-      console.error("Error cancelling order:", err);
-      setError(err.error || "Không thể hủy đơn hàng");
+      console.error("Error cancelling swap:", err);
+      setError(err.error || "Không thể hủy swap");
       throw err;
     } finally {
       setLoading(false);
@@ -236,28 +232,31 @@ export function OrderProvider({ children }) {
   };
 
   // ========================================
-  // RATE SELLER (Buyer rates Seller)
+  // UPDATE SHIPPING
   // ========================================
-  const rateSellerFunc = async (id, rating, review = null) => {
+  const updateSwapShipping = async (id, party, shippingMethod, trackingNumber = null) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await rateSeller(id, rating, review);
+      const response = await updateShipping(id, party, shippingMethod, trackingNumber);
 
-      // Update in myOrders
-      setMyOrders((prev) =>
-        prev.map((o) =>
-          o._id === id
-            ? { ...o, buyer_rating: rating, buyer_review: review }
-            : o
-        )
-      );
+      // Update in sentRequests or receivedRequests
+      const updateSwap = (prev) =>
+        prev.map((s) => (s._id === id ? response.data : s));
+
+      setSentRequests(updateSwap);
+      setReceivedRequests(updateSwap);
+
+      // Update current swap
+      if (currentSwap?._id === id) {
+        setCurrentSwap(response.data);
+      }
 
       return response.data;
     } catch (err) {
-      console.error("Error rating seller:", err);
-      setError(err.error || "Không thể đánh giá");
+      console.error("Error updating shipping:", err);
+      setError(err.error || "Không thể cập nhật vận chuyển");
       throw err;
     } finally {
       setLoading(false);
@@ -265,27 +264,57 @@ export function OrderProvider({ children }) {
   };
 
   // ========================================
-  // RATE BUYER (Seller rates Buyer)
+  // MARK AS DELIVERED
   // ========================================
-  const rateBuyerFunc = async (id, rating, review = null) => {
+  const markSwapDelivered = async (id, party) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await rateBuyer(id, rating, review);
+      const response = await markDelivered(id, party);
 
-      // Update in mySales
-      setMySales((prev) =>
-        prev.map((o) =>
-          o._id === id
-            ? { ...o, seller_rating: rating, seller_review: review }
-            : o
-        )
-      );
+      // Update in sentRequests or receivedRequests
+      const updateSwap = (prev) =>
+        prev.map((s) => (s._id === id ? response.data : s));
+
+      setSentRequests(updateSwap);
+      setReceivedRequests(updateSwap);
+
+      // Update current swap
+      if (currentSwap?._id === id) {
+        setCurrentSwap(response.data);
+      }
 
       return response.data;
     } catch (err) {
-      console.error("Error rating buyer:", err);
+      console.error("Error marking delivered:", err);
+      setError(err.error || "Không thể xác nhận nhận hàng");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ========================================
+  // RATE SWAP PARTNER
+  // ========================================
+  const ratePartner = async (id, party, rating, review = null) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await rateSwapPartner(id, party, rating, review);
+
+      // Update in sentRequests or receivedRequests
+      const updateSwap = (prev) =>
+        prev.map((s) => (s._id === id ? response.data : s));
+
+      setSentRequests(updateSwap);
+      setReceivedRequests(updateSwap);
+
+      return response.data;
+    } catch (err) {
+      console.error("Error rating partner:", err);
       setError(err.error || "Không thể đánh giá");
       throw err;
     } finally {
@@ -296,25 +325,14 @@ export function OrderProvider({ children }) {
   // ========================================
   // LOAD STATS
   // ========================================
-  const loadBuyerStats = async () => {
+  const loadSwapStats = async () => {
     if (!user) return;
 
     try {
-      const response = await getOrderStats(user._id, "buyer");
-      setBuyerStats(response.data);
+      const response = await getSwapStats(user._id);
+      setStats(response.data);
     } catch (err) {
-      console.error("Error loading buyer stats:", err);
-    }
-  };
-
-  const loadSellerStats = async () => {
-    if (!user) return;
-
-    try {
-      const response = await getOrderStats(user._id, "seller");
-      setSellerStats(response.data);
-    } catch (err) {
-      console.error("Error loading seller stats:", err);
+      console.error("Error loading swap stats:", err);
     }
   };
 
@@ -353,43 +371,41 @@ export function OrderProvider({ children }) {
   };
 
   // ========================================
-  // LOAD ORDERS ON USER LOGIN
+  // LOAD SWAPS ON USER LOGIN
   // ========================================
   useEffect(() => {
     if (user) {
-      loadMyOrders();
-      loadMySales();
-      loadBuyerStats();
-      loadSellerStats();
+      loadSentRequests();
+      loadReceivedRequests();
+      loadSwapStats();
     }
   }, [user]);
 
   return (
-    <OrderContext.Provider
+    <SwapContext.Provider
       value={{
         // State
-        myOrders,
-        mySales,
-        currentOrder,
-        buyerStats,
-        sellerStats,
+        sentRequests,
+        receivedRequests,
+        currentSwap,
+        stats,
         filters,
         pagination,
         loading,
         error,
 
         // Functions
-        loadMyOrders,
-        loadMySales,
-        loadOrderById,
-        placeOrder,
-        changeOrderStatus,
-        changePaymentStatus,
-        cancelOrder: cancelOrderFunc,
-        rateSeller: rateSellerFunc,
-        rateBuyer: rateBuyerFunc,
-        loadBuyerStats,
-        loadSellerStats,
+        loadSentRequests,
+        loadReceivedRequests,
+        loadSwapById,
+        sendSwapRequest,
+        acceptSwap,
+        rejectSwap,
+        cancelSwap,
+        updateSwapShipping,
+        markSwapDelivered,
+        ratePartner,
+        loadSwapStats,
         updateFilters,
         resetFilters,
 
@@ -399,18 +415,18 @@ export function OrderProvider({ children }) {
         prevPage,
 
         // Helpers
-        setCurrentOrder,
+        setCurrentSwap,
       }}
     >
       {children}
-    </OrderContext.Provider>
+    </SwapContext.Provider>
   );
 }
 
-export function useOrder() {
-  const context = useContext(OrderContext);
+export function useSwap() {
+  const context = useContext(SwapContext);
   if (!context) {
-    throw new Error("useOrder must be used within OrderProvider");
+    throw new Error("useSwap must be used within SwapProvider");
   }
   return context;
 }

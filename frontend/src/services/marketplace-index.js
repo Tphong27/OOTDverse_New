@@ -1,7 +1,7 @@
 // frontend/src/services/marketplace-index.js
 
 // Export tất cả listing services
-export * from "./marketplaceListingService";
+export * from "./marketplaceService";
 
 // Export tất cả order services
 export * from "./orderService";
@@ -10,4 +10,4 @@ export * from "./orderService";
 export * from "./swapRequestService";
 
 // Export API instance (nếu cần dùng trực tiếp)
-export { default as api } from "../api";
+export { default as api } from "./api";

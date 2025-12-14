@@ -12,7 +12,7 @@ import {
   toggleFavorite,
   boostListing,
   getMarketplaceStats,
-} from "@/services/marketplace";
+} from "@/services/marketplace-index";
 
 const MarketplaceContext = createContext();
 

@@ -37,9 +37,6 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("currentUser");
     setUser(null);
     router.push("/login");
-    // if (typeof window !== "undefined") {
-    //     window.location.href = "/login";
-    // }
   };
 
   // Thêm cờ kiểm tra quyền truy cập (Access Control)

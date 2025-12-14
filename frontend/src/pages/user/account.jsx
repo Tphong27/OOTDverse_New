@@ -169,7 +169,7 @@ export default function AccountPage() {
             Bạn không có quyền truy cập trang quản lý tài khoản này.
           </p>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/user/dashboard")}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition duration-150"
           >
             Quay về Trang chủ

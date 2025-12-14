@@ -39,7 +39,11 @@ const UserSchema = new mongoose.Schema(
       { type: mongoose.Schema.Types.ObjectId, ref: "Setting" },
     ],
 
-    budget: { type: String },
+    // budget: { type: String },
+    budget: {
+      min: Number,
+      max: Number,
+    },
 
     // Màu ghét (Avoid)
     avoidColors: [{ type: mongoose.Schema.Types.ObjectId, ref: "Setting" }],
@@ -55,6 +59,33 @@ const UserSchema = new mongoose.Schema(
       type: String,
       enum: ["local", "google"],
       default: "local",
+    },
+    //Thông tin Marketplace và Swap
+    seller_rating: {
+      type: Number,
+      min: [0, "Rating không được âm"],
+      max: [5, "Rating từ 0-5"],
+      default: 0,
+    },
+
+    total_sales: {
+      type: Number,
+      default: 0,
+    },
+
+    total_purchases: {
+      type: Number,
+      default: 0,
+    },
+
+    total_swaps: {
+      type: Number,
+      default: 0,
+    },
+
+    is_verified_seller: {
+      type: Boolean,
+      default: false,
     },
   },
   {

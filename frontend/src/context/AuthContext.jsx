@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
 
   // 2. Hàm Đăng nhập (Gọi hàm này ở trang Login)
   const login = (userData, token) => {
-    //Lưu cả user data VÀ token
+    // ⭐ QUAN TRỌNG: Lưu cả user data VÀ token
     const userWithToken = {
       ...userData,
       token, // JWT token từ backend

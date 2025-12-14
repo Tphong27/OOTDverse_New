@@ -3,7 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
-const axios = require("axios"); // Import axios
+const axios = require("axios");
 
 // 2. Sửa dòng config dotenv này:
 // Nó sẽ luôn tìm file .env nằm cùng thư mục với file server.js
@@ -42,7 +42,6 @@ app.use(
     credentials: true,
   })
 );
-//app.use(express.json()); // Để đọc JSON từ body request
 
 // 2. Kết nối Database
 // Lấy chuỗi kết nối từ file .env cũ của bạn
@@ -58,6 +57,9 @@ const settingRoutes = require("./routes/settingRoutes");
 const outfitRoutes = require("./routes/outfitRoutes");
 const outfitItemRoutes = require("./routes/outfitItemRoutes");
 const userRoutes = require("./routes/userRoutes");
+const marketplaceRoutes = require("./routes/marketplaceRoutes");
+const orderRoutes = require("./routes/orderRoutes");
+const swapRequestRoutes = require("./routes/swapRequestRoutes");
 
 // Đăng ký route
 app.use("/api/wardrobe", wardrobeRoutes);
@@ -65,7 +67,9 @@ app.use("/api/setting", settingRoutes);
 app.use("/api/outfits", outfitRoutes);
 app.use("/api/outfit-items", outfitItemRoutes);
 app.use("/api/users", userRoutes);
-
+app.use("/api/marketplace/listings", marketplaceRoutes);
+app.use("/api/marketplace/orders", orderRoutes);
+app.use("/api/marketplace/swap-requests", swapRequestRoutes);
 
 
 // ===== KEEP-ALIVE MECHANISM =====
@@ -100,6 +104,7 @@ setTimeout(pingAiService, 5000);
 
 // Ping định kỳ mỗi 10 phút (600,000 ms)
 setInterval(pingAiService, 10 * 60 * 1000);
+
 app.listen(PORT, () => {
   console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
 });

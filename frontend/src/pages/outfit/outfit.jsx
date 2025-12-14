@@ -24,7 +24,282 @@ import {
   User,
   Globe,
   Lock,
+  X,
+  ChevronDown,
+  RotateCcw,
+  Check,
 } from "lucide-react";
+
+// Component Bottom Sheet Filter cho Mobile
+const MobileFilterSheet = ({ 
+  show, 
+  onClose, 
+  selectedFilters, 
+  onFilterChange, 
+  getSettingsByType,
+  onReset 
+}) => {
+  const [tempFilters, setTempFilters] = useState(selectedFilters);
+
+  useEffect(() => {
+    if (show) {
+      setTempFilters(selectedFilters);
+    }
+  }, [show, selectedFilters]);
+
+  const handleTempChange = (key, value) => {
+    setTempFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleApply = () => {
+    Object.keys(tempFilters).forEach(key => {
+      onFilterChange(key, tempFilters[key]);
+    });
+    onClose();
+  };
+
+  const handleReset = () => {
+    const resetFilters = {
+      style_id: "",
+      occasion_id: "",
+      season_id: "",
+      weather_id: "",
+      sort_by: "newest",
+    };
+    setTempFilters(resetFilters);
+    onReset();
+  };
+
+  const hasActiveFilters = Object.entries(tempFilters).some(
+    ([key, value]) => key !== 'sort_by' && value !== ""
+  );
+
+  if (!show) return null;
+
+  return (
+          <>
+      <style jsx>{`
+        @keyframes slide-up {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
+        }
+
+        .filter-modal-content select {
+          max-width: 100%;
+        }
+        
+        .filter-modal-content {
+          contain: layout style paint;
+        }
+      `}</style>
+
+      <div className="fixed inset-0 z-50 lg:hidden">
+        {/* Overlay với animation */}
+        <div 
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+          onClick={onClose}
+        />
+        
+        {/* Bottom Sheet */}
+        <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col animate-slide-up overflow-hidden">
+          {/* Drag indicator */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-gray-300 rounded-full" />
+
+          {/* Header */}
+          <div className="flex-shrink-0 px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                  <Filter className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Bộ lọc</h3>
+                  {hasActiveFilters && (
+                    <p className="text-xs text-purple-600 font-medium">
+                      Đang áp dụng bộ lọc
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+          </div>
+
+          {/* Content - Scrollable */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 pb-6 filter-modal-content">
+            <div className="space-y-5 max-w-full">
+              {/* Phong cách */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  Phong cách
+                </label>
+                <div className="relative">
+                  <select
+                    value={tempFilters.style_id}
+                    onChange={(e) => handleTempChange("style_id", e.target.value)}
+                    className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white transition-all truncate"
+                    style={{ appearance: 'none', maxWidth: '100%' }}
+                  >
+                    <option value="">Tất cả phong cách</option>
+                    {getSettingsByType("style").map((style) => (
+                      <option key={style._id} value={style._id}>
+                        {style.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  {tempFilters.style_id && (
+                    <Check className="absolute right-10 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-600" />
+                  )}
+                </div>
+              </div>
+
+              {/* Dịp mặc */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <Star className="w-4 h-4 text-pink-600" />
+                  Dịp mặc
+                </label>
+                <div className="relative">
+                  <select
+                    value={tempFilters.occasion_id}
+                    onChange={(e) => handleTempChange("occasion_id", e.target.value)}
+                    className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white transition-all truncate"
+                    style={{ appearance: 'none', maxWidth: '100%' }}
+                  >
+                    <option value="">Tất cả dịp</option>
+                    {getSettingsByType("occasion").map((occasion) => (
+                      <option key={occasion._id} value={occasion._id}>
+                        {occasion.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  {tempFilters.occasion_id && (
+                    <Check className="absolute right-10 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-600" />
+                  )}
+                </div>
+              </div>
+
+              {/* Mùa */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <Calendar className="w-4 h-4 text-green-600" />
+                  Mùa
+                </label>
+                <div className="relative">
+                  <select
+                    value={tempFilters.season_id}
+                    onChange={(e) => handleTempChange("season_id", e.target.value)}
+                    className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white transition-all truncate"
+                    style={{ appearance: 'none', maxWidth: '100%' }}
+                  >
+                    <option value="">Tất cả mùa</option>
+                    {getSettingsByType("season").map((season) => (
+                      <option key={season._id} value={season._id}>
+                        {season.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  {tempFilters.season_id && (
+                    <Check className="absolute right-10 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-600" />
+                  )}
+                </div>
+              </div>
+
+              {/* Thời tiết */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <Cloud className="w-4 h-4 text-blue-600" />
+                  Thời tiết
+                </label>
+                <div className="relative">
+                  <select
+                    value={tempFilters.weather_id}
+                    onChange={(e) => handleTempChange("weather_id", e.target.value)}
+                    className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white transition-all truncate"
+                    style={{ appearance: 'none', maxWidth: '100%' }}
+                  >
+                    <option value="">Tất cả thời tiết</option>
+                    {getSettingsByType("weather").map((weather) => (
+                      <option key={weather._id} value={weather._id}>
+                        {weather.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  {tempFilters.weather_id && (
+                    <Check className="absolute right-10 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-600" />
+                  )}
+                </div>
+              </div>
+
+              {/* Sắp xếp */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <TrendingUp className="w-4 h-4 text-orange-600" />
+                  Sắp xếp theo
+                </label>
+                <div className="relative">
+                  <select
+                    value={tempFilters.sort_by}
+                    onChange={(e) => handleTempChange("sort_by", e.target.value)}
+                    className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white transition-all truncate"
+                    style={{ appearance: 'none', maxWidth: '100%' }}
+                  >
+                    <option value="newest">Mới nhất</option>
+                    <option value="popular">Phổ biến nhất</option>
+                    <option value="rating">Đánh giá cao</option>
+                    <option value="most_worn">Mặc nhiều nhất</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer - Actions */}
+          <div className="flex-shrink-0 px-6 py-4 border-t border-gray-100 bg-gray-50">
+            <div className="flex gap-3">
+              <button
+                onClick={handleReset}
+                className="flex-1 py-3 px-4 rounded-xl font-semibold text-gray-700 bg-white border-2 border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Đặt lại
+              </button>
+              <button
+                onClick={handleApply}
+                className="flex-[2] py-3 px-4 rounded-xl font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              >
+                <Check className="w-5 h-5" />
+                Lọc trang phục
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
 
 export default function OutfitPage() {
   const router = useRouter();
@@ -55,6 +330,8 @@ export default function OutfitPage() {
   });
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
   useEffect(() => {
     if (user) {
       setActiveTab("my-outfits");
@@ -81,6 +358,16 @@ export default function OutfitPage() {
       ...prev,
       [key]: value,
     }));
+  };
+
+  const handleResetFilters = () => {
+    setSelectedFilters({
+      style_id: "",
+      occasion_id: "",
+      season_id: "",
+      weather_id: "",
+      sort_by: "newest",
+    });
   };
 
   const handleTabChange = (tab) => {
@@ -169,6 +456,11 @@ export default function OutfitPage() {
     return settings.filter((s) => s.type === type && s.status === "Active");
   };
 
+  // Tính số lượng filter đang active
+  const activeFilterCount = Object.entries(selectedFilters).filter(
+    ([key, value]) => key !== 'sort_by' && value !== ""
+  ).length;
+
   return (
     <LayoutUser>
       <div className="space-y-6">
@@ -237,6 +529,19 @@ export default function OutfitPage() {
             </div>
 
             <div className="flex gap-2">
+              {/* Bộ lọc cho mobile */}
+              <button
+                onClick={() => setShowMobileFilters(true)}
+                className="lg:hidden relative px-4 py-3 rounded-xl font-medium transition-all flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg hover:shadow-xl"
+              >
+                <Filter className="w-5 h-5" />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
               <button
                 onClick={() => setViewMode("grid")}
                 className={`px-4 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
@@ -259,11 +564,49 @@ export default function OutfitPage() {
               </button>
             </div>
           </div>
+
+          {/* Active Filters Display */}
+          {activeFilterCount > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {selectedFilters.style_id && (
+                <span className="px-3 py-1.5 bg-purple-100 text-purple-700 text-sm rounded-full font-medium flex items-center gap-1">
+                  {getSettingsByType("style").find(s => s._id === selectedFilters.style_id)?.name}
+                  <button onClick={() => handleFilterChange("style_id", "")}>
+                    <X className="w-3 h-3 cursor-pointer hover:text-purple-900" />
+                  </button>
+                </span>
+              )}
+              {selectedFilters.occasion_id && (
+                <span className="px-3 py-1.5 bg-pink-100 text-pink-700 text-sm rounded-full font-medium flex items-center gap-1">
+                  {getSettingsByType("occasion").find(s => s._id === selectedFilters.occasion_id)?.name}
+                  <button onClick={() => handleFilterChange("occasion_id", "")}>
+                    <X className="w-3 h-3 cursor-pointer hover:text-pink-900" />
+                  </button>
+                </span>
+              )}
+              {selectedFilters.season_id && (
+                <span className="px-3 py-1.5 bg-green-100 text-green-700 text-sm rounded-full font-medium flex items-center gap-1">
+                  {getSettingsByType("season").find(s => s._id === selectedFilters.season_id)?.name}
+                  <button onClick={() => handleFilterChange("season_id", "")}>
+                    <X className="w-3 h-3 cursor-pointer hover:text-green-900" />
+                  </button>
+                </span>
+              )}
+              {selectedFilters.weather_id && (
+                <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm rounded-full font-medium flex items-center gap-1">
+                  {getSettingsByType("weather").find(s => s._id === selectedFilters.weather_id)?.name}
+                  <button onClick={() => handleFilterChange("weather_id", "")}>
+                    <X className="w-3 h-3 cursor-pointer hover:text-blue-900" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex gap-6">
-          {/* Sidebar Filters */}
-          <div className="w-64 flex-shrink-0 hidden lg:block">
+          {/* Sidebar Filters - Desktop Only */}
+          <div className="w-64 flex-shrink-0 lg:block hidden">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sticky top-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -273,7 +616,7 @@ export default function OutfitPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <Sparkles className="w-4 h-4" />
                   Phong cách
                 </label>
@@ -294,7 +637,7 @@ export default function OutfitPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <Star className="w-4 h-4" />
                   Dịp mặc
                 </label>
@@ -315,7 +658,7 @@ export default function OutfitPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <Calendar className="w-4 h-4" />
                   Mùa
                 </label>
@@ -336,7 +679,7 @@ export default function OutfitPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <Cloud className="w-4 h-4" />
                   Thời tiết
                 </label>
@@ -357,7 +700,7 @@ export default function OutfitPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <TrendingUp className="w-4 h-4" />
                   Sắp xếp theo
                 </label>
@@ -376,6 +719,16 @@ export default function OutfitPage() {
               </div>
             </div>
           </div>
+
+          {/* Mobile Filter Sheet */}
+          <MobileFilterSheet
+            show={showMobileFilters}
+            onClose={() => setShowMobileFilters(false)}
+            selectedFilters={selectedFilters}
+            onFilterChange={handleFilterChange}
+            getSettingsByType={getSettingsByType}
+            onReset={handleResetFilters}
+          />
 
           {/* Main Content */}
           <div className="flex-1">
@@ -434,14 +787,10 @@ export default function OutfitPage() {
               <>
                 <div className="mb-4 flex justify-between items-center">
                   <p className="text-sm text-gray-600">
-                    {" "}
                     <span className="font-semibold">
                       {filteredOutfits.length}
                     </span>{" "}
                     outfits
-                    {activeTab === "explore" && (
-                      <span className="text-gray-400 ml-2"></span>
-                    )}
                   </p>
                 </div>
 
@@ -496,14 +845,15 @@ const OutfitCard = ({
         onClick={onClick}
         className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer p-4 flex gap-4 border border-gray-100"
       >
-        <div className="relative w-32 h-32 flex-shrink-0">
+        <div className="relative w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden">
           <Image
             src={outfit.thumbnail_url || "/assets/placeholder-outfit.png"}
             alt={outfit.outfit_name}
-            width={128}
-            height={128}
-            className="object-cover rounded-lg"
+            fill
+            sizes="128px"
+            className="object-cover"
           />
+
           <div className="absolute top-1 right-1">
             {showPrivacyToggle ? (
               <button
@@ -629,12 +979,12 @@ const OutfitCard = ({
       onClick={onClick}
       className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all cursor-pointer overflow-hidden border border-gray-100 group"
     >
-      <div className="relative aspect-square">
+      <div className="relative aspect-square w-full">
         <Image
           src={outfit.thumbnail_url || "/assets/placeholder-outfit.png"}
           alt={outfit.outfit_name}
-          width={320}
-          height={300}
+          fill
+          sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
           className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
 

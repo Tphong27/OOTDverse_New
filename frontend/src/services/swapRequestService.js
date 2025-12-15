@@ -1,7 +1,7 @@
 // frontend/src/services/swapRequestService.js
 import api from "./api";
 
-const BASE_URL = "/marketplace/swap-requests";
+const BASE_URL = "/api/marketplace/swap-requests";
 
 // ========================================
 // 1. CREATE SWAP REQUEST (Protected)

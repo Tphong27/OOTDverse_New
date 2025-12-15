@@ -1,19 +1,20 @@
 // frontend/src/services/api.js
 import axios from "axios";
 
-// Tạo axios instance
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 30000, // 30 seconds
+  timeout: 30000,
 });
 
-// REQUEST INTERCEPTOR - Tự động gắn token
+// Log để debug
+console.log("🔧 API Base URL:", api.defaults.baseURL);
+
+// REQUEST INTERCEPTOR
 api.interceptors.request.use(
   (config) => {
-    // Lấy token từ localStorage
     const currentUser = localStorage.getItem("currentUser");
     
     if (currentUser) {
@@ -29,6 +30,9 @@ api.interceptors.request.use(
       }
     }
     
+    // Log request để debug
+    console.log(`📤 API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
+    
     return config;
   },
   (error) => {
@@ -36,60 +40,51 @@ api.interceptors.request.use(
   }
 );
 
-// ========================================
-// RESPONSE INTERCEPTOR - Xử lý errors
-// ========================================
+// RESPONSE INTERCEPTOR
 api.interceptors.response.use(
   (response) => {
-    // Trả về data trực tiếp
+    console.log(`✅ API Response: ${response.config.url}`, response.data);
     return response.data;
   },
   (error) => {
-    // Xử lý các loại lỗi
     if (error.response) {
       const { status, data } = error.response;
       
-      // 401 - Unauthorized (Token hết hạn hoặc không hợp lệ)
+      console.error(`❌ API Error ${status}:`, error.config.url, data);
+      
       if (status === 401) {
         console.error("Unauthorized - Redirecting to login");
         localStorage.removeItem("currentUser");
         
-        // Redirect to login nếu đang ở browser
         if (typeof window !== "undefined") {
           window.location.href = "/login";
         }
       }
       
-      // 403 - Forbidden (Không có quyền)
       if (status === 403) {
         console.error("Forbidden:", data.error);
       }
       
-      // 404 - Not Found
       if (status === 404) {
         console.error("Not Found:", data.error);
       }
       
-      // 400 - Validation Error
       if (status === 400) {
         console.error("Validation Error:", data.error, data.details);
       }
       
-      // 500 - Server Error
       if (status === 500) {
         console.error("Server Error:", data.error);
       }
       
       return Promise.reject(data);
     } else if (error.request) {
-      // Request được gửi nhưng không nhận được response
-      console.error("No response from server");
+      console.error("No response from server:", error.request);
       return Promise.reject({
         success: false,
         error: "Không thể kết nối đến server. Vui lòng kiểm tra mạng.",
       });
     } else {
-      // Lỗi khác
       console.error("Request error:", error.message);
       return Promise.reject({
         success: false,

@@ -19,9 +19,7 @@ const MarketplaceContext = createContext();
 export function MarketplaceProvider({ children }) {
   const { user } = useAuth();
 
-  // ========================================
   // STATE
-  // ========================================
   const [listings, setListings] = useState([]);
   const [myListings, setMyListings] = useState([]);
   const [currentListing, setCurrentListing] = useState(null);
@@ -51,9 +49,7 @@ export function MarketplaceProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ========================================
   // LOAD LISTINGS
-  // ========================================
   const loadListings = async (customFilters = {}) => {
     try {
       setLoading(true);
@@ -62,39 +58,45 @@ export function MarketplaceProvider({ children }) {
       const filterToUse = { ...filters, ...customFilters };
       const response = await getListings(filterToUse);
 
-      setListings(response.data);
-      setPagination(response.pagination);
+      setListings(response.data || []);
+      setPagination(response.pagination || {
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0
+      });
     } catch (err) {
       console.error("Error loading listings:", err);
-      setError(err.error || "Không thể tải danh sách");
+      setError(err.error || err.message || "Không thể tải danh sách");
+      setListings([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ========================================
   // LOAD MY LISTINGS
-  // ========================================
   const loadMyListings = async (customFilters = {}) => {
-    if (!user) return;
+    if (!user?._id) {
+      console.log("No user ID, skipping loadMyListings");
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
 
       const response = await getUserListings(user._id, customFilters);
-      setMyListings(response.data);
+      setMyListings(response.data || []);
     } catch (err) {
       console.error("Error loading my listings:", err);
-      setError(err.error || "Không thể tải listings của bạn");
+      setError(err.error || err.message || "Không thể tải listings của bạn");
+      setMyListings([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ========================================
   // LOAD LISTING BY ID
-  // ========================================
   const loadListingById = async (id, incrementView = true) => {
     try {
       setLoading(true);
@@ -105,35 +107,32 @@ export function MarketplaceProvider({ children }) {
       return response.data;
     } catch (err) {
       console.error("Error loading listing:", err);
-      setError(err.error || "Không thể tải listing");
+      setError(err.error || err.message || "Không thể tải listing");
       return null;
     } finally {
       setLoading(false);
     }
   };
 
-  // ========================================
   // SEARCH LISTINGS
-  // ========================================
   const searchListingsFunc = async (searchParams) => {
     try {
       setLoading(true);
       setError(null);
 
       const response = await searchListings(searchParams);
-      setListings(response.data);
+      setListings(response.data || []);
       setPagination(response.pagination || {});
     } catch (err) {
       console.error("Error searching listings:", err);
-      setError(err.error || "Không thể tìm kiếm");
+      setError(err.error || err.message || "Không thể tìm kiếm");
+      setListings([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ========================================
   // CREATE LISTING
-  // ========================================
   const addListing = async (listingData) => {
     try {
       setLoading(true);
@@ -144,22 +143,18 @@ export function MarketplaceProvider({ children }) {
         seller_id: user._id,
       });
 
-      // Add to myListings
       setMyListings((prev) => [response.data, ...prev]);
-
       return response.data;
     } catch (err) {
       console.error("Error creating listing:", err);
-      setError(err.error || "Không thể tạo listing");
+      setError(err.error || err.message || "Không thể tạo listing");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // ========================================
   // UPDATE LISTING
-  // ========================================
   const editListing = async (id, listingData) => {
     try {
       setLoading(true);
@@ -167,17 +162,14 @@ export function MarketplaceProvider({ children }) {
 
       const response = await updateListing(id, listingData);
 
-      // Update in listings
       setListings((prev) =>
         prev.map((l) => (l._id === id ? response.data : l))
       );
 
-      // Update in myListings
       setMyListings((prev) =>
         prev.map((l) => (l._id === id ? response.data : l))
       );
 
-      // Update current listing
       if (currentListing?._id === id) {
         setCurrentListing(response.data);
       }
@@ -185,16 +177,14 @@ export function MarketplaceProvider({ children }) {
       return response.data;
     } catch (err) {
       console.error("Error updating listing:", err);
-      setError(err.error || "Không thể cập nhật listing");
+      setError(err.error || err.message || "Không thể cập nhật listing");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // ========================================
   // DELETE LISTING
-  // ========================================
   const removeListing = async (id) => {
     try {
       setLoading(true);
@@ -202,30 +192,24 @@ export function MarketplaceProvider({ children }) {
 
       await deleteListing(id);
 
-      // Remove from listings
       setListings((prev) => prev.filter((l) => l._id !== id));
-
-      // Remove from myListings
       setMyListings((prev) => prev.filter((l) => l._id !== id));
 
       return true;
     } catch (err) {
       console.error("Error deleting listing:", err);
-      setError(err.error || "Không thể xóa listing");
+      setError(err.error || err.message || "Không thể xóa listing");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // ========================================
   // TOGGLE FAVORITE
-  // ========================================
   const toggleListingFavorite = async (id, isFavorite) => {
     try {
       const response = await toggleFavorite(id, !isFavorite);
 
-      // Update in listings
       setListings((prev) =>
         prev.map((l) =>
           l._id === id
@@ -234,7 +218,6 @@ export function MarketplaceProvider({ children }) {
         )
       );
 
-      // Update current listing
       if (currentListing?._id === id) {
         setCurrentListing((prev) => ({
           ...prev,
@@ -249,9 +232,7 @@ export function MarketplaceProvider({ children }) {
     }
   };
 
-  // ========================================
   // BOOST LISTING
-  // ========================================
   const boostListingFunc = async (id) => {
     try {
       setLoading(true);
@@ -259,7 +240,6 @@ export function MarketplaceProvider({ children }) {
 
       const response = await boostListing(id);
 
-      // Update in myListings
       setMyListings((prev) =>
         prev.map((l) =>
           l._id === id
@@ -275,16 +255,14 @@ export function MarketplaceProvider({ children }) {
       return response.data;
     } catch (err) {
       console.error("Error boosting listing:", err);
-      setError(err.error || "Không thể boost listing");
+      setError(err.error || err.message || "Không thể boost listing");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // ========================================
   // LOAD STATS
-  // ========================================
   const loadStats = async () => {
     try {
       const response = await getMarketplaceStats();
@@ -294,9 +272,7 @@ export function MarketplaceProvider({ children }) {
     }
   };
 
-  // ========================================
   // UPDATE FILTERS
-  // ========================================
   const updateFilters = (newFilters) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
   };
@@ -317,9 +293,7 @@ export function MarketplaceProvider({ children }) {
     });
   };
 
-  // ========================================
   // PAGINATION
-  // ========================================
   const goToPage = (page) => {
     updateFilters({ page });
   };
@@ -336,19 +310,27 @@ export function MarketplaceProvider({ children }) {
     }
   };
 
-  // ========================================
+  // Refresh function
+  const refreshListings = () => {
+    loadListings();
+    if (user?._id) {
+      loadMyListings();
+    }
+  };
+
   // LOAD LISTINGS ON MOUNT & FILTER CHANGE
-  // ========================================
   useEffect(() => {
     loadListings();
   }, [filters.page, filters.sort_by, filters.status]);
 
-  // Load my listings khi user đăng nhập
+  // Load my listings when user logs in
   useEffect(() => {
-    if (user) {
+    if (user?._id) {
       loadMyListings();
+    } else {
+      setMyListings([]);
     }
-  }, [user]);
+  }, [user?._id]);
 
   return (
     <MarketplaceContext.Provider
@@ -376,6 +358,7 @@ export function MarketplaceProvider({ children }) {
         loadStats,
         updateFilters,
         resetFilters,
+        refreshListings,
 
         // Pagination
         goToPage,

@@ -1,7 +1,7 @@
 // frontend/src/services/marketplaceService.js
 import api from "./api";
 
-const BASE_URL = "/marketplace/listings";
+const BASE_URL = "/api/marketplace/listings";
 
 // ========================================
 // 1. GET ALL LISTINGS (Public)

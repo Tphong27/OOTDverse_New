@@ -1,7 +1,7 @@
 // frontend/src/services/orderService.js
 import api from "./api";
 
-const BASE_URL = "/marketplace/orders";
+const BASE_URL = "/api/marketplace/orders";
 
 // ========================================
 // 1. CREATE ORDER (Protected)

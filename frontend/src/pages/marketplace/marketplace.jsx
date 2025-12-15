@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useMarketplace } from "@/context/MarketplaceContext";
-
 import ListingGrid from "@/pages/marketplace/ListingGrid";
 import CreateListingModal from "@/pages/marketplace/CreateListingModal";
 

@@ -1,3 +1,4 @@
+//frontend/src/pages/marketplace/CreateListingModal.jsx
 import { useState, useEffect } from "react";
 import { X, Check, AlertCircle } from "lucide-react";
 import { useMarketplace } from "@/context/MarketplaceContext";
@@ -68,6 +69,11 @@ export default function CreateListingModal({ isOpen, onClose, onSuccess }) {
     setError(null);
 
     try {
+      // Kiểm tra user đã đăng nhập chưa
+      if (!user || !user._id) {
+        throw new Error("Bạn cần đăng nhập để đăng bán");
+      }
+
       // Validation
       if (!formData.item_id) {
         throw new Error("Vui lòng chọn món đồ");
@@ -84,14 +90,22 @@ export default function CreateListingModal({ isOpen, onClose, onSuccess }) {
         throw new Error("Mô tả phải có ít nhất 10 ký tự");
       }
 
+      // Thêm seller_id vào formData
+      const listingData = {
+        ...formData,
+        seller_id: user._id, // ← QUAN TRỌNG: Thêm seller_id
+      };
+
+      console.log("📤 Creating listing with data:", listingData);
+
       // Create listing
-      await addListing(formData);
+      await addListing(listingData);
 
       // Success
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      console.error("Error creating listing:", err);
+      console.error("❌ Error creating listing:", err);
       setError(err.message || err.error || "Không thể tạo listing");
     } finally {
       setLoading(false);

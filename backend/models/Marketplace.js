@@ -1,3 +1,4 @@
+// backend/models/Marketplace.js
 const mongoose = require("mongoose");
 
 const MarketplaceListingSchema = new mongoose.Schema(
@@ -14,7 +15,6 @@ const MarketplaceListingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Item",
       required: [true, "Item ID là bắt buộc"],
-      index: true,
     },
 
     // === Listing Type ===
@@ -255,4 +255,4 @@ MarketplaceListingSchema.virtual("item", {
 MarketplaceListingSchema.set("toJSON", { virtuals: true });
 MarketplaceListingSchema.set("toObject", { virtuals: true });
 
-module.exports = mongoose.model("MarketplaceListing", MarketplaceListingSchema);
+module.exports = mongoose.model("Marketplace", MarketplaceListingSchema);

@@ -14,7 +14,6 @@ const OutfitItemSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Item",
       required: [true, "Item ID là bắt buộc"],
-      index: true,
     },
 
     // === Layer Position ===

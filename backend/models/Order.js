@@ -27,7 +27,7 @@ const OrderSchema = new mongoose.Schema(
 
     listing_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "MarketplaceListing",
+      ref: "Marketplace",
       required: [true, "Listing ID là bắt buộc"],
       index: true,
     },
@@ -209,7 +209,6 @@ const OrderSchema = new mongoose.Schema(
 );
 
 // === Indexes ===
-OrderSchema.index({ order_code: 1 }, { unique: true });
 OrderSchema.index({ buyer_id: 1, order_status: 1 });
 OrderSchema.index({ seller_id: 1, order_status: 1 });
 OrderSchema.index({ payment_status: 1, order_status: 1 });
@@ -305,7 +304,7 @@ OrderSchema.virtual("seller", {
 });
 
 OrderSchema.virtual("listing", {
-  ref: "MarketplaceListing",
+  ref: "Marketplace",
   localField: "listing_id",
   foreignField: "_id",
   justOne: true,

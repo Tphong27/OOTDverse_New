@@ -15,14 +15,12 @@ const SwapRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: [true, "Requester ID là bắt buộc"],
-      index: true,
     },
 
     receiver_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: [true, "Receiver ID là bắt buộc"],
-      index: true,
     },
 
     // === Items ===
@@ -54,16 +52,15 @@ const SwapRequestSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "pending",        // Chờ phản hồi
-        "accepted",       // Đã chấp nhận
-        "in_progress",    // Đang thực hiện
-        "completed",      // Hoàn thành
-        "rejected",       // Từ chối
-        "cancelled",      // Đã hủy
-        "expired",        // Hết hạn
+        "pending",
+        "accepted",
+        "in_progress",
+        "completed",
+        "rejected",
+        "cancelled",
+        "expired",
       ],
       default: "pending",
-      index: true,
     },
 
     // === Messages ===
@@ -85,8 +82,7 @@ const SwapRequestSchema = new mongoose.Schema(
       default: null,
     },
 
-    // === Shipping Info (Cho swap) ===
-    // Người yêu cầu gửi hàng
+    // === Shipping Info ===
     requester_shipping: {
       method: {
         type: String,
@@ -98,7 +94,6 @@ const SwapRequestSchema = new mongoose.Schema(
       delivered_at: Date,
     },
 
-    // Người nhận yêu cầu gửi hàng
     receiver_shipping: {
       method: {
         type: String,
@@ -174,7 +169,6 @@ const SwapRequestSchema = new mongoose.Schema(
 
     expires_at: {
       type: Date,
-      // Tự động hết hạn sau 7 ngày nếu không phản hồi
       default: function() {
         return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       },
@@ -186,7 +180,9 @@ const SwapRequestSchema = new mongoose.Schema(
 );
 
 // === Indexes ===
-SwapRequestSchema.index({ swap_code: 1 }, { unique: true });
+// ❌ BỎ dòng này vì đã có unique: true ở trên
+// SwapRequestSchema.index({ swap_code: 1 }, { unique: true });
+
 SwapRequestSchema.index({ requester_id: 1, status: 1 });
 SwapRequestSchema.index({ receiver_id: 1, status: 1 });
 SwapRequestSchema.index({ status: 1, expires_at: 1 });
@@ -203,7 +199,6 @@ SwapRequestSchema.pre("save", function(next) {
 });
 
 // === Methods ===
-// Accept swap request
 SwapRequestSchema.methods.accept = function(message = null) {
   this.status = "accepted";
   this.responded_at = new Date();
@@ -213,7 +208,6 @@ SwapRequestSchema.methods.accept = function(message = null) {
   return this.save();
 };
 
-// Reject swap request
 SwapRequestSchema.methods.reject = function(reason) {
   this.status = "rejected";
   this.responded_at = new Date();
@@ -221,13 +215,11 @@ SwapRequestSchema.methods.reject = function(reason) {
   return this.save();
 };
 
-// Cancel swap request (by requester)
 SwapRequestSchema.methods.cancel = function() {
   this.status = "cancelled";
   return this.save();
 };
 
-// Update shipping info
 SwapRequestSchema.methods.updateShipping = function(party, shippingData) {
   if (party === "requester") {
     this.requester_shipping = {
@@ -241,7 +233,6 @@ SwapRequestSchema.methods.updateShipping = function(party, shippingData) {
     };
   }
   
-  // Nếu cả 2 bên đều shipped -> in_progress
   if (
     this.requester_shipping?.shipped_at &&
     this.receiver_shipping?.shipped_at
@@ -252,7 +243,6 @@ SwapRequestSchema.methods.updateShipping = function(party, shippingData) {
   return this.save();
 };
 
-// Mark as delivered
 SwapRequestSchema.methods.markDelivered = function(party) {
   if (party === "requester") {
     this.requester_shipping.delivered_at = new Date();
@@ -260,7 +250,6 @@ SwapRequestSchema.methods.markDelivered = function(party) {
     this.receiver_shipping.delivered_at = new Date();
   }
   
-  // Nếu cả 2 bên đều delivered -> completed
   if (
     this.requester_shipping?.delivered_at &&
     this.receiver_shipping?.delivered_at
@@ -272,7 +261,6 @@ SwapRequestSchema.methods.markDelivered = function(party) {
   return this.save();
 };
 
-// Add rating
 SwapRequestSchema.methods.rate = function(party, rating, review = null) {
   if (rating < 1 || rating > 5) {
     throw new Error("Rating phải từ 1-5");
@@ -289,7 +277,6 @@ SwapRequestSchema.methods.rate = function(party, rating, review = null) {
   return this.save();
 };
 
-// Check if expired
 SwapRequestSchema.methods.checkExpired = function() {
   if (this.status === "pending" && new Date() > this.expires_at) {
     this.status = "expired";

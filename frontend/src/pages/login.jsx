@@ -59,10 +59,12 @@ export default function LoginPage() {
     if (res.success) {
       // 3. QUAN TRỌNG: Gọi hàm login của Context thay vì set localStorage thủ công
       // Hàm login() trong AuthContext sẽ tự lo việc set localStorage và cập nhật state toàn app
-      login(res.user);
+      // login(res.user);
+      login(res.user, res.token);
 
       if (res.user.hasProfile === false) {
-        router.push("/user/profile");
+        router.push("/user/dashboard");
+        // router.push("/user/profile");
       } else {
         router.push("/wardrobe/wardrobe");
       }

@@ -3,15 +3,15 @@ const User = require("../models/User");
 const Setting = require("../models/setting");
 const { OAuth2Client } = require("google-auth-library");
 const { getRoleIdByName } = require("../services/settingService");
+const jwt = require("jsonwebtoken");
 // Lấy Client ID từ biến môi trường (Bạn cần thêm vào file .env backend)
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-const { sendLoginSuccessEmail, sendVerificationEmail } = require("../services/emailService");
-
+const {
+  sendLoginSuccessEmail,
+  sendVerificationEmail,
+} = require("../services/emailService");
 const bcrypt = require("bcryptjs"); // bcrypt hash mật khẩu
-
 const { validatePassword } = require("../services/validators");
-
 // Helper function to generate 6-digit OTP
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -110,16 +110,22 @@ exports.verifyEmail = async (req, res) => {
     const user = await User.findOne({ email }).populate("role", "name value");
 
     if (!user) {
-      return res.status(400).json({ error: "Email không tồn tại trong hệ thống." });
+      return res
+        .status(400)
+        .json({ error: "Email không tồn tại trong hệ thống." });
     }
 
     if (user.isEmailVerified) {
-      return res.status(400).json({ error: "Email đã được xác thực trước đó." });
+      return res
+        .status(400)
+        .json({ error: "Email đã được xác thực trước đó." });
     }
 
     // Kiểm tra OTP hết hạn
     if (new Date() > user.emailVerificationExpires) {
-      return res.status(400).json({ error: "Mã xác thực đã hết hạn. Vui lòng yêu cầu mã mới." });
+      return res
+        .status(400)
+        .json({ error: "Mã xác thực đã hết hạn. Vui lòng yêu cầu mã mới." });
     }
 
     // Kiểm tra OTP đúng
@@ -159,11 +165,15 @@ exports.resendVerificationCode = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(400).json({ error: "Email không tồn tại trong hệ thống." });
+      return res
+        .status(400)
+        .json({ error: "Email không tồn tại trong hệ thống." });
     }
 
     if (user.isEmailVerified) {
-      return res.status(400).json({ error: "Email đã được xác thực trước đó." });
+      return res
+        .status(400)
+        .json({ error: "Email đã được xác thực trước đó." });
     }
 
     // Generate new OTP
@@ -208,7 +218,8 @@ exports.login = async (req, res) => {
     // Kiểm tra trạng thái tài khoản
     if (user.status === "Inactive") {
       return res.status(403).json({
-        error: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên."
+        error:
+          "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
       });
     }
 
@@ -234,9 +245,21 @@ exports.login = async (req, res) => {
       await user.save();
     }
 
+    // TẠO JWT TOKEN
+    const token = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        role: user.role?.name,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     // Đăng nhập thành công
     res.json({
       success: true,
+      token,
       user: {
         _id: user._id,
         email: user.email,
@@ -343,7 +366,8 @@ exports.googleLogin = async (req, res) => {
       // KIỂM TRA STATUS - KHÔNG CHO LOGIN NẾU INACTIVE
       if (user.status === "Inactive") {
         return res.status(403).json({
-          error: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên."
+          error:
+            "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
         });
       }
 
@@ -429,7 +453,7 @@ exports.getAllUsers = async (req, res) => {
       limit = 10,
       search = "",
       role = "all",
-      status = "all"
+      status = "all",
     } = req.query;
 
     // Build query filter
@@ -439,7 +463,7 @@ exports.getAllUsers = async (req, res) => {
     if (search) {
       filter.$or = [
         { fullName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } }
+        { email: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -447,7 +471,7 @@ exports.getAllUsers = async (req, res) => {
     if (role !== "all") {
       const roleDoc = await Setting.findOne({
         type: "role",
-        name: role
+        name: role,
       });
       if (roleDoc) {
         filter.role = roleDoc._id;
@@ -475,7 +499,7 @@ exports.getAllUsers = async (req, res) => {
       users,
       totalPages: Math.ceil(total / limit),
       currentPage: page,
-      total
+      total,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -515,12 +539,12 @@ exports.updateUserRole = async (req, res) => {
     // Tìm role ID từ Setting
     const roleDoc = await Setting.findOne({
       type: "role",
-      name: roleName
+      name: roleName,
     });
 
     if (!roleDoc) {
       return res.status(400).json({
-        error: `Role "${roleName}" không tồn tại trong hệ thống`
+        error: `Role "${roleName}" không tồn tại trong hệ thống`,
       });
     }
 
@@ -538,7 +562,7 @@ exports.updateUserRole = async (req, res) => {
     res.json({
       success: true,
       message: `Đã cập nhật role thành "${roleName}"`,
-      user
+      user,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -553,15 +577,11 @@ exports.updateUserStatus = async (req, res) => {
 
     if (!["Active", "Inactive"].includes(status)) {
       return res.status(400).json({
-        error: "Status chỉ có thể là 'Active' hoặc 'Inactive'"
+        error: "Status chỉ có thể là 'Active' hoặc 'Inactive'",
       });
     }
 
-    const user = await User.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    )
+    const user = await User.findByIdAndUpdate(id, { status }, { new: true })
       .populate("role", "name value")
       .select("-password");
 
@@ -571,8 +591,10 @@ exports.updateUserStatus = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Đã ${status === "Active" ? "kích hoạt" : "vô hiệu hóa"} tài khoản`,
-      user
+      message: `Đã ${
+        status === "Active" ? "kích hoạt" : "vô hiệu hóa"
+      } tài khoản`,
+      user,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -600,7 +622,7 @@ exports.deleteUser = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Đã vô hiệu hóa tài khoản thành công"
+      message: "Đã vô hiệu hóa tài khoản thành công",
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -617,11 +639,11 @@ exports.updateUserInfo = async (req, res) => {
     if (email) {
       const existingUser = await User.findOne({
         email,
-        _id: { $ne: id }
+        _id: { $ne: id },
       });
       if (existingUser) {
         return res.status(400).json({
-          error: "Email này đã được sử dụng bởi tài khoản khác"
+          error: "Email này đã được sử dụng bởi tài khoản khác",
         });
       }
     }
@@ -633,11 +655,7 @@ exports.updateUserInfo = async (req, res) => {
     if (location !== undefined) updateData.location = location;
     if (bio !== undefined) updateData.bio = bio;
 
-    const user = await User.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true }
-    )
+    const user = await User.findByIdAndUpdate(id, updateData, { new: true })
       .populate("role", "name value")
       .select("-password");
 
@@ -648,7 +666,7 @@ exports.updateUserInfo = async (req, res) => {
     res.json({
       success: true,
       message: "Đã cập nhật thông tin user",
-      user
+      user,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -670,7 +688,7 @@ exports.changePassword = async (req, res) => {
     // Kiểm tra authType
     if (user.authType !== "local") {
       return res.status(400).json({
-        error: "Chỉ tài khoản đăng ký thủ công mới có thể đổi mật khẩu."
+        error: "Chỉ tài khoản đăng ký thủ công mới có thể đổi mật khẩu.",
       });
     }
 
@@ -688,7 +706,9 @@ exports.changePassword = async (req, res) => {
 
     // Kiểm tra mật khẩu mới khác cũ
     if (await bcrypt.compare(newPassword, user.password)) {
-      return res.status(400).json({ error: "Mật khẩu mới phải khác mật khẩu cũ!" });
+      return res
+        .status(400)
+        .json({ error: "Mật khẩu mới phải khác mật khẩu cũ!" });
     }
 
     // Hash mật khẩu mới
@@ -698,7 +718,7 @@ exports.changePassword = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại nếu cần."
+      message: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại nếu cần.",
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

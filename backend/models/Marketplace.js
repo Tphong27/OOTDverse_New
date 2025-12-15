@@ -182,19 +182,21 @@ MarketplaceListingSchema.index({ selling_price: 1 });
 MarketplaceListingSchema.index({ is_featured: 1, last_boosted_at: -1 });
 
 // === Pre-save: Validation ===
-MarketplaceListingSchema.pre("save", function(next) {
+MarketplaceListingSchema.pre("save", async function () {
   // Nếu listing_type = swap thì selling_price không bắt buộc
   if (this.listing_type === "swap") {
     this.selling_price = undefined;
   }
-  
+
   // Nếu sold/swapped thì set sold_at
-  if ((this.status === "sold" || this.status === "swapped") && !this.sold_at) {
+  if (
+    (this.status === "sold" || this.status === "swapped") &&
+    !this.sold_at
+  ) {
     this.sold_at = new Date();
   }
-  
-  next();
 });
+
 
 // === Methods ===
 // Increment view count

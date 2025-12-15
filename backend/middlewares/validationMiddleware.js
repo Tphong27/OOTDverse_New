@@ -209,7 +209,12 @@ exports.validateUpdateShipping = [
 // 4. VALIDATE COMMON PARAMS
 // ========================================
 exports.validateMongoId = [
-  param("id").isMongoId().withMessage("ID không hợp lệ"),
+  param("userId").isMongoId().withMessage("ID không hợp lệ"),
+  handleValidationErrors,
+];
+
+exports.validateUserId = [
+  param("userId").isMongoId().withMessage("User ID không hợp lệ"),
   handleValidationErrors,
 ];
 
@@ -245,3 +250,4 @@ exports.validatePriceRange = [
   
   handleValidationErrors,
 ];
+

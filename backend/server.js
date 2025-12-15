@@ -5,17 +5,15 @@ const cors = require("cors");
 const path = require("path");
 const axios = require("axios");
 
-// 2. Sửa dòng config dotenv này:
-// Nó sẽ luôn tìm file .env nằm cùng thư mục với file server.js
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// MIDDLEWARE
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// 1. Middleware
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5000",
@@ -30,7 +28,6 @@ if (process.env.FRONTEND_URL) {
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
       if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
         callback(null, true);
@@ -43,15 +40,17 @@ app.use(
   })
 );
 
-// 2. Kết nối Database
-// Lấy chuỗi kết nối từ file .env cũ của bạn
+// ========================================
+// DATABASE CONNECTION
+// ========================================
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => console.log("✅ Đã kết nối MongoDB"))
-  .catch((err) => console.error("❌ Lỗi kết nối DB:", err));
+  .then(() => console.log("✅ Connected to MongoDB"))
+  .catch((err) => console.error("❌ Database connection error:", err));
 
-// 3. Routes
-// Import route
+// ========================================
+// ROUTES
+// ========================================
 const wardrobeRoutes = require("./routes/wardrobeRoutes");
 const settingRoutes = require("./routes/settingRoutes");
 const outfitRoutes = require("./routes/outfitRoutes");
@@ -61,7 +60,7 @@ const marketplaceRoutes = require("./routes/marketplaceRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const swapRequestRoutes = require("./routes/swapRequestRoutes");
 
-// Đăng ký route
+// Register routes
 app.use("/api/wardrobe", wardrobeRoutes);
 app.use("/api/setting", settingRoutes);
 app.use("/api/outfits", outfitRoutes);
@@ -71,40 +70,80 @@ app.use("/api/marketplace/listings", marketplaceRoutes);
 app.use("/api/marketplace/orders", orderRoutes);
 app.use("/api/marketplace/swap-requests", swapRequestRoutes);
 
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    success: true, 
+    message: "Server is running",
+    timestamp: new Date().toISOString()
+  });
+});
 
-// ===== KEEP-ALIVE MECHANISM =====
+// Test marketplace endpoint
+app.get("/api/test-marketplace", (req, res) => {
+  res.json({
+    success: true,
+    message: "Marketplace routes are working",
+    availableRoutes: [
+      "GET /api/marketplace/listings",
+      "GET /api/marketplace/listings/:id",
+      "POST /api/marketplace/listings",
+      "GET /api/marketplace/orders",
+      "GET /api/marketplace/swap-requests"
+    ]
+  });
+});
+
+// Catch-all for 404
+app.use((req, res) => {
+  console.log(`❌ 404 - Route not found: ${req.method} ${req.url}`);
+  res.status(404).json({
+    success: false,
+    error: "Route not found",
+    path: req.url,
+    method: req.method
+  });
+});
+
+// ========================================
+// KEEP-ALIVE MECHANISM
+// ========================================
 const pingAiService = async () => {
   try {
-    // Lấy URL từ env, mặc định là localhost
-    // Lưu ý: AI_SERVICE_URL thường là .../analyze, ta cần ping vào root / hoặc /health
     let aiUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
-
-    // Nếu URL có đuôi /analyze thì cắt bỏ để lấy base
     if (aiUrl.endsWith("/analyze")) {
       aiUrl = aiUrl.replace("/analyze", "");
     }
-
-    // Đảm bảo không có dấu / ở cuối để nối chuỗi cho đẹp (tùy chọn)
     if (aiUrl.endsWith("/")) {
       aiUrl = aiUrl.slice(0, -1);
     }
-
+    
     console.log(`⏰ [Keep-Alive] Pinging AI Service at ${aiUrl}/health ...`);
     await axios.get(`${aiUrl}/health`);
     console.log("✅ [Keep-Alive] AI Service is awake");
   } catch (error) {
-    // Không log lỗi quá to để tránh rác log, chỉ warning nhẹ
     console.log(`⚠️ [Keep-Alive] AI Service ping failed: ${error.message}`);
   }
 };
 
-// Ping ngay khi khởi động
-// Sử dụng setTimeout để không block quá trình khởi động server
 setTimeout(pingAiService, 5000);
-
-// Ping định kỳ mỗi 10 phút (600,000 ms)
 setInterval(pingAiService, 10 * 60 * 1000);
 
+// ========================================
+// ERROR HANDLER
+// ========================================
+app.use((error, req, res, next) => {
+  console.error('❌ Server Error:', error);
+  res.status(error.status || 500).json({
+    success: false,
+    error: error.message || 'Internal Server Error'
+  });
+});
+
+// ========================================
+// START SERVER
+// ========================================
 app.listen(PORT, () => {
-  console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`📍 API Base URL: http://localhost:${PORT}/api`);
 });

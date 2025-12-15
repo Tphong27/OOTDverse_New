@@ -151,7 +151,7 @@ exports.checkOwnership = (Model, paramKey = "id", ownerField = "seller_id") => {
 // ========================================
 exports.checkListingOwnership = async (req, res, next) => {
   try {
-    const MarketplaceListing = require("../models/MarketplaceListing");
+    const MarketplaceListing = require("../models/Marketplace");
     const listingId = req.params.id;
     
     const listing = await MarketplaceListing.findById(listingId);

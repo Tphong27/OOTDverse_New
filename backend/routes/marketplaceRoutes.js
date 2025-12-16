@@ -1,3 +1,4 @@
+// backend/routes/marketplaceRoutes.js
 const express = require("express");
 const router = express.Router();
 const {
@@ -24,6 +25,7 @@ const {
   validateMongoId,
   validatePagination,
   validatePriceRange,
+  validateUserId,
 } = require("../middlewares/validationMiddleware");
 
 // Base URL: http://localhost:5000/api/marketplace/listings
@@ -42,11 +44,11 @@ router.get("/search", validatePagination, validatePriceRange, searchListings);
 router.get("/stats", getMarketplaceStats);
 
 // 4. GET /api/marketplace/listings/user/:userId - Lấy listings của user
-router.get("/user/:userId", validateMongoId, validatePagination, getUserListings);
-// router.get("/user/:userId", validateUserId, validatePagination, getUserListings);
+router.get("/user/:userId", validateUserId, validatePagination, getUserListings);
 
 // 5. GET /api/marketplace/listings/:id - Lấy listing chi tiết
-router.get("/:id", validateMongoId, getListingById);
+// router.get("/:id", validateMongoId, getListingById);
+router.get("/:id", getListingById);
 
 // ========================================
 // PROTECTED ROUTES (cần authentication)

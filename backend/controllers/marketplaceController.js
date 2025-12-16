@@ -1,3 +1,4 @@
+// backend/controllers/marketplaceController.js
 const MarketplaceListing = require("../models/Marketplace");
 const Item = require("../models/Item");
 const User = require("../models/User");
@@ -44,17 +45,17 @@ exports.getListings = async (req, res) => {
 
     // Search by item name/description
     if (search) {
-      filter.$or = [
-        { description: { $regex: search, $options: "i" } },
-      ];
+      filter.$or = [{ description: { $regex: search, $options: "i" } }];
     }
 
     // Sort options
     let sortOption = { listed_at: -1 }; // Default: newest
     if (sort_by === "price_low") sortOption = { selling_price: 1 };
     if (sort_by === "price_high") sortOption = { selling_price: -1 };
-    if (sort_by === "popular") sortOption = { view_count: -1, favorite_count: -1 };
-    if (sort_by === "featured") sortOption = { is_featured: -1, last_boosted_at: -1 };
+    if (sort_by === "popular")
+      sortOption = { view_count: -1, favorite_count: -1 };
+    if (sort_by === "featured")
+      sortOption = { is_featured: -1, last_boosted_at: -1 };
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -80,14 +81,20 @@ exports.getListings = async (req, res) => {
     if (category_id || brand_id || color_id) {
       listings = listings.filter((listing) => {
         if (!listing.item_id) return false;
-        
-        if (category_id && listing.item_id.category_id?._id.toString() !== category_id) {
+
+        if (
+          category_id &&
+          listing.item_id.category_id?._id.toString() !== category_id
+        ) {
           return false;
         }
         if (brand_id && listing.item_id.brand_id?._id.toString() !== brand_id) {
           return false;
         }
-        if (color_id && !listing.item_id.color_id?.some(c => c._id.toString() === color_id)) {
+        if (
+          color_id &&
+          !listing.item_id.color_id?.some((c) => c._id.toString() === color_id)
+        ) {
           return false;
         }
         return true;
@@ -120,10 +127,18 @@ exports.getListingById = async (req, res) => {
     const { id } = req.params;
     const { increment_view } = req.query;
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid listing id",
+      });
+    }
+
     const listing = await MarketplaceListing.findById(id)
       .populate({
         path: "seller_id",
-        select: "fullName avatar bio seller_rating total_sales is_verified_seller",
+        select:
+          "fullName avatar bio seller_rating total_sales is_verified_seller",
       })
       .populate({
         path: "item_id",
@@ -135,7 +150,10 @@ exports.getListingById = async (req, res) => {
           { path: "material_id", select: "name value" },
         ],
       })
-      .populate("swap_preferences.categories swap_preferences.brands", "name value");
+      .populate(
+        "swap_preferences.categories swap_preferences.brands",
+        "name value"
+      );
 
     if (!listing) {
       return res.status(404).json({
@@ -154,7 +172,7 @@ exports.getListingById = async (req, res) => {
       data: listing,
     });
   } catch (error) {
-    console.error("Lỗi khi lấy listing:", error);
+    console.error("Error in getListingById:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -201,7 +219,10 @@ exports.createListing = async (req, res) => {
     }
 
     // Validation: Nếu listing_type = sell hoặc both, phải có selling_price
-    if ((listing_type === "sell" || listing_type === "both") && !selling_price) {
+    if (
+      (listing_type === "sell" || listing_type === "both") &&
+      !selling_price
+    ) {
       return res.status(400).json({
         success: false,
         error: "Giá bán là bắt buộc khi đăng bán",
@@ -293,7 +314,8 @@ exports.updateListing = async (req, res) => {
     if (swap_preferences) listing.swap_preferences = swap_preferences;
     if (shipping_method) listing.shipping_method = shipping_method;
     if (shipping_fee !== undefined) listing.shipping_fee = shipping_fee;
-    if (shipping_from_location) listing.shipping_from_location = shipping_from_location;
+    if (shipping_from_location)
+      listing.shipping_from_location = shipping_from_location;
     if (status) listing.status = status;
 
     await listing.save();
@@ -530,7 +552,16 @@ exports.getMarketplaceStats = async (req, res) => {
 // ========================================
 exports.searchListings = async (req, res) => {
   try {
-    const { q, category, brand, min_price, max_price, condition, page = 1, limit = 20 } = req.query;
+    const {
+      q,
+      category,
+      brand,
+      min_price,
+      max_price,
+      condition,
+      page = 1,
+      limit = 20,
+    } = req.query;
 
     const filter = { status: "active" };
 
@@ -545,9 +576,7 @@ exports.searchListings = async (req, res) => {
 
     // Text search
     if (q) {
-      filter.$or = [
-        { description: { $regex: q, $options: "i" } },
-      ];
+      filter.$or = [{ description: { $regex: q, $options: "i" } }];
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -573,7 +602,8 @@ exports.searchListings = async (req, res) => {
     if (category || brand) {
       listings = listings.filter((listing) => {
         if (!listing.item_id) return false;
-        if (category && listing.item_id.category_id?.name !== category) return false;
+        if (category && listing.item_id.category_id?.name !== category)
+          return false;
         if (brand && listing.item_id.brand_id?.name !== brand) return false;
         return true;
       });

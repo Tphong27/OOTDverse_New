@@ -105,7 +105,7 @@ export function MarketplaceProvider({ children }) {
       setError(null);
 
       const response = await getListingById(id, incrementView);
-      
+
       // setCurrentListing(response.data?.data);
       setCurrentListing(response.data);
       return response.data?.data;
@@ -278,7 +278,10 @@ export function MarketplaceProvider({ children }) {
 
   // UPDATE FILTERS
   const updateFilters = (newFilters) => {
-    setFilters((prev) => ({ ...prev, ...newFilters }));
+    setFilters((prev) => {
+      const updated = { ...prev, ...newFilters, page: 1 };
+      return updated;
+    });
   };
 
   const resetFilters = () =>
@@ -295,6 +298,22 @@ export function MarketplaceProvider({ children }) {
       page: 1,
       limit: 20,
     });
+
+  // Auto-reload khi filters thay đổi
+  useEffect(() => {
+    loadListings();
+  }, [
+    filters.page,
+    filters.sort_by,
+    filters.status,
+    filters.listing_type,
+    filters.condition,
+    filters.category_id,
+    filters.brand_id,
+    filters.color_id,
+    filters.min_price,
+    filters.max_price,
+  ]);
 
   // PAGINATION
   const goToPage = (page) => {
@@ -322,9 +341,9 @@ export function MarketplaceProvider({ children }) {
   };
 
   // LOAD LISTINGS ON MOUNT & FILTER CHANGE
-  useEffect(() => {
-    loadListings();
-  }, [filters.page, filters.sort_by, filters.status]);
+  // useEffect(() => {
+  //   loadListings();
+  // }, [filters.page, filters.sort_by, filters.status]);
 
   // Load my listings when user logs in
   useEffect(() => {

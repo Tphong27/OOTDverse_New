@@ -50,7 +50,7 @@ export default function ListingGrid() {
 
   // Handle filter change
   const handleFilterChange = (key, value) => {
-    updateFilters({ [key]: value, page: 1 });
+    updateFilters({ [key]: value });
   };
 
   // Clear all filters
@@ -77,12 +77,8 @@ export default function ListingGrid() {
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         {/* Results Count */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Marketplace
-          </h2>
-          <p className="text-gray-600 mt-1">
-            {pagination.total} sản phẩm
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900">Marketplace</h2>
+          <p className="text-gray-600 mt-1">{pagination.total} sản phẩm</p>
         </div>
 
         {/* View & Sort Controls */}

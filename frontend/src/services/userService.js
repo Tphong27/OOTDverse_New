@@ -31,12 +31,28 @@ export const googleLoginUser = async (token) => {
   return response.data;
 };
 
-export const verifyEmail = async (email, code) => {
-  const response = await axios.post(`${API_URL}/verify-email`, { email, code });
+export const verifyEmail = async (email, code, authType = null) => {
+  const response = await axios.post(`${API_URL}/verify-email`, { email, code, authType });
   return response.data;
 };
 
 export const resendVerificationCode = async (email) => {
   const response = await axios.post(`${API_URL}/resend-verification`, { email });
+  return response.data;
+};
+
+// Forgot password functions
+export const forgotPassword = async (email) => {
+  const response = await axios.post(`${API_URL}/forgot-password`, { email });
+  return response.data;
+};
+
+export const verifyResetCode = async (email, code) => {
+  const response = await axios.post(`${API_URL}/verify-reset-code`, { email, code });
+  return response.data;
+};
+
+export const resetPassword = async (email, code, newPassword) => {
+  const response = await axios.post(`${API_URL}/reset-password`, { email, code, newPassword });
   return response.data;
 };

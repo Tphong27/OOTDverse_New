@@ -6,6 +6,11 @@ const userController = require("../controllers/userController");
 router.post("/register", userController.register);
 router.post("/verify-email", userController.verifyEmail);
 router.post("/resend-verification", userController.resendVerificationCode);
+// Quên mật khẩu
+router.post("/forgot-password", userController.forgotPassword);
+router.post("/verify-reset-code", userController.verifyResetCode);
+router.post("/reset-password", userController.resetPassword);
+
 router.post("/login", userController.login);
 router.post("/google-login", userController.googleLogin);
 router.post("/profile", userController.updateProfile);

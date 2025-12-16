@@ -3,11 +3,13 @@ import { useState, useEffect, useRef } from "react";
 import { Eye, EyeOff, Mail, Lock, User, Check, Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import Script from "next/script";
+import { GoogleLogin } from "@react-oauth/google";
 import { registerUser, verifyEmail, resendVerificationCode, googleLoginUser } from "@/services/userService";
+import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { login } = useAuth(); // Get login function from AuthContext
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +26,7 @@ export default function RegisterPage() {
     confirmPassword: "",
     terms: false,
   });
+  const [authType, setAuthType] = useState("local"); // Track if user registered via Google
 
   // Countdown timer for resend button
   useEffect(() => {
@@ -32,6 +35,20 @@ export default function RegisterPage() {
       return () => clearTimeout(timer);
     }
   }, [countdown]);
+
+  // Handle redirect from login page for Google OTP verification
+  useEffect(() => {
+    const { email, fromGoogle } = router.query;
+    if (fromGoogle === "true" && email) {
+      setFormData((prev) => ({
+        ...prev,
+        email: decodeURIComponent(email),
+      }));
+      setAuthType("google");
+      setStep(2); // Jump to OTP step
+      setCountdown(60);
+    }
+  }, [router.query]);
 
   // Handle Google credential response
   const handleGoogleCredentialResponse = async (response) => {
@@ -48,11 +65,12 @@ export default function RegisterPage() {
           email: res.email,
           fullName: res.fullName,
         }));
+        setAuthType("google"); // Mark as Google registration
         setStep(2);
         setCountdown(60);
       } else if (res.user) {
-        // Existing user - login directly
-        localStorage.setItem("user", JSON.stringify(res.user));
+        // Existing user - login directly using AuthContext
+        login(res.user, res.token); // This saves to 'currentUser' key with token
         router.push(res.user.hasProfile ? "/user/dashboard" : "/user/profile");
       }
     } catch (err) {
@@ -64,11 +82,6 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
-
-  // Make handleGoogleCredentialResponse available globally for Google SDK
-  useEffect(() => {
-    window.handleGoogleCredentialResponse = handleGoogleCredentialResponse;
-  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -187,12 +200,30 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      const res = await verifyEmail(formData.email, code);
+      const res = await verifyEmail(formData.email, code, authType);
       if (res.success) {
-        setStep(3); // Success
-        setTimeout(() => {
-          router.push("/login");
-        }, 2000);
+        setStep(3); // Success screen
+
+        // Auto login với user data từ response
+        if (res.user) {
+          // Nếu backend trả về token thì dùng, không thì redirect login
+          if (res.token) {
+            login(res.user, res.token);
+            setTimeout(() => {
+              router.push("/user/profile");
+            }, 1500);
+          } else {
+            // Trường hợp backend chưa trả token, vẫn redirect đến login
+            setTimeout(() => {
+              router.push("/login");
+            }, 1500);
+          }
+        } else {
+          // Fallback: redirect đến login
+          setTimeout(() => {
+            router.push("/login");
+          }, 1500);
+        }
       }
     } catch (err) {
       console.error("Verify Error:", err);
@@ -508,7 +539,20 @@ export default function RegisterPage() {
             </div>
 
             {/* Google Login */}
-            <div id="google-signin-button" className="w-full flex justify-center"></div>
+            <div className="flex justify-center w-full">
+              <GoogleLogin
+                onSuccess={handleGoogleCredentialResponse}
+                onError={() => {
+                  setError("Kết nối Google thất bại.");
+                  console.log("Google Login Failed");
+                }}
+                theme="outline"
+                size="large"
+                width="350"
+                text="continue_with"
+                shape="rectangular"
+              />
+            </div>
 
             <div className="text-center pt-4">
               <p className="text-sm text-gray-600">
@@ -535,24 +579,6 @@ export default function RegisterPage() {
           />
         </div>
       </div>
-
-      {/* Google Identity Services Script */}
-      <Script
-        src="https://accounts.google.com/gsi/client"
-        strategy="afterInteractive"
-        onLoad={() => {
-          if (window.google) {
-            window.google.accounts.id.initialize({
-              client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-              callback: handleGoogleCredentialResponse,
-            });
-            window.google.accounts.id.renderButton(
-              document.getElementById("google-signin-button"),
-              { theme: "outline", size: "large", width: 350, text: "continue_with" }
-            );
-          }
-        }}
-      />
     </div>
   );
 }

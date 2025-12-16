@@ -45,6 +45,15 @@ export default function LoginPage() {
     setError("");
     try {
       const res = await googleLoginUser(credentialResponse.credential);
+
+      // Kiểm tra nếu là user mới cần xác thực OTP
+      if (res.isNewUser && res.requireVerification) {
+        // Redirect sang trang register với email để hoàn tất OTP
+        router.push(`/register?email=${encodeURIComponent(res.email)}&fromGoogle=true`);
+        return;
+      }
+
+      // User cũ - đăng nhập bình thường
       handleAuthSuccess(res);
     } catch (err) {
       console.error("Google Login Error:", err);
@@ -56,17 +65,16 @@ export default function LoginPage() {
 
   // Hàm xử lý chung khi đăng nhập thành công
   const handleAuthSuccess = (res) => {
-    if (res.success) {
-      // 3. QUAN TRỌNG: Gọi hàm login của Context thay vì set localStorage thủ công
-      // Hàm login() trong AuthContext sẽ tự lo việc set localStorage và cập nhật state toàn app
-      // login(res.user);
+    if (res.success && res.user) {
+      // Gọi hàm login của Context để lưu user và token
       login(res.user, res.token);
 
+      // First time login (chưa có profile) → đến profile page
+      // Returning user (đã có profile) → đến dashboard
       if (res.user.hasProfile === false) {
-        router.push("/user/dashboard");
-        // router.push("/user/profile");
+        router.push("/user/profile");
       } else {
-        router.push("/wardrobe/wardrobe");
+        router.push("/user/dashboard");
       }
     }
   };
@@ -147,12 +155,12 @@ export default function LoginPage() {
                   />
                   Ghi nhớ đăng nhập
                 </label>
-                <a
-                  href="#"
+                <Link
+                  href="/forgot-password"
                   className="text-sm text-purple-600 hover:text-purple-500 font-medium"
                 >
                   Quên mật khẩu?
-                </a>
+                </Link>
               </div>
             </div>
 

@@ -9,6 +9,7 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const {
   sendLoginSuccessEmail,
   sendVerificationEmail,
+  sendPasswordResetEmail,
 } = require("../services/emailService");
 const bcrypt = require("bcryptjs"); // bcrypt hash mật khẩu
 const { validatePassword } = require("../services/validators");
@@ -28,10 +29,10 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: passwordError });
     }
 
-    // Kiểm tra email trùng (chỉ check user đã xác thực)
-    const existingUser = await User.findOne({ email });
+    // Kiểm tra email trùng - CHỈ check user LOCAL (cho phép cùng email với authType khác)
+    const existingUser = await User.findOne({ email, authType: "local" });
     if (existingUser) {
-      // Nếu user tồn tại nhưng chưa xác thực email, cho phép gửi lại OTP
+      // Nếu user local tồn tại nhưng chưa xác thực email, cho phép gửi lại OTP
       if (!existingUser.isEmailVerified) {
         // Cập nhật thông tin và gửi OTP mới
         const otpCode = generateOTP();
@@ -53,7 +54,7 @@ exports.register = async (req, res) => {
           email: email,
         });
       }
-      return res.status(400).json({ error: "Email này đã được sử dụng!" });
+      return res.status(400).json({ error: "Email này đã được sử dụng cho tài khoản local!" });
     }
 
     //TÌM ROLE CUSTOMER VÀ GÁN
@@ -105,9 +106,15 @@ exports.register = async (req, res) => {
 // 1.1 Xác thực Email (Step 2: Verify OTP)
 exports.verifyEmail = async (req, res) => {
   try {
-    const { email, code } = req.body;
+    const { email, code, authType } = req.body;
 
-    const user = await User.findOne({ email }).populate("role", "name value");
+    // Tìm user dựa trên email và authType (nếu có)
+    const query = { email };
+    if (authType) {
+      query.authType = authType;
+    }
+
+    const user = await User.findOne(query).populate("role", "name value");
 
     if (!user) {
       return res
@@ -139,9 +146,30 @@ exports.verifyEmail = async (req, res) => {
     user.emailVerificationExpires = undefined;
     await user.save();
 
+    // Gửi email chào mừng cho user mới
+    try {
+      await sendLoginSuccessEmail(user.email, user.fullName, req);
+      console.log("Welcome email sent to:", user.email);
+    } catch (emailErr) {
+      console.error("Error sending welcome email:", emailErr);
+      // Không block flow nếu gửi mail lỗi
+    }
+
+    // Tạo JWT token cho auto login
+    const token = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        authType: user.authType
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     res.status(200).json({
       success: true,
-      message: "Xác thực email thành công! Bạn có thể đăng nhập ngay.",
+      message: "Xác thực email thành công!",
+      token,
       user: {
         _id: user._id,
         email: user.email,
@@ -149,6 +177,7 @@ exports.verifyEmail = async (req, res) => {
         role: user.role,
         status: user.status,
         authType: user.authType,
+        hasProfile: user.hasProfile || false,
       },
     });
   } catch (err) {
@@ -197,13 +226,154 @@ exports.resendVerificationCode = async (req, res) => {
   }
 };
 
+// ==============================================================================
+// QUÊN MẬT KHẨU (FORGOT PASSWORD) - 3 ENDPOINTS
+// ==============================================================================
+
+// 1.4 Yêu cầu đặt lại mật khẩu (Bước 1: Gửi OTP)
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Vui lòng nhập email." });
+    }
+
+    // Tìm user LOCAL với email này
+    const user = await User.findOne({ email, authType: "local" });
+
+    if (!user) {
+      // Không tiết lộ email có tồn tại hay không (bảo mật)
+      return res.status(200).json({
+        success: true,
+        message: "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được mã xác thực.",
+      });
+    }
+
+    // Kiểm tra user đã xác thực email chưa
+    if (!user.isEmailVerified) {
+      return res.status(400).json({
+        error: "Tài khoản chưa được xác thực email. Vui lòng đăng ký lại.",
+      });
+    }
+
+    // Generate OTP 6 số
+    const otpCode = generateOTP();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
+
+    // Lưu OTP vào database
+    user.passwordResetCode = otpCode;
+    user.passwordResetExpires = otpExpires;
+    await user.save();
+
+    // Gửi email
+    await sendPasswordResetEmail(email, user.fullName, otpCode);
+
+    res.status(200).json({
+      success: true,
+      message: "Mã xác thực đã được gửi đến email của bạn.",
+      email: email,
+    });
+  } catch (err) {
+    console.error("Forgot Password Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 1.5 Xác thực OTP reset password (Bước 2)
+exports.verifyResetCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ error: "Vui lòng nhập đầy đủ email và mã xác thực." });
+    }
+
+    const user = await User.findOne({ email, authType: "local" });
+
+    if (!user) {
+      return res.status(400).json({ error: "Email không tồn tại trong hệ thống." });
+    }
+
+    // Kiểm tra OTP hết hạn
+    if (!user.passwordResetExpires || new Date() > user.passwordResetExpires) {
+      return res.status(400).json({ error: "Mã xác thực đã hết hạn. Vui lòng yêu cầu mã mới." });
+    }
+
+    // Kiểm tra OTP đúng
+    if (user.passwordResetCode !== code) {
+      return res.status(400).json({ error: "Mã xác thực không đúng." });
+    }
+
+    // OTP hợp lệ - trả về token tạm để xác thực bước đặt mật khẩu mới
+    res.status(200).json({
+      success: true,
+      message: "Mã xác thực hợp lệ. Vui lòng đặt mật khẩu mới.",
+      email: email,
+    });
+  } catch (err) {
+    console.error("Verify Reset Code Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 1.6 Đặt mật khẩu mới (Bước 3)
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ error: "Vui lòng nhập đầy đủ thông tin." });
+    }
+
+    // Validate mật khẩu mới
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
+
+    const user = await User.findOne({ email, authType: "local" });
+
+    if (!user) {
+      return res.status(400).json({ error: "Email không tồn tại trong hệ thống." });
+    }
+
+    // Kiểm tra OTP hết hạn
+    if (!user.passwordResetExpires || new Date() > user.passwordResetExpires) {
+      return res.status(400).json({ error: "Phiên đặt lại mật khẩu đã hết hạn. Vui lòng thử lại." });
+    }
+
+    // Kiểm tra OTP đúng
+    if (user.passwordResetCode !== code) {
+      return res.status(400).json({ error: "Mã xác thực không hợp lệ." });
+    }
+
+    // Hash mật khẩu mới
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Cập nhật mật khẩu và xóa reset code
+    user.password = hashedPassword;
+    user.passwordResetCode = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập với mật khẩu mới.",
+    });
+  } catch (err) {
+    console.error("Reset Password Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // 2. Đăng nhập
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Tìm user
-    const user = await User.findOne({ email }).populate("role", "name value");
+    // Tìm user LOCAL (password login chỉ dành cho authType="local")
+    const user = await User.findOne({ email, authType: "local" }).populate("role", "name value");
 
     if (!user) {
       return res.status(401).json({ error: "Email hoặc mật khẩu không đúng!" });
@@ -267,8 +437,8 @@ exports.login = async (req, res) => {
         role: user.role,
         status: user.status,
         authType: user.authType,
-        // Trả về thêm cờ để biết đã điền hồ sơ chưa
-        hasProfile: !!user.height,
+        // Trả về cờ từ model để biết đã điền hồ sơ chưa
+        hasProfile: user.hasProfile || false,
       },
     });
   } catch (err) {
@@ -336,21 +506,11 @@ exports.googleLogin = async (req, res) => {
       throw new Error("Lỗi cấu hình: Không tìm thấy Role 'Customer'.");
     }
 
-    let user = await User.findOne({ email }).populate("role", "name value");
+    // Tìm user Google với email này (tách riêng authType)
+    let user = await User.findOne({ email, authType: "google" }).populate("role", "name value");
 
     if (user) {
-      // ======== USER ĐÃ TỒN TẠI ========
-
-      // Kiểm tra nếu user chưa xác thực email (đăng ký local nhưng chưa verify)
-      if (!user.isEmailVerified && user.authType === "local") {
-        // Chuyển sang authType google và xác thực luôn
-        user.authType = "google";
-        user.isEmailVerified = true;
-        user.emailVerificationCode = undefined;
-        user.emailVerificationExpires = undefined;
-        if (!user.avatar) user.avatar = picture;
-        await user.save();
-      }
+      // ======== USER GOOGLE ĐÃ TỒN TẠI ========
 
       if (!user.role) {
         user.role = customerRoleId;
@@ -377,10 +537,22 @@ exports.googleLogin = async (req, res) => {
         await user.save();
       }
 
+      // Tạo JWT token cho user cũ
+      const jwtToken = jwt.sign(
+        {
+          id: user._id,
+          email: user.email,
+          role: user.role?.name,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
       // Đăng nhập thành công cho user cũ
       return res.json({
         success: true,
         isNewUser: false,
+        token: jwtToken,
         user: {
           _id: user._id,
           email: user.email,
@@ -389,7 +561,7 @@ exports.googleLogin = async (req, res) => {
           role: user.role,
           status: user.status,
           authType: user.authType,
-          hasProfile: !!user.height,
+          hasProfile: user.hasProfile || false,
         },
       });
     } else {
@@ -591,9 +763,8 @@ exports.updateUserStatus = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Đã ${
-        status === "Active" ? "kích hoạt" : "vô hiệu hóa"
-      } tài khoản`,
+      message: `Đã ${status === "Active" ? "kích hoạt" : "vô hiệu hóa"
+        } tài khoản`,
       user,
     });
   } catch (err) {

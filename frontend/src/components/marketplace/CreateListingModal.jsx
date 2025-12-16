@@ -1,4 +1,4 @@
-//frontend/src/pages/marketplace/CreateListingModal.jsx
+//frontend/src/components/marketplace/CreateListingModal.jsx
 import { useState, useEffect } from "react";
 import { X, Check, AlertCircle } from "lucide-react";
 import { useMarketplace } from "@/context/MarketplaceContext";
@@ -80,7 +80,8 @@ export default function CreateListingModal({ isOpen, onClose, onSuccess }) {
       }
 
       if (
-        (formData.listing_type === "sell" || formData.listing_type === "both") &&
+        (formData.listing_type === "sell" ||
+          formData.listing_type === "both") &&
         !formData.selling_price
       ) {
         throw new Error("Vui lòng nhập giá bán");
@@ -93,8 +94,12 @@ export default function CreateListingModal({ isOpen, onClose, onSuccess }) {
       // Thêm seller_id vào formData
       const listingData = {
         ...formData,
-        seller_id: user._id, // ← QUAN TRỌNG: Thêm seller_id
+        seller_id: user._id,
       };
+
+      if (formData.listing_type === "swap") {
+        delete listingData.selling_price;
+      }
 
       console.log("📤 Creating listing with data:", listingData);
 
@@ -122,9 +127,7 @@ export default function CreateListingModal({ isOpen, onClose, onSuccess }) {
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Đăng bán món đồ
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900">Đăng bán món đồ</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -139,7 +142,10 @@ export default function CreateListingModal({ isOpen, onClose, onSuccess }) {
             {/* Error Alert */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+                <AlertCircle
+                  className="text-red-600 flex-shrink-0 mt-0.5"
+                  size={20}
+                />
                 <p className="text-red-800 text-sm">{error}</p>
               </div>
             )}
@@ -152,33 +158,38 @@ export default function CreateListingModal({ isOpen, onClose, onSuccess }) {
                 </h3>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-                  {items.filter(item => item.is_active).map((item) => (
-                    <div
-                      key={item._id}
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, item_id: item._id }))
-                      }
-                      className={`cursor-pointer rounded-lg border-2 transition-all ${
-                        formData.item_id === item._id
-                          ? "border-pink-500 ring-2 ring-pink-200"
-                          : "border-gray-200 hover:border-pink-300"
-                      }`}
-                    >
-                      <img
-                        src={item.image_url}
-                        alt={item.item_name}
-                        className="w-full aspect-square object-cover rounded-t-lg"
-                      />
-                      <div className="p-2">
-                        <p className="text-sm font-medium text-gray-900 line-clamp-1">
-                          {item.item_name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {item.category_id?.name}
-                        </p>
+                  {items
+                    .filter((item) => item.is_active)
+                    .map((item) => (
+                      <div
+                        key={item._id}
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            item_id: item._id,
+                          }))
+                        }
+                        className={`cursor-pointer rounded-lg border-2 transition-all ${
+                          formData.item_id === item._id
+                            ? "border-pink-500 ring-2 ring-pink-200"
+                            : "border-gray-200 hover:border-pink-300"
+                        }`}
+                      >
+                        <img
+                          src={item.image_url}
+                          alt={item.item_name}
+                          className="w-full aspect-square object-cover rounded-t-lg"
+                        />
+                        <div className="p-2">
+                          <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                            {item.item_name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {item.category_id?.name}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
 
                 <button

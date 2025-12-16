@@ -1,4 +1,4 @@
-//frontend/src/pages/marketplace/components/SimilarItems.jsx
+//frontend/src/components/marketplace/SimilarItems.jsx
 import { useEffect, useState } from "react";
 import { getListings } from "@/services/marketplace-index";
 import ListingCard from "@/components/marketplace/ListingCard";

@@ -1,4 +1,4 @@
-//frontend/src/pages/marketplace/components/ImageGallery.jsx
+//frontend/src/components/marketplace/ImageGallery.jsx
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 

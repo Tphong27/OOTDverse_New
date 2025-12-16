@@ -1,4 +1,4 @@
-//frontend/src/pages/marketplace/ListingGrid.jsx
+//frontend/src/components/marketplace/ListingGrid.jsx
 import { useState } from "react";
 import ListingCard from "../../components/marketplace/ListingCard";
 import { Grid, List, Filter, SlidersHorizontal, X } from "lucide-react";

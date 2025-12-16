@@ -42,7 +42,9 @@ exports.validateCreateListing = [
     .withMessage("Listing type phải là sell, swap hoặc both"),
 
   body("selling_price")
-    .optional()
+    .if(body("listing_type").isIn(["sell", "both"]))
+    .notEmpty()
+    .withMessage("Giá bán là bắt buộc khi đăng bán")
     .isFloat({ min: 0 })
     .withMessage("Giá bán phải >= 0"),
 

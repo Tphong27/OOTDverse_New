@@ -1,4 +1,4 @@
-//frontend/src/pages/marketplace/components/SellerProfile.jsx
+//frontend/src/components/marketplace/SellerProfile.jsx
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { Star, ShoppingBag, RefreshCw, CheckCircle, MessageCircle } from "lucide-react";

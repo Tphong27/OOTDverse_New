@@ -1,4 +1,4 @@
-//frontend/src/pages/marketplace/ListingCard.jsx
+//frontend/src/components/marketplace/ListingCard.jsx
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { Heart, Eye, MapPin, Clock, TrendingUp } from "lucide-react";

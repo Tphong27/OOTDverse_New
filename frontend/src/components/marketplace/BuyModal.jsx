@@ -1,4 +1,4 @@
-//frontend/src/pages/marketplace/components/BuyModal.jsx
+//frontend/src/components/marketplace/BuyModal.jsx
 import { useState } from "react";
 import { X, MapPin, CreditCard, Truck, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";

@@ -1,4 +1,4 @@
-//frontend/src/pages/marketplace/components/ListingInfo.jsx
+//frontend/src/components/marketplace/ListingInfo.jsx
 import { Package, Truck, Shield, Eye, Heart, Clock } from "lucide-react";
 
 export default function ListingInfo({ listing }) {

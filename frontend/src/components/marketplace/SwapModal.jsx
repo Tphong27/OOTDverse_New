@@ -1,4 +1,4 @@
-//frontend/src/pages/marketplace/components/SwapModal.jsx
+//frontend/src/components/marketplace/SwapModal.jsx
 import { useState, useEffect } from "react";
 import { X, RefreshCw, MapPin, AlertCircle, Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";

@@ -4,62 +4,70 @@
 
 Dự án được phát triển bởi **Nhóm 5 - Lớp SE1869-NJ - Đại học FPT**.
 
------
+---
 
 ## 🌟 Tính Năng Chính (Key Features)
 
 1.  **Tủ Đồ Ảo (Virtual Wardrobe):**
 
-      * Số hóa tủ đồ cá nhân bằng cách upload ảnh.
-      * Tự động phân loại quần áo (Category, Color, Season) bằng AI.
-      * Quản lý items dễ dàng (Thêm, sửa, xóa).
+    - Số hóa tủ đồ cá nhân bằng cách upload ảnh.
+    - Tự động phân loại quần áo (Category, Color, Season) bằng AI.
+    - Quản lý items dễ dàng (Thêm, sửa, xóa).
 
 2.  **AI Stylist (Trợ lý phối đồ):**
 
-      * Gợi ý outfit dựa trên thời tiết, dịp (đi học, đi tiệc, đi chơi) và phong cách cá nhân.
-      * Sử dụng công nghệ AI để phân tích và đưa ra lời khuyên phối đồ.
+    - Gợi ý outfit dựa trên thời tiết, dịp (đi học, đi tiệc, đi chơi) và phong cách cá nhân.
+    - Sử dụng công nghệ AI để phân tích và đưa ra lời khuyên phối đồ.
 
 3.  **AR Try-On (Thử đồ ảo):**
 
-      * Cho phép người dùng ướm thử quần áo lên người thông qua Camera hoặc ảnh tải lên.
-      * Giảm thiểu rủi ro mua sai kích cỡ hoặc không hợp kiểu dáng.
+    - Cho phép người dùng ướm thử quần áo lên người thông qua Camera hoặc ảnh tải lên.
+    - Giảm thiểu rủi ro mua sai kích cỡ hoặc không hợp kiểu dáng.
 
 4.  **Marketplace (Sàn giao dịch 2hand):**
 
-      * Mua bán, trao đổi quần áo cũ trong cộng đồng sinh viên.
-      * Tính năng xác thực người dùng để đảm bảo an toàn giao dịch.
+    - Mua bán, trao đổi quần áo cũ trong cộng đồng sinh viên.
+    - Tính năng xác thực người dùng để đảm bảo an toàn giao dịch.
 
 5.  **Cộng Đồng & Gamification:**
 
-      * Chia sẻ OOTD (Outfit of the Day).
-      * Tham gia thử thách phối đồ nhận thưởng.
+    - Chia sẻ OOTD (Outfit of the Day).
+    - Tham gia thử thách phối đồ nhận thưởng.
 
------
+6.  **Authentication (Xác thực người dùng):**
+
+    - Đăng ký/Đăng nhập bằng Email + Password (Local).
+    - Đăng ký/Đăng nhập bằng Google (OAuth 2.0).
+    - Xác thực OTP qua email cho tài khoản mới.
+    - Quên mật khẩu với OTP recovery.
+    - Tách biệt tài khoản Local và Google (cùng email có thể có 2 tài khoản riêng biệt).
+
+---
 
 ## 🛠️ Công Nghệ Sử Dụng (Tech Stack)
 
 ### Frontend
 
-  * **Framework:** Next.js 14
-  * **Styling:** TailwindCSS
-  * **AR/3D:** `@banuba/webar`, `@google/model-viewer`, `three.js`
-  * **State Management:** React Context API
+- **Framework:** Next.js 14
+- **Styling:** TailwindCSS
+- **AR/3D:** `@banuba/webar`, `@google/model-viewer`, `three.js`
+- **State Management:** React Context API
 
 ### Backend
 
-  * **Runtime:** Node.js
-  * **Framework:** Express.js (Dự kiến dựa trên cấu trúc controller/route)
-  * **Database:** MongoDB (Dựa trên cấu trúc Mongoose Models)
-  * **Authentication:** JWT (JSON Web Token)
+- **Runtime:** Node.js
+- **Framework:** Express.js (Dự kiến dựa trên cấu trúc controller/route)
+- **Database:** MongoDB (Dựa trên cấu trúc Mongoose Models)
+- **Authentication:** JWT (JSON Web Token)
 
 ### AI Service (Microservice)
 
-  * **Language:** Python
-  * **Framework:** FastAPI
-  * **AI Model:** Google Gemini (`gemini-flash-latest`)
-  * **Image Processing:** Pillow
+- **Language:** Python
+- **Framework:** FastAPI
+- **AI Model:** Google Gemini (`gemini-flash-latest`)
+- **Image Processing:** Pillow
 
------
+---
 
 ## 🚀 Hướng Dẫn Cài Đặt (Installation)
 
@@ -108,7 +116,7 @@ npm run dev
 # Truy cập ứng dụng tại: http://localhost:3000
 ```
 
------
+---
 
 ## ⚙️ Cấu Hình Môi Trường (.env)
 
@@ -135,20 +143,20 @@ AI_SERVICE_URL=http://localhost:8000
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
 ```
 
------
+---
 
 ## 👥 Thành Viên Nhóm (Team Members)
 
-| STT | Họ và Tên | MSSV | Vai Trò |
-|:---:|:---|:---|:---|
-| 1 | Khuất Thị Thanh Thảo | HS180732 | - |
-| 2 | Lý Thị Ngọc Mai | HS180502 | - |
-| 3 | Nguyễn Nguyệt Anh | HE180051 | - |
-| 4 | Nguyễn Khánh Toàn | HE181528 | - |
-| 5 | Nguyễn Thanh Phong | HE182099 | - |
-| 6 | Nguyễn Duy Khiêm | HE181770 | - |
+| STT | Họ và Tên            | MSSV     | Vai Trò |
+| :-: | :------------------- | :------- | :------ |
+|  1  | Khuất Thị Thanh Thảo | HS180732 | -       |
+|  2  | Lý Thị Ngọc Mai      | HS180502 | -       |
+|  3  | Nguyễn Nguyệt Anh    | HE180051 | -       |
+|  4  | Nguyễn Khánh Toàn    | HE181528 | -       |
+|  5  | Nguyễn Thanh Phong   | HE182099 | -       |
+|  6  | Nguyễn Duy Khiêm     | HE181770 | -       |
 
------
+---
 
 ## 📄 License
 

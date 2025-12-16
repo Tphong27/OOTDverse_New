@@ -24,7 +24,7 @@ export function MarketplaceProvider({ children }) {
   const [myListings, setMyListings] = useState([]);
   const [currentListing, setCurrentListing] = useState(null);
   const [stats, setStats] = useState(null);
-  
+
   const [filters, setFilters] = useState({
     status: "active",
     listing_type: null,
@@ -59,12 +59,14 @@ export function MarketplaceProvider({ children }) {
       const response = await getListings(filterToUse);
 
       setListings(response.data || []);
-      setPagination(response.pagination || {
-        page: 1,
-        limit: 20,
-        total: 0,
-        totalPages: 0
-      });
+      setPagination(
+        response.pagination || {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0,
+        }
+      );
     } catch (err) {
       console.error("Error loading listings:", err);
       setError(err.error || err.message || "Không thể tải danh sách");
@@ -103,10 +105,12 @@ export function MarketplaceProvider({ children }) {
       setError(null);
 
       const response = await getListingById(id, incrementView);
+      
+      // setCurrentListing(response.data?.data);
       setCurrentListing(response.data);
-      return response.data;
+      return response.data?.data;
     } catch (err) {
-      console.error("Error loading listing:", err);
+      console.error("❌ Error loading listing:", err);
       setError(err.error || err.message || "Không thể tải listing");
       return null;
     } finally {
@@ -277,7 +281,7 @@ export function MarketplaceProvider({ children }) {
     setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
-  const resetFilters = () => {
+  const resetFilters = () =>
     setFilters({
       status: "active",
       listing_type: null,
@@ -291,7 +295,6 @@ export function MarketplaceProvider({ children }) {
       page: 1,
       limit: 20,
     });
-  };
 
   // PAGINATION
   const goToPage = (page) => {

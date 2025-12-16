@@ -145,5 +145,4 @@ app.use((error, req, res, next) => {
 // ========================================
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
-  console.log(`📍 API Base URL: http://localhost:${PORT}/api`);
 });

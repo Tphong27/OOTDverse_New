@@ -9,9 +9,10 @@ const BASE_URL = "/api/marketplace/listings";
 export const getListings = async (filters = {}) => {
   try {
     const params = new URLSearchParams();
-    
+
     // Add filters to query params
-    if (filters.listing_type) params.append("listing_type", filters.listing_type);
+    if (filters.listing_type)
+      params.append("listing_type", filters.listing_type);
     if (filters.condition) params.append("condition", filters.condition);
     if (filters.status) params.append("status", filters.status);
     if (filters.category_id) params.append("category_id", filters.category_id);
@@ -20,12 +21,13 @@ export const getListings = async (filters = {}) => {
     if (filters.min_price) params.append("min_price", filters.min_price);
     if (filters.max_price) params.append("max_price", filters.max_price);
     if (filters.seller_id) params.append("seller_id", filters.seller_id);
-    if (filters.is_featured !== undefined) params.append("is_featured", filters.is_featured);
+    if (filters.is_featured !== undefined)
+      params.append("is_featured", filters.is_featured);
     if (filters.search) params.append("search", filters.search);
     if (filters.sort_by) params.append("sort_by", filters.sort_by);
     if (filters.page) params.append("page", filters.page);
     if (filters.limit) params.append("limit", filters.limit);
-    
+
     const response = await api.get(`${BASE_URL}?${params.toString()}`);
     return response;
   } catch (error) {
@@ -39,8 +41,17 @@ export const getListings = async (filters = {}) => {
 // ========================================
 export const getListingById = async (id, incrementView = false) => {
   try {
-    const params = incrementView ? "?increment_view=true" : "";
-    const response = await api.get(`${BASE_URL}/${id}${params}`);
+    const params = new URLSearchParams();
+    if (incrementView) {
+      params.append("increment_view", "true");
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${BASE_URL}/${id}?${queryString}`
+      : `${BASE_URL}/${id}`;
+
+    const response = await api.get(url);
     return response;
   } catch (error) {
     console.error("Error fetching listing:", error);
@@ -54,16 +65,19 @@ export const getListingById = async (id, incrementView = false) => {
 export const searchListings = async (searchParams = {}) => {
   try {
     const params = new URLSearchParams();
-    
+
     if (searchParams.q) params.append("q", searchParams.q);
     if (searchParams.category) params.append("category", searchParams.category);
     if (searchParams.brand) params.append("brand", searchParams.brand);
-    if (searchParams.min_price) params.append("min_price", searchParams.min_price);
-    if (searchParams.max_price) params.append("max_price", searchParams.max_price);
-    if (searchParams.condition) params.append("condition", searchParams.condition);
+    if (searchParams.min_price)
+      params.append("min_price", searchParams.min_price);
+    if (searchParams.max_price)
+      params.append("max_price", searchParams.max_price);
+    if (searchParams.condition)
+      params.append("condition", searchParams.condition);
     if (searchParams.page) params.append("page", searchParams.page);
     if (searchParams.limit) params.append("limit", searchParams.limit);
-    
+
     const response = await api.get(`${BASE_URL}/search?${params.toString()}`);
     return response;
   } catch (error) {
@@ -91,13 +105,16 @@ export const getMarketplaceStats = async () => {
 export const getUserListings = async (userId, filters = {}) => {
   try {
     const params = new URLSearchParams();
-    
+
     if (filters.status) params.append("status", filters.status);
-    if (filters.listing_type) params.append("listing_type", filters.listing_type);
+    if (filters.listing_type)
+      params.append("listing_type", filters.listing_type);
     if (filters.page) params.append("page", filters.page);
     if (filters.limit) params.append("limit", filters.limit);
-    
-    const response = await api.get(`${BASE_URL}/user/${userId}?${params.toString()}`);
+
+    const response = await api.get(
+      `${BASE_URL}/user/${userId}?${params.toString()}`
+    );
     return response;
   } catch (error) {
     console.error("Error fetching user listings:", error);
@@ -149,7 +166,9 @@ export const deleteListing = async (id) => {
 // ========================================
 export const toggleFavorite = async (id, increment = true) => {
   try {
-    const response = await api.post(`${BASE_URL}/${id}/favorite`, { increment });
+    const response = await api.post(`${BASE_URL}/${id}/favorite`, {
+      increment,
+    });
     return response;
   } catch (error) {
     console.error("Error toggling favorite:", error);

@@ -1,0 +1,142 @@
+# Troubleshooting Tips
+
+> Tài liệu tổng hợp các quy tắc debug và troubleshooting từ kinh nghiệm thực tế.
+
+---
+
+## Rule #1: The "Shared Identifier Pattern" Trap
+
+**Áp dụng khi:** Bug liên quan đến lookup/query sử dụng identifier chung (email, username, phone...)
+
+### 🔴 Vấn đề
+
+Khi hệ thống mở rộng để hỗ trợ **multiple sources** cho cùng một entity (ví dụ: local + Google auth), các query cũ chỉ dùng identifier đơn lẻ sẽ **trả về kết quả sai hoặc ngẫu nhiên**.
+
+### 🔍 Dấu hiệu nhận biết
+
+- "Đăng nhập thất bại" dù credentials đúng
+- Dữ liệu của user A hiển thị cho user B
+- Hành vi không nhất quán (lúc được, lúc không)
+- Duplicate key errors khi tạo record mới
+
+### ✅ Quy trình debug
+
+```bash
+# Bước 1: Tìm TẤT CẢ các chỗ query bằng identifier
+grep -rn "findOne.*email" backend/
+grep -rn "findOne.*username" backend/
+grep -rn "findOne.*phone" backend/
+
+# Bước 2: Kiểm tra mỗi kết quả
+# Hỏi: "Query này có consider TẤT CẢ các discriminator fields không?"
+
+# Bước 3: Thêm discriminator vào query
+# Trước: User.findOne({ email })
+# Sau:   User.findOne({ email, authType: "local" })
+```
+
+### 📋 Checklist trước khi thêm source mới
+
+- [ ] Đã thêm discriminator field vào model? (vd: `authType`)
+- [ ] Đã tạo compound unique index? (vd: `email + authType`)
+- [ ] Đã grep và update TẤT CẢ queries?
+- [ ] Đã test cross-source scenarios?
+
+### 💡 Prevention
+
+```javascript
+// ❌ Fragile - chỉ đúng khi có 1 source
+const user = await User.findOne({ email });
+
+// ✅ Robust - explicit về source
+const user = await User.findOne({ email, authType: "local" });
+
+// ✅ Best - Helper function
+const user = await User.findLocalByEmail(email);
+```
+
+---
+
+## Rule #2: The "Layered Bug" Debugging Strategy
+
+**Áp dụng khi:** Fix bug này xong, lập tức xuất hiện bug khác
+
+### 🔴 Vấn đề
+
+Bugs "xếp chồng" - mỗi bug che đậy bug tiếp theo, dẫn đến debug mất rất nhiều thời gian.
+
+### ✅ Quy trình debug
+
+```
+1. STOP - Đừng fix ngay
+2. MAP  - Vẽ full flow từ đầu đến cuối
+3. LIST - Liệt kê TẤT CẢ components trong flow
+4. TEST - Test từng component riêng lẻ
+5. FIX  - Fix theo thứ tự flow (từ đầu → cuối)
+```
+
+### 📊 Flow Mapping Template
+
+```
+[User Action] → [Frontend] → [API] → [Controller] → [Database]
+                    ↓            ↓          ↓            ↓
+                 Check:       Check:     Check:       Check:
+                 - State      - Payload  - Logic      - Query
+                 - Context    - Headers  - Validation - Index
+```
+
+---
+
+## Rule #3: The "Implicit vs Explicit" State Bug
+
+**Áp dụng khi:** State management bugs (localStorage, Context, Redux...)
+
+### 🔴 Vấn đề
+
+Code cũ và code mới sử dụng **cùng data nhưng khác keys** hoặc **khác format**.
+
+### 🔍 Dấu hiệu nhận biết
+
+- UI không update sau login/logout
+- Refresh page thì mất state
+- "User is null" nhưng localStorage có data
+
+### ✅ Debug steps
+
+```bash
+# 1. Tìm tất cả access points
+grep -rn "localStorage" frontend/src/
+grep -rn "useContext" frontend/src/
+
+# 2. Kiểm tra consistency
+# - Cùng key name?
+# - Cùng data structure?
+# - Cùng accessor function?
+```
+
+### 💡 Prevention
+
+```javascript
+// ❌ Direct access - dễ inconsistent
+localStorage.setItem("user", JSON.stringify(user));
+localStorage.setItem("token", token);
+
+// ✅ Centralized access - single source of truth
+authContext.login(user, token); // Handles ALL storage internally
+```
+
+---
+
+## Quick Reference Card
+
+| Triệu chứng                     | Nghi ngờ                       | Grep command                |
+| ------------------------------- | ------------------------------ | --------------------------- |
+| Login fail với đúng credentials | Query thiếu discriminator      | `grep -rn "findOne.*email"` |
+| Duplicate key error             | Unique index chưa compound     | Check model indexes         |
+| State bị mất sau refresh        | localStorage key mismatch      | `grep -rn "localStorage"`   |
+| Fix A → Break B                 | Layered bugs                   | Map full flow trước         |
+| Hành vi không nhất quán         | Race condition hoặc wrong user | Add logging ở mỗi step      |
+
+---
+
+_Cập nhật lần cuối: 2025-12-16_

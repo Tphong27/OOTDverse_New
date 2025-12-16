@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const UserSchema = new mongoose.Schema(
   {
     // 1. Thông tin đăng nhập
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true }, // Removed unique, use compound index instead
     password: { type: String },
     fullName: { type: String, required: true },
 
@@ -71,6 +71,13 @@ const UserSchema = new mongoose.Schema(
     emailVerificationExpires: {
       type: Date,
     },
+    // Password reset (Quên mật khẩu)
+    passwordResetCode: {
+      type: String,
+    },
+    passwordResetExpires: {
+      type: Date,
+    },
     //Thông tin Marketplace và Swap
     seller_rating: {
       type: Number,
@@ -103,5 +110,8 @@ const UserSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Compound unique index: cho phép cùng email với authType khác nhau
+UserSchema.index({ email: 1, authType: 1 }, { unique: true });
 
 module.exports = mongoose.model("User", UserSchema);

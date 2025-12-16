@@ -160,7 +160,74 @@ const sendVerificationEmail = async (userEmail, userName, otpCode) => {
   }
 };
 
+// Template email đặt lại mật khẩu
+const passwordResetTemplate = (userName, otpCode) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ef4444, #f97316); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .otp-box { background: linear-gradient(135deg, #ef4444, #f97316); color: white; font-size: 32px; font-weight: bold; letter-spacing: 8px; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0; }
+        .warning-box { background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
+        .info-text { color: #666; font-size: 14px; text-align: center; }
+        .footer { text-align: center; margin-top: 20px; color: #999; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🔑 Đặt lại mật khẩu</h1>
+          <p>OOTDverse</p>
+        </div>
+        <div class="content">
+          <p>Xin chào <strong>${userName}</strong>,</p>
+          <p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản OOTDverse. Vui lòng nhập mã xác thực bên dưới:</p>
+          
+          <div class="otp-box">${otpCode}</div>
+          
+          <p class="info-text">⏰ Mã này sẽ hết hạn sau <strong>10 phút</strong></p>
+          <p class="info-text">🔒 Không chia sẻ mã này với bất kỳ ai</p>
+          
+          <div class="warning-box">
+            <strong>⚠️ Lưu ý bảo mật:</strong>
+            <p style="margin: 5px 0 0 0;">Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này và đảm bảo tài khoản của bạn vẫn an toàn.</p>
+          </div>
+        </div>
+        <div class="footer">
+          <p>© 2025 OOTDverse. All rights reserved.</p>
+          <p>Email này được gửi tự động, vui lòng không trả lời.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+// Hàm gửi email đặt lại mật khẩu
+const sendPasswordResetEmail = async (userEmail, userName, otpCode) => {
+  try {
+    const mailOptions = {
+      from: process.env.EMAIL_FROM,
+      to: userEmail,
+      subject: "🔑 Đặt lại mật khẩu OOTDverse",
+      html: passwordResetTemplate(userName, otpCode),
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Password reset email sent successfully:", info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("Error sending password reset email:", error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendLoginSuccessEmail,
   sendVerificationEmail,
+  sendPasswordResetEmail,
 };

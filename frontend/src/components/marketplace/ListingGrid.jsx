@@ -1,6 +1,6 @@
 //frontend/src/pages/marketplace/ListingGrid.jsx
 import { useState } from "react";
-import ListingCard from "./ListingCard";
+import ListingCard from "../../components/marketplace/ListingCard";
 import { Grid, List, Filter, SlidersHorizontal, X } from "lucide-react";
 import { useMarketplace } from "@/context/MarketplaceContext";
 import { useSettings } from "@/context/SettingContext";

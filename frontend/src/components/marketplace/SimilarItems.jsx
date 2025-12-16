@@ -1,7 +1,7 @@
 //frontend/src/pages/marketplace/components/SimilarItems.jsx
 import { useEffect, useState } from "react";
 import { getListings } from "@/services/marketplace-index";
-import ListingCard from "@/pages/marketplace/ListingCard";
+import ListingCard from "@/components/marketplace/ListingCard";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function SimilarItems({ categoryId, currentListingId }) {

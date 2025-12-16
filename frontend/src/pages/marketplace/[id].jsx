@@ -4,12 +4,12 @@ import { useRouter } from "next/router";
 import LayoutUser from "@/components/layout/LayoutUser";
 import { useMarketplace } from "@/context/MarketplaceContext";
 import { useAuth } from "@/context/AuthContext";
-import ImageGallery from "@/pages/marketplace/components/ImageGallery";
-import SellerProfile from "@/pages/marketplace/components/SellerProfile";
-import ListingInfo from "@/pages/marketplace/components/ListingInfo";
-import SimilarItems from "@/pages/marketplace/components/SimilarItems";
-import BuyModal from "@/pages/marketplace/components/BuyModal";
-import SwapModal from "@/pages/marketplace/components/SwapModal";
+import ImageGallery from "@/components/marketplace/ImageGallery";
+import SellerProfile from "@/components/marketplace/SellerProfile";
+import ListingInfo from "@/components/marketplace/ListingInfo";
+import SimilarItems from "@/components/marketplace/SimilarItems";
+import BuyModal from "@/components/marketplace/BuyModal";
+import SwapModal from "@/components/marketplace/SwapModal";
 import { ArrowLeft, Heart, Share2, Flag, MapPin } from "lucide-react";
 
 export default function ListingDetailPage() {

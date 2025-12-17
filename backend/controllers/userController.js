@@ -178,6 +178,7 @@ exports.verifyEmail = async (req, res) => {
         status: user.status,
         authType: user.authType,
         hasProfile: user.hasProfile || false,
+        avatar: user.avatar || null,
       },
     });
   } catch (err) {
@@ -439,6 +440,7 @@ exports.login = async (req, res) => {
         authType: user.authType,
         // Trả về cờ từ model để biết đã điền hồ sơ chưa
         hasProfile: user.hasProfile || false,
+        avatar: user.avatar || null,
       },
     });
   } catch (err) {

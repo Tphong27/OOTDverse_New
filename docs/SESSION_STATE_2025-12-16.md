@@ -1,43 +1,57 @@
 # OOTDverse - Session State Summary
 
-> **Session Date:** 2025-12-16  
+> **Session Date:** 2025-12-17  
 > **Use this prompt to continue work in next session**
 
 ---
 
 ## 1. Những gì đã hoàn thành trong phiên này
 
-### ✅ Authentication Flow - Google Sign-In Fix
+### ✅ Style Profile Improvements
 
-- Fixed backend `googleLogin` to return JWT token for existing users
-- Fixed frontend `register.jsx` to use `AuthContext.login()` instead of manual localStorage
-- Implemented compound unique index `(email, authType)` to separate Local and Google accounts
-- Fixed `verifyEmail` to find correct user by `email + authType`
-- Fixed `register` and `login` functions to query with `authType: "local"`
-- Fixed `hasProfile` logic from `!!user.height` to `user.hasProfile`
+| Feature                   | Status  | Files         |
+| ------------------------- | ------- | ------------- |
+| Measurement Validation    | ✅ Done | `profile.jsx` |
+| Color Conflict Resolution | ✅ Done | `profile.jsx` |
+| Inline Error Messages     | ✅ Done | `profile.jsx` |
 
-### ✅ Forgot Password Feature - NEW
+- Added `MEASUREMENT_LIMITS` constants (height: 100-250cm, weight: 30-200kg, bust: 60-150cm, waist: 40-150cm, hips: 60-180cm)
+- Auto-remove conflicting colors between favoriteColors/avoidColors with toast notification
+- Red border + inline error for invalid measurements
+- Validation blocks save if measurements out of range
 
-- Added `passwordResetCode`, `passwordResetExpires` fields to User model
-- Created email template `sendPasswordResetEmail` in emailService.js
-- Created 3 endpoints: `forgot-password`, `verify-reset-code`, `reset-password`
-- Created frontend page `/forgot-password` with 4-step flow
-- Connected "Quên mật khẩu?" link from login page
+---
 
-### ✅ Redirect Logic Fix
+### ✅ Avatar Upload with Cloudinary
 
-- First-time login (hasProfile=false) → `/user/profile`
-- Returning user (hasProfile=true) → `/user/dashboard`
+| Feature                  | Status  | Files                                |
+| ------------------------ | ------- | ------------------------------------ |
+| Cloudinary Config        | ✅ Done | `config/cloudinaryConfig.js`         |
+| Upload Endpoint          | ✅ Done | `userController.js`, `userRoutes.js` |
+| Frontend Service         | ✅ Done | `userService.js`                     |
+| Profile Integration      | ✅ Done | `profile.jsx`                        |
+| Navbar Sync              | ✅ Done | `Topbar.jsx`                         |
+| **Avatar Cropper Modal** | ✅ Done | `AvatarCropperModal.jsx`             |
 
-### ✅ Welcome Email
+- Users can upload avatar → stored on Cloudinary
+- Circular crop with zoom slider before upload (react-easy-crop)
+- Avatar syncs to navbar immediately via `AuthContext.updateUser()`
+- Fallback to auto-generated avatar if none uploaded
+- Max file size: 10MB, formats: jpg/png/webp/gif
 
-- Added `sendLoginSuccessEmail` call after successful OTP verification
+---
 
-### ✅ Documentation Created
+### 🔄 Migration Plan (PAUSED)
 
-- `README.md` - Updated with Authentication features section
-- `docs/feature-authentication.md` - Architecture, API, flows, design decisions
-- `docs/Troubleshooting_Tips.md` - Generalized debugging rules
+**Goal:** Migrate existing Base64 images in MongoDB to Cloudinary
+
+| Model  | Image Fields                       | Status                      |
+| ------ | ---------------------------------- | --------------------------- |
+| Item   | `image_url`, `additional_images[]` | 📋 Planned                  |
+| Outfit | `thumbnail_url`, `full_image_url`  | 📋 Planned                  |
+| User   | `avatar`                           | ✅ Already using Cloudinary |
+
+**Blocker:** Need to install MongoDB Database Tools for backup before migration
 
 ---
 
@@ -47,125 +61,137 @@
 
 ```
 backend/
-├── models/User.js           # +passwordResetCode, +passwordResetExpires, compound index
-├── controllers/userController.js  # +forgotPassword, +verifyResetCode, +resetPassword, fixes
-├── routes/userRoutes.js     # +3 new routes
-└── services/emailService.js # +sendPasswordResetEmail template
+├── config/
+│   └── cloudinaryConfig.js     # [NEW] Cloudinary SDK config + uploadImage()
+├── controllers/
+│   └── userController.js       # +uploadAvatar endpoint
+├── routes/
+│   └── userRoutes.js           # +POST /upload-avatar
+├── models/
+│   ├── Item.js                 # Has image_url (base64) - needs migration
+│   ├── Outfit.js               # Has thumbnail_url (base64) - needs migration
+│   └── User.js                 # Has avatar field (now Cloudinary URL)
+└── .env                        # +CLOUDINARY_CLOUD_NAME, API_KEY, API_SECRET
 ```
 
 ### Frontend Changes
 
 ```
 frontend/src/
-├── pages/
-│   ├── login.jsx            # Fixed redirect logic, Link to forgot-password
-│   ├── register.jsx         # Uses AuthContext, handles fromGoogle query
-│   └── forgot-password.jsx  # [NEW] 4-step password recovery
-└── services/userService.js  # +forgotPassword, +verifyResetCode, +resetPassword
+├── components/
+│   ├── layout/
+│   │   └── Topbar.jsx          # Uses user.avatar with fallback
+│   └── ui/
+│       └── AvatarCropperModal.jsx  # [NEW] react-easy-crop modal
+├── pages/user/
+│   └── profile.jsx             # +measurement validation, +color conflict, +cropper
+├── services/
+│   └── userService.js          # +uploadAvatar()
+└── context/
+    └── AuthContext.jsx         # Has updateUser() for syncing avatar
 ```
 
-### Docs Created
+### Dependencies Added
 
+```bash
+# Root package.json
+npm install cloudinary
+
+# frontend/package.json
+npm install react-easy-crop --prefix frontend
 ```
-docs/
-├── feature-authentication.md
-└── Troubleshooting_Tips.md
+
+### Environment Variables (.env)
+
+```env
+CLOUDINARY_CLOUD_NAME=doo2fat5j
+CLOUDINARY_API_KEY=576675189344659
+CLOUDINARY_API_SECRET=<secret>
 ```
 
 ---
 
 ## 3. Next Steps cần thực hiện
 
-### 🔴 Critical - Build Error trên Vercel
+### 🔴 Critical - Continue Migration
 
-```
-Error: /marketplace/ListingCard
-TypeError: Cannot read properties of undefined (reading 'favorite_count')
-```
+1. **Install MongoDB Database Tools** on Windows:
 
-**Action:** Di chuyển `ListingCard.jsx` từ `pages/marketplace/` → `components/marketplace/`
+   - Download: https://www.mongodb.com/try/download/database-tools
+   - Add to PATH, restart terminal
+   - Run: `mongodump --uri="<connection_string>" --out ./backup/`
 
-### 🟡 Cần deploy
+2. **Create Migration Script** (`backend/scripts/migrateImagesToCloudinary.js`):
 
-1. Thêm `JWT_SECRET` và `JWT_EXPIRES_IN` vào Render environment variables
-2. Redeploy backend on Render
-3. Fix ListingCard.jsx → Push → Vercel auto-deploy
+   - Query Items with base64 `image_url`
+   - Upload each to Cloudinary folder `ootdverse/wardrobe`
+   - Update document with new URL
+   - Same for Outfit model
 
-### 🟢 Optional improvements
+3. **Modify Upload Controllers**:
+   - `wardrobeController.js` → Upload to Cloudinary on create/update
+   - `outfitController.js` → Same for outfits
 
-- [ ] Add rate limiting cho forgot-password endpoint (chống spam)
-- [ ] Add email verification khi đổi email trong profile
-- [ ] Write integration tests cho auth flows
-- [ ] Localization - support English
+### 🟢 Optional Improvements
+
+- [ ] Add image cropper for wardrobe items (similar to avatar)
+- [ ] Add bulk delete on Cloudinary when item deleted
+- [ ] Add loading state to Item/Outfit cards during upload
 
 ---
 
 ## 4. Known Bugs / Edge Cases
 
-### 🐛 Build Error (Blocking Vercel)
+### ✅ Fixed This Session
 
-```
-File: frontend/src/pages/marketplace/ListingCard.jsx
-Issue: Next.js treats it as a page and tries to pre-render without props
-Fix: Move to components/ folder
-```
+| Issue                           | Status                                                |
+| ------------------------------- | ----------------------------------------------------- |
+| Controlled/Uncontrolled Warning | ✅ Fixed - Added default empty strings in profile.jsx |
+| Avatar not showing on navbar    | ✅ Fixed - Topbar.jsx now uses user.avatar            |
 
-### ⚠️ Console Warnings (Non-blocking)
+### ⚠️ Known Issues
 
-```
-[GSI_LOGGER]: The given origin is not allowed for the given client ID
-→ Google OAuth origin config issue, doesn't break functionality
-```
+| Issue                                        | Severity | Notes                                  |
+| -------------------------------------------- | -------- | -------------------------------------- |
+| Avatar requires logout/login on first upload | Minor    | localStorage needs refresh             |
+| mongodump not found                          | Blocker  | Need to install MongoDB Database Tools |
+| Large image upload (>5MB) not tested         | Unknown  | May need timeout adjustment            |
 
-### ⚠️ Edge Cases to Consider
+### Not Yet Tested
 
-- User với local account cũ (trước khi có compound index) có thể có `authType: undefined`
-  → Current code handles with fallback, nhưng nên migrate data
-- OTP rate limiting chưa có → có thể spam gửi email
-
----
-
-## 5. Environment Variables Cần Có
-
-### Backend (Render)
-
-```env
-MONGODB_URI=<connection_string>
-PORT=5000
-JWT_SECRET=<secret_key>           # ⚠️ Cần thêm!
-JWT_EXPIRES_IN=7d                 # ⚠️ Cần thêm!
-GOOGLE_CLIENT_ID=<client_id>
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=<email>
-EMAIL_PASSWORD=<app_password>
-EMAIL_FROM=OOTDverse <noreply@ootdverse.com>
-```
-
-### Frontend (Vercel)
-
-```env
-NEXT_PUBLIC_API_URL=https://ootdverse-backend.onrender.com
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=<client_id>
-```
+- Concurrent avatar uploads from multiple tabs
+- Cloudinary quota limits (25 credits/month free tier)
+- Image migration for 100+ items
 
 ---
 
-## Quick Start Next Session
+## 5. Quick Start Next Session
 
+```bash
+# Start dev servers
+cd d:/PROJECT/EXE/OOTDverse_New
+npm run dev
+
+# Key files to review
+frontend/src/components/ui/AvatarCropperModal.jsx  # Cropper component
+frontend/src/pages/user/profile.jsx                 # Lines 280-320 for upload
+backend/config/cloudinaryConfig.js                  # Cloudinary config
 ```
-Bắt đầu phiên tiếp theo với:
 
-1. Fix Vercel build error:
-   - Move ListingCard.jsx to components/
-   - Update all imports
-   - Push to trigger new build
+### Resume Prompts
 
-2. Verify Render có JWT_SECRET
+**To continue migration:**
 
-3. Test full auth flow on production
-```
+> "Tiếp tục migration ảnh từ Base64 sang Cloudinary cho Item và Outfit models. Tôi đã backup database xong."
+
+**To add cropper for wardrobe:**
+
+> "Tạo image cropper cho wardrobe items tương tự avatar cropper"
+
+**To test avatar upload:**
+
+> "Test avatar upload flow - chọn ảnh, crop, save, verify trên Cloudinary"
 
 ---
 
-_Generated: 2025-12-16 19:27_
+_Updated: 2025-12-17 18:15_

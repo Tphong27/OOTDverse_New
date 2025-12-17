@@ -1,41 +1,79 @@
-//frontend/src/pages/marketplace/marketplace.jsx
+"use client";
+import { useState } from "react";
 import LayoutUser from "@/components/layout/LayoutUser";
 import { useAuth } from "@/context/AuthContext";
-import { useMarketplace } from "@/context/MarketplaceContext";
-import ListingGrid from "@/components/marketplace/ListingGrid";
-import { useRouter } from "next/router";
+import MarketplaceTab from "@/components/marketplace/MarketplaceTab";
+import MyListingsTab from "@/components/marketplace/MyListingsTab";
+import { Store, ShoppingBag, User } from "lucide-react";
 
-export default function Marketplace() {
-  const router = useRouter();
+export default function MarketplacePage() {
   const { user } = useAuth();
-  const { refreshListings } = useMarketplace();
+  const [activeTab, setActiveTab] = useState("marketplace");
 
   return (
     <LayoutUser>
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Marketplace</h1>
-            <p className="text-gray-600 mt-1">
-              Khám phá & mua sắm từ cộng đồng
-            </p>
+        {/* ===== HEADER ===== */}
+        <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 rounded-2xl p-8 text-white shadow-xl">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
+                <Store className="w-8 h-8" />
+                Marketplace
+              </h1>
+              <p className="text-white/90 mt-2 text-lg">
+                Khám phá & quản lý gian hàng thời trang
+              </p>
+            </div>
           </div>
 
-          {/* My Listings Button (nếu đã login) */}
-          {user && (
-            <button
-              onClick={() => router.push("/marketplace/my-listings")}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-pink-500 text-white font-semibold hover:bg-pink-600 transition-colors shadow"
+          {/* ===== TABS ===== */}
+          <div className="mt-6 flex gap-3 flex-wrap">
+            <TabPill
+              active={activeTab === "marketplace"}
+              onClick={() => setActiveTab("marketplace")}
+              icon={<ShoppingBag className="w-5 h-5" />}
             >
-              Quản lý listings của tôi
-            </button>
-          )}
+              Chợ
+            </TabPill>
+
+            {user && (
+              <TabPill
+                active={activeTab === "my-listings"}
+                onClick={() => setActiveTab("my-listings")}
+                icon={<User className="w-5 h-5" />}
+              >
+                Gian hàng của tôi
+              </TabPill>
+            )}
+          </div>
         </div>
 
-        {/* Marketplace Grid */}
-        <ListingGrid />
+        {/* ===== CONTENT ===== */}
+        <div className="min-h-[300px]">
+          {activeTab === "marketplace" && <MarketplaceTab />}
+          {activeTab === "my-listings" && user && <MyListingsTab />}
+        </div>
       </div>
     </LayoutUser>
+  );
+}
+
+/* ===== TAB PILL COMPONENT ===== */
+function TabPill({ active, children, onClick, icon }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2
+        ${
+          active
+            ? "bg-white text-purple-600 shadow-lg"
+            : "bg-white/20 text-white hover:bg-white/30"
+        }
+      `}
+    >
+      {icon}
+      {children}
+    </button>
   );
 }

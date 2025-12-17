@@ -57,16 +57,9 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
     },
     {
       id: "marketplace",
-      icon: ShoppingBag,
-      label: "Chợ",
-      path: "/marketplace/marketplace",
-      roles: ["Customer", "Admin"],
-    },
-    {
-      id: "my-listings",
       icon: Store,
-      label: "Gian hàng của tôi",
-      path: "/marketplace/my-listings",
+      label: "Khu mua sắm",
+      path: "/marketplace/marketplace",
       roles: ["Customer", "Admin"],
     },
     {

@@ -4,7 +4,8 @@ import LayoutUser from "@/components/layout/LayoutUser";
 import { useAuth } from "@/context/AuthContext";
 import MarketplaceTab from "@/components/marketplace/MarketplaceTab";
 import MyListingsTab from "@/components/marketplace/MyListingsTab";
-import { Store, ShoppingBag, User } from "lucide-react";
+import OrdersTab from "@/components/orders/OrdersTab";
+import { Store, ShoppingBag, User, Package } from "lucide-react";
 
 export default function MarketplacePage() {
   const { user } = useAuth();
@@ -22,7 +23,7 @@ export default function MarketplacePage() {
                 Marketplace
               </h1>
               <p className="text-white/90 mt-2 text-lg">
-                Khám phá & quản lý gian hàng thời trang
+                Khám phá, mua bán & quản lý gian hàng thời trang
               </p>
             </div>
           </div>
@@ -38,13 +39,23 @@ export default function MarketplacePage() {
             </TabPill>
 
             {user && (
-              <TabPill
-                active={activeTab === "my-listings"}
-                onClick={() => setActiveTab("my-listings")}
-                icon={<User className="w-5 h-5" />}
-              >
-                Gian hàng của tôi
-              </TabPill>
+              <>
+                <TabPill
+                  active={activeTab === "my-listings"}
+                  onClick={() => setActiveTab("my-listings")}
+                  icon={<User className="w-5 h-5" />}
+                >
+                  Gian hàng của tôi
+                </TabPill>
+
+                <TabPill
+                  active={activeTab === "orders"}
+                  onClick={() => setActiveTab("orders")}
+                  icon={<Package className="w-5 h-5" />}
+                >
+                  Đơn hàng
+                </TabPill>
+              </>
             )}
           </div>
         </div>
@@ -53,6 +64,7 @@ export default function MarketplacePage() {
         <div className="min-h-[300px]">
           {activeTab === "marketplace" && <MarketplaceTab />}
           {activeTab === "my-listings" && user && <MyListingsTab />}
+          {activeTab === "orders" && user && <OrdersTab />}
         </div>
       </div>
     </LayoutUser>

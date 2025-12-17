@@ -77,7 +77,7 @@ export default function ListingGrid() {
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         {/* Results Count */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Marketplace</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Khu mua sắm</h2>
           <p className="text-gray-600 mt-1">{pagination.total} sản phẩm</p>
         </div>
 

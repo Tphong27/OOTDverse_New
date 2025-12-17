@@ -124,14 +124,14 @@ const OrderSchema = new mongoose.Schema(
     order_status: {
       type: String,
       enum: [
-        "pending_payment",    // Chờ thanh toán
-        "paid",               // Đã thanh toán
-        "preparing",          // Đang chuẩn bị hàng
-        "shipping",           // Đang vận chuyển
-        "delivered",          // Đã giao hàng
-        "completed",          // Hoàn thành (buyer confirm)
-        "cancelled",          // Đã hủy
-        "refunded",           // Đã hoàn tiền
+        "pending_payment", // Chờ thanh toán
+        "paid", // Đã thanh toán
+        "preparing", // Đang chuẩn bị hàng
+        "shipping", // Đang vận chuyển
+        "delivered", // Đã giao hàng
+        "completed", // Hoàn thành (buyer confirm)
+        "cancelled", // Đã hủy
+        "refunded", // Đã hoàn tiền
       ],
       default: "pending_payment",
       index: true,
@@ -215,21 +215,20 @@ OrderSchema.index({ payment_status: 1, order_status: 1 });
 OrderSchema.index({ created_at: -1 });
 
 // === Pre-save: Generate order_code ===
-OrderSchema.pre("save", function(next) {
+OrderSchema.pre("save", function () {
   if (!this.order_code) {
-    const date = new Date();
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
-    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const randomStr = Math.random().toString(36).slice(2, 6).toUpperCase();
+
     this.order_code = `ORD${dateStr}${randomStr}`;
   }
-  next();
 });
 
 // === Methods ===
 // Update order status
-OrderSchema.methods.updateStatus = function(newStatus) {
+OrderSchema.methods.updateStatus = function (newStatus) {
   this.order_status = newStatus;
-  
+
   const timestampMap = {
     paid: "paid_at",
     preparing: "preparing_at",
@@ -238,16 +237,19 @@ OrderSchema.methods.updateStatus = function(newStatus) {
     completed: "completed_at",
     cancelled: "cancelled_at",
   };
-  
+
   if (timestampMap[newStatus]) {
     this[timestampMap[newStatus]] = new Date();
   }
-  
+
   return this.save();
 };
 
 // Update payment status
-OrderSchema.methods.updatePaymentStatus = function(status, transactionId = null) {
+OrderSchema.methods.updatePaymentStatus = function (
+  status,
+  transactionId = null
+) {
   this.payment_status = status;
   if (transactionId) {
     this.payment_transaction_id = transactionId;
@@ -260,7 +262,7 @@ OrderSchema.methods.updatePaymentStatus = function(status, transactionId = null)
 };
 
 // Cancel order
-OrderSchema.methods.cancelOrder = function(reason, cancelledBy) {
+OrderSchema.methods.cancelOrder = function (reason, cancelledBy) {
   this.order_status = "cancelled";
   this.cancelled_at = new Date();
   this.cancellation_reason = reason;
@@ -269,7 +271,7 @@ OrderSchema.methods.cancelOrder = function(reason, cancelledBy) {
 };
 
 // Add buyer rating
-OrderSchema.methods.rateSeller = function(rating, review = null) {
+OrderSchema.methods.rateSeller = function (rating, review = null) {
   if (rating < 1 || rating > 5) {
     throw new Error("Rating phải từ 1-5");
   }
@@ -279,7 +281,7 @@ OrderSchema.methods.rateSeller = function(rating, review = null) {
 };
 
 // Add seller rating
-OrderSchema.methods.rateBuyer = function(rating, review = null) {
+OrderSchema.methods.rateBuyer = function (rating, review = null) {
   if (rating < 1 || rating > 5) {
     throw new Error("Rating phải từ 1-5");
   }

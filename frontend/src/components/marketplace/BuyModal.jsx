@@ -66,7 +66,8 @@ export default function BuyModal({ listing, onClose }) {
       const order = await placeOrder(orderData);
 
       // Redirect to order detail
-      router.push(`/orders/${order._id}`);
+      // router.push(`/orders/${order._id}`);
+      router.push("/marketplace?tab=orders");
       onClose();
     } catch (err) {
       console.error("Error placing order:", err);
@@ -86,7 +87,9 @@ export default function BuyModal({ listing, onClose }) {
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">Xác nhận đơn hàng</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Xác nhận đơn hàng
+          </h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -100,7 +103,10 @@ export default function BuyModal({ listing, onClose }) {
           {/* Error Alert */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+              <AlertCircle
+                className="text-red-600 flex-shrink-0 mt-0.5"
+                size={20}
+              />
               <p className="text-red-800 text-sm">{error}</p>
             </div>
           )}
@@ -279,7 +285,9 @@ export default function BuyModal({ listing, onClose }) {
 
           {/* Order Summary */}
           <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-            <h3 className="font-semibold text-gray-900 mb-3">Chi tiết thanh toán</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">
+              Chi tiết thanh toán
+            </h3>
             <div className="flex justify-between text-gray-700">
               <span>Giá sản phẩm</span>
               <span>
@@ -289,13 +297,19 @@ export default function BuyModal({ listing, onClose }) {
             <div className="flex justify-between text-gray-700">
               <span>Phí vận chuyển</span>
               <span>
-                {new Intl.NumberFormat("vi-VN").format(listing.shipping_fee || 0)} đ
+                {new Intl.NumberFormat("vi-VN").format(
+                  listing.shipping_fee || 0
+                )}{" "}
+                đ
               </span>
             </div>
             <div className="flex justify-between text-gray-700">
               <span>Phí dịch vụ (5%)</span>
               <span>
-                {new Intl.NumberFormat("vi-VN").format(listing.selling_price * 0.05)} đ
+                {new Intl.NumberFormat("vi-VN").format(
+                  listing.selling_price * 0.05
+                )}{" "}
+                đ
               </span>
             </div>
             <div className="border-t border-gray-300 pt-2 mt-2 flex justify-between font-bold text-lg text-gray-900">

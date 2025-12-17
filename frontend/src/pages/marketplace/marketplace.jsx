@@ -1,6 +1,5 @@
-// frontend/src/pages/marketplace/marketplace.jsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import LayoutUser from "@/components/layout/LayoutUser";
 import { useAuth } from "@/context/AuthContext";
 import MarketplaceTab from "@/components/marketplace/MarketplaceTab";
@@ -10,12 +9,34 @@ import { Store, ShoppingBag, User, Package } from "lucide-react";
 
 export default function MarketplacePage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("marketplace");
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedTab = sessionStorage.getItem("marketplaceTab");
+      return savedTab || "marketplace";
+    }
+    return "marketplace";
+  });
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("marketplaceTab", tab);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("marketplaceTab");
+      }
+    };
+  }, []);
 
   return (
     <LayoutUser>
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* ===== HEADER ===== */}
+        {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 rounded-2xl p-8 text-white shadow-xl">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -29,11 +50,11 @@ export default function MarketplacePage() {
             </div>
           </div>
 
-          {/* ===== TABS ===== */}
+          {/* Tabs */}
           <div className="mt-6 flex gap-3 flex-wrap">
             <TabPill
               active={activeTab === "marketplace"}
-              onClick={() => setActiveTab("marketplace")}
+              onClick={() => handleTabChange("marketplace")}
               icon={<ShoppingBag className="w-5 h-5" />}
             >
               Chợ
@@ -43,7 +64,7 @@ export default function MarketplacePage() {
               <>
                 <TabPill
                   active={activeTab === "my-listings"}
-                  onClick={() => setActiveTab("my-listings")}
+                  onClick={() => handleTabChange("my-listings")}
                   icon={<User className="w-5 h-5" />}
                 >
                   Gian hàng của tôi
@@ -51,7 +72,7 @@ export default function MarketplacePage() {
 
                 <TabPill
                   active={activeTab === "orders"}
-                  onClick={() => setActiveTab("orders")}
+                  onClick={() => handleTabChange("orders")}
                   icon={<Package className="w-5 h-5" />}
                 >
                   Đơn hàng
@@ -61,7 +82,7 @@ export default function MarketplacePage() {
           </div>
         </div>
 
-        {/* ===== CONTENT ===== */}
+        {/* Content */}
         <div className="min-h-[300px]">
           {activeTab === "marketplace" && <MarketplaceTab />}
           {activeTab === "my-listings" && user && <MyListingsTab />}
@@ -72,7 +93,6 @@ export default function MarketplacePage() {
   );
 }
 
-/* ===== TAB PILL COMPONENT ===== */
 function TabPill({ active, children, onClick, icon }) {
   return (
     <button

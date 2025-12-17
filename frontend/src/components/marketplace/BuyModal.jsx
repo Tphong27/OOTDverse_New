@@ -74,7 +74,6 @@ export default function BuyModal({ listing, onClose }) {
       // router.push("/marketplace?tab=orders");
       onClose();
       // window.location.reload(); // Nếu cần
-      
     } catch (err) {
       console.error("Error placing order:", err);
       setError(err.message || err.error || "Không thể tạo đơn hàng");

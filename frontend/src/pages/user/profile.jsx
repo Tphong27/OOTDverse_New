@@ -20,6 +20,7 @@ import {
 import axios from "axios"; // Đảm bảo đã cài axios
 import { getUserProfile, updateUserProfile, uploadAvatar } from "@/services/userService";
 import { useAuth } from "@/context/AuthContext";
+import AvatarCropperModal from "@/components/ui/AvatarCropperModal";
 
 export default function ProfilePage() {
   const { updateUser } = useAuth(); // Để sync avatar với navbar
@@ -32,6 +33,10 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarBase64, setAvatarBase64] = useState(null); // Lưu base64 để upload
+  
+  // Cropper modal states
+  const [showCropper, setShowCropper] = useState(false);
+  const [tempImageForCrop, setTempImageForCrop] = useState(null);
 
   // State lưu trữ toàn bộ Settings từ DB để hiển thị lựa chọn
   const [availableSettings, setAvailableSettings] = useState({
@@ -422,11 +427,14 @@ export default function ProfilePage() {
                     }
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                      setAvatarPreview(reader.result);
-                      setAvatarBase64(reader.result); // Lưu để upload
+                      // Mở cropper modal thay vì set trực tiếp
+                      setTempImageForCrop(reader.result);
+                      setShowCropper(true);
                     };
                     reader.readAsDataURL(file);
                   }
+                  // Reset input để có thể chọn lại cùng file
+                  e.target.value = "";
                 }}
                 disabled={!isEditing}
               />
@@ -665,6 +673,20 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Avatar Cropper Modal */}
+      <AvatarCropperModal
+        isOpen={showCropper}
+        onClose={() => {
+          setShowCropper(false);
+          setTempImageForCrop(null);
+        }}
+        imageSrc={tempImageForCrop}
+        onCropComplete={(croppedImage) => {
+          setAvatarPreview(croppedImage);
+          setAvatarBase64(croppedImage);
+        }}
+      />
     </LayoutUser>
   );
 }

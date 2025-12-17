@@ -176,10 +176,10 @@ export default function MyListingsPage() {
   const handleBoost = async (listingId) => {
     try {
       await boostListing(listingId);
-      alert("Đã boost listing thành công!");
+      alert("Đã boost món đồ thành công!");
     } catch (error) {
       console.error("Error boosting listing:", error);
-      alert("Không thể boost listing: " + error.message);
+      alert("Không thể boost món đồ: " + error.message);
     }
   };
 
@@ -191,7 +191,7 @@ export default function MyListingsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Listings của tôi</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Gian hàng của tôi</h1>
             <p className="text-gray-600 mt-1">Quản lý các món đồ đang bán</p>
           </div>
 
@@ -404,7 +404,7 @@ export default function MyListingsPage() {
             </h3>
             <p className="text-gray-600 mb-6">
               {hasActiveFilters()
-                ? "Không tìm thấy listing nào phù hợp với bộ lọc"
+                ? "Không tìm thấy món đồ nào phù hợp với bộ lọc"
                 : "Bạn chưa đăng bán món đồ nào"}
             </p>
             {hasActiveFilters() ? (
@@ -483,10 +483,10 @@ export default function MyListingsPage() {
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">
-                Xác nhận xóa listing
+                Xác nhận xóa món đồ
               </h3>
               <p className="text-gray-600 mb-6">
-                Bạn có chắc chắn muốn xóa listing "{deleteConfirm.item_id?.item_name}"?
+                Bạn có chắc chắn muốn xóa món đồ "{deleteConfirm.item_id?.item_name}"?
                 Hành động này không thể hoàn tác.
               </p>
               <div className="flex gap-3">

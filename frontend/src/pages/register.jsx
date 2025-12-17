@@ -204,22 +204,15 @@ export default function RegisterPage() {
       if (res.success) {
         setStep(3); // Success screen
 
-        // Auto login với user data từ response
-        if (res.user) {
-          // Nếu backend trả về token thì dùng, không thì redirect login
-          if (res.token) {
-            login(res.user, res.token);
-            setTimeout(() => {
-              router.push("/user/profile");
-            }, 1500);
-          } else {
-            // Trường hợp backend chưa trả token, vẫn redirect đến login
-            setTimeout(() => {
-              router.push("/login");
-            }, 1500);
-          }
+        // Phân biệt LOCAL vs GOOGLE registration
+        if (authType === "google" && res.user && res.token) {
+          // Google registration: Auto login vì đã xác thực qua Google
+          login(res.user, res.token);
+          setTimeout(() => {
+            router.push(res.user.hasProfile ? "/user/dashboard" : "/user/profile");
+          }, 1500);
         } else {
-          // Fallback: redirect đến login
+          // Local registration: Redirect về login để user đăng nhập thủ công
           setTimeout(() => {
             router.push("/login");
           }, 1500);

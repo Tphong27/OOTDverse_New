@@ -69,6 +69,12 @@ export function WardrobeProvider({ children }) {
 
   // Load statistics
   const loadStatistics = useCallback(async () => {
+    // Skip if user not logged in
+    if (!user) {
+      setStatistics(null);
+      return;
+    }
+
     try {
       const stats = await getWardrobeStatistics();
       setStatistics(stats);

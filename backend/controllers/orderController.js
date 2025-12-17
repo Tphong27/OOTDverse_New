@@ -51,6 +51,12 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    // Generate order_code
+    const date = new Date();
+    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const order_code = `ORD${dateStr}${randomStr}`;
+
     // Tính toán giá
     const item_price = listing.selling_price;
     const shipping_fee = listing.shipping_fee || 0;
@@ -59,6 +65,7 @@ exports.createOrder = async (req, res) => {
 
     // Tạo order
     const order = new Order({
+      order_code,
       buyer_id,
       seller_id: listing.seller_id._id,
       listing_id,
@@ -226,9 +233,7 @@ exports.updateOrderStatus = async (req, res) => {
       delivered: ["completed", "refunded"],
     };
 
-    if (
-      !validTransitions[order.order_status]?.includes(status)
-    ) {
+    if (!validTransitions[order.order_status]?.includes(status)) {
       return res.status(400).json({
         success: false,
         error: `Không thể chuyển từ ${order.order_status} sang ${status}`,
@@ -325,7 +330,9 @@ exports.cancelOrder = async (req, res) => {
     }
 
     // Chỉ cho phép cancel khi status <= preparing
-    if (!["pending_payment", "paid", "preparing"].includes(order.order_status)) {
+    if (
+      !["pending_payment", "paid", "preparing"].includes(order.order_status)
+    ) {
       return res.status(400).json({
         success: false,
         error: "Không thể hủy đơn hàng ở trạng thái này",
@@ -466,7 +473,8 @@ exports.getOrderStats = async (req, res) => {
     const { userId } = req.params;
     const { role } = req.query;
 
-    const filter = role === "buyer" ? { buyer_id: userId } : { seller_id: userId };
+    const filter =
+      role === "buyer" ? { buyer_id: userId } : { seller_id: userId };
 
     const totalOrders = await Order.countDocuments(filter);
     const completedOrders = await Order.countDocuments({

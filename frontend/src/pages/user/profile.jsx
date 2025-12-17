@@ -15,15 +15,21 @@ import {
   TrendingUp,
   Edit2,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
 import axios from "axios"; // Đảm bảo đã cài axios
-import { getUserProfile, updateUserProfile } from "@/services/userService";
+import { getUserProfile, updateUserProfile, uploadAvatar } from "@/services/userService";
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  
+  // Avatar states
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarBase64, setAvatarBase64] = useState(null); // Lưu base64 để upload
 
   // State lưu trữ toàn bộ Settings từ DB để hiển thị lựa chọn
   const [availableSettings, setAvailableSettings] = useState({
@@ -59,6 +65,66 @@ export default function ProfilePage() {
     age: "",
     gender: "",
   });
+
+  // ============================================================================
+  // MEASUREMENT VALIDATION
+  // ============================================================================
+  
+  const MEASUREMENT_LIMITS = {
+    height: { min: 100, max: 250, label: "Chiều cao", unit: "cm" },
+    weight: { min: 30, max: 200, label: "Cân nặng", unit: "kg" },
+    bust: { min: 60, max: 150, label: "bust", unit: "cm" },
+    waist: { min: 40, max: 150, label: "waist", unit: "cm" },
+    hips: { min: 60, max: 180, label: "hips", unit: "cm" },
+  };
+
+  // State để lưu validation errors
+  const [validationErrors, setValidationErrors] = useState({});
+  
+  // State cho toast notification (color conflict)
+  const [colorConflictToast, setColorConflictToast] = useState(null);
+
+  // Hàm validate measurement
+  const validateMeasurement = (field, value) => {
+    if (!value || value === "") return null; // Empty is OK (optional fields)
+    
+    const numValue = parseFloat(value);
+    const limits = MEASUREMENT_LIMITS[field];
+    
+    if (!limits) return null;
+    
+    if (isNaN(numValue) || numValue < limits.min || numValue > limits.max) {
+      return `${limits.label} phải từ ${limits.min}-${limits.max} ${limits.unit}`;
+    }
+    
+    return null;
+  };
+
+  // Validate tất cả measurements
+  const validateAllMeasurements = () => {
+    const errors = {};
+    let hasError = false;
+
+    Object.keys(MEASUREMENT_LIMITS).forEach((field) => {
+      const error = validateMeasurement(field, profile[field]);
+      if (error) {
+        errors[field] = error;
+        hasError = true;
+      }
+    });
+
+    setValidationErrors(errors);
+    return !hasError;
+  };
+
+  // Handle blur để validate realtime
+  const handleMeasurementBlur = (field) => {
+    const error = validateMeasurement(field, profile[field]);
+    setValidationErrors((prev) => ({
+      ...prev,
+      [field]: error,
+    }));
+  };
 
   // Hàm tính tuổi từ ngày sinh
   const calculateAge = (birthday) => {
@@ -121,6 +187,18 @@ export default function ProfilePage() {
       const userData = profileRes;
       setProfile({
         ...userData,
+        // Đảm bảo các text fields không undefined để tránh controlled/uncontrolled warning
+        fullName: userData.fullName || "",
+        phone: userData.phone || "",
+        bio: userData.bio || "",
+        gender: userData.gender || "",
+        height: userData.height || "",
+        weight: userData.weight || "",
+        bust: userData.bust || "",
+        waist: userData.waist || "",
+        hips: userData.hips || "",
+        budget: userData.budget || "1-3 triệu",
+        avatar: userData.avatar || "",
         // Chuyển mảng object thành mảng ID để tiện xử lý checkbox
         favoriteStyles: userData.favoriteStyles?.map((s) => s._id) || [],
         favoriteBrands: userData.favoriteBrands?.map((s) => s._id) || [],
@@ -152,20 +230,54 @@ export default function ProfilePage() {
   };
 
   // Xử lý chọn/bỏ chọn Setting (Toggle ID trong mảng)
+  // Bao gồm COLOR CONFLICT RESOLUTION: tự động xóa màu khỏi list đối lập
   const toggleSetting = (field, settingId) => {
     if (!isEditing) return;
 
     setProfile((prev) => {
       const list = prev[field] || [];
+      let updated = { ...prev };
+
       if (list.includes(settingId)) {
-        return { ...prev, [field]: list.filter((id) => id !== settingId) }; // Bỏ chọn
+        // Bỏ chọn
+        updated[field] = list.filter((id) => id !== settingId);
       } else {
-        return { ...prev, [field]: [...list, settingId] }; // Chọn thêm
+        // Chọn thêm
+        updated[field] = [...list, settingId];
+
+        // COLOR CONFLICT RESOLUTION
+        // Nếu đang thêm vào favoriteColors, xóa khỏi avoidColors
+        if (field === "favoriteColors" && prev.avoidColors?.includes(settingId)) {
+          updated.avoidColors = prev.avoidColors.filter((id) => id !== settingId);
+          // Tìm tên màu để hiển thị toast
+          const colorName = availableSettings.colors.find((c) => c._id === settingId)?.name || "màu";
+          setColorConflictToast(`Đã xóa "${colorName}" khỏi danh sách tránh`);
+          setTimeout(() => setColorConflictToast(null), 3000);
+        }
+
+        // Nếu đang thêm vào avoidColors, xóa khỏi favoriteColors
+        if (field === "avoidColors" && prev.favoriteColors?.includes(settingId)) {
+          updated.favoriteColors = prev.favoriteColors.filter((id) => id !== settingId);
+          // Tìm tên màu để hiển thị toast
+          const colorName = availableSettings.colors.find((c) => c._id === settingId)?.name || "màu";
+          setColorConflictToast(`Đã xóa "${colorName}" khỏi danh sách yêu thích`);
+          setTimeout(() => setColorConflictToast(null), 3000);
+        }
       }
+
+      return updated;
     });
   };
 
   const handleSave = async () => {
+    // Validate số đo cơ thể trước
+    if (!validateAllMeasurements()) {
+      // Tập hợp tất cả lỗi để hiển thị
+      const errorMessages = Object.values(validationErrors).filter(Boolean).join("\n");
+      alert(errorMessages || "Vui lòng kiểm tra lại số đo cơ thể.");
+      return;
+    }
+
     // Validate ngày sinh trước khi lưu
     const birthdayError = validateBirthday(profile.birthday);
     if (birthdayError) {
@@ -175,6 +287,25 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
+      // Upload avatar nếu có ảnh mới được chọn
+      if (avatarBase64) {
+        setIsUploadingAvatar(true);
+        try {
+          const avatarResult = await uploadAvatar(currentUser._id, avatarBase64);
+          // Cập nhật avatar trong profile state
+          setProfile((prev) => ({ ...prev, avatar: avatarResult.avatar }));
+          setAvatarBase64(null); // Reset sau khi upload thành công
+          setAvatarPreview(null);
+        } catch (avatarError) {
+          console.error("Lỗi upload avatar:", avatarError);
+          alert(avatarError.response?.data?.error || "Lỗi upload avatar. Vui lòng thử lại.");
+          setIsUploadingAvatar(false);
+          setIsSaving(false);
+          return;
+        }
+        setIsUploadingAvatar(false);
+      }
+
       // Chỉ gửi các trường có thể chỉnh sửa, loại bỏ các trường read-only
       const editableFields = {
         userId: currentUser._id,
@@ -254,18 +385,63 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* Color Conflict Toast */}
+        {colorConflictToast && (
+          <div className="fixed top-6 right-6 bg-yellow-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2 z-50 animate-bounce">
+            <Palette className="w-5 h-5" />
+            <span>{colorConflictToast}</span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl p-8 text-white shadow-lg flex justify-between items-center">
           <div className="flex items-center space-x-6">
             <div className="relative">
               <img
-                src="https://ui-avatars.com/api/?name=User&background=random"
+                src={avatarPreview || profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || profile.name || 'User')}&background=random&size=200`}
                 alt="Avatar"
-                className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
+                className="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
               />
-              <button className="absolute bottom-0 right-0 bg-white text-purple-600 p-2 rounded-full shadow-lg">
-                <Camera className="w-4 h-4" />
-              </button>
+              {/* Hidden file input */}
+              <input
+                type="file"
+                id="avatar-upload"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    // Validate file size (10MB)
+                    if (file.size > 10 * 1024 * 1024) {
+                      alert("File quá lớn (tối đa 10MB)");
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setAvatarPreview(reader.result);
+                      setAvatarBase64(reader.result); // Lưu để upload
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                disabled={!isEditing}
+              />
+              {/* Loading overlay khi đang upload */}
+              {isUploadingAvatar && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-white animate-spin" />
+                </div>
+              )}
+              {/* Camera button - only show when editing */}
+              {isEditing && !isUploadingAvatar && (
+                <label
+                  htmlFor="avatar-upload"
+                  className="absolute bottom-0 right-0 bg-white text-purple-600 p-2 rounded-full shadow-lg cursor-pointer hover:bg-purple-50 transition"
+                  title="Chọn ảnh đại diện (upload lên Cloudinary)"
+                >
+                  <Camera className="w-4 h-4" />
+                </label>
+              )}
             </div>
             <div>
               <h1 className="text-3xl font-bold mb-1">
@@ -393,18 +569,27 @@ export default function ProfilePage() {
               <div key={metric}>
                 <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
                   {metric === "height"
-                    ? "Chiều cao"
+                    ? "Chiều cao (cm)"
                     : metric === "weight"
-                      ? "Cân nặng"
-                      : metric}
+                      ? "Cân nặng (kg)"
+                      : `${metric} (cm)`}
                 </label>
                 <input
                   type="number"
                   value={profile[metric]}
                   onChange={(e) => handleChange(metric, e.target.value)}
+                  onBlur={() => handleMeasurementBlur(metric)}
                   disabled={!isEditing}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none disabled:bg-gray-50"
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none disabled:bg-gray-50 ${
+                    validationErrors[metric]
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-200 focus:ring-pink-500"
+                  }`}
                 />
+                {/* Inline error message */}
+                {validationErrors[metric] && (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors[metric]}</p>
+                )}
               </div>
             ))}
           </div>

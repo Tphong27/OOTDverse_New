@@ -16,6 +16,7 @@ router.post("/google-login", userController.googleLogin);
 router.post("/profile", userController.updateProfile);
 router.get("/profile", userController.getProfile);
 router.post("/changePass", userController.changePassword); // Đổi mật khẩu
+router.post("/upload-avatar", userController.uploadAvatar); // Upload avatar lên Cloudinary
 
 router.get("/all", userController.getAllUsers);              // Lấy danh sách users
 router.get("/:id", userController.getUserById);              // Lấy chi tiết 1 user

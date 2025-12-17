@@ -56,3 +56,12 @@ export const resetPassword = async (email, code, newPassword) => {
   const response = await axios.post(`${API_URL}/reset-password`, { email, code, newPassword });
   return response.data;
 };
+
+// Avatar upload
+export const uploadAvatar = async (userId, base64Image) => {
+  const response = await axios.post(`${API_URL}/upload-avatar`, { 
+    userId, 
+    image: base64Image 
+  });
+  return response.data;
+};

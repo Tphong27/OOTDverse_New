@@ -895,3 +895,82 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ============================================================================
+// AVATAR UPLOAD
+// ============================================================================
+
+const { uploadImage } = require("../config/cloudinaryConfig");
+
+/**
+ * Upload avatar lên Cloudinary
+ * POST /api/users/upload-avatar
+ * Body: { userId, image: "data:image/...;base64,..." }
+ */
+exports.uploadAvatar = async (req, res) => {
+  try {
+    const { userId, image } = req.body;
+
+    if (!userId || !image) {
+      return res.status(400).json({ error: "Thiếu userId hoặc image" });
+    }
+
+    // Validate định dạng ảnh
+    const allowedFormats = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const mimeMatch = image.match(/^data:(image\/\w+);base64,/);
+    
+    if (!mimeMatch) {
+      return res.status(400).json({ error: "Định dạng ảnh không hợp lệ" });
+    }
+
+    const mimeType = mimeMatch[1];
+    if (!allowedFormats.includes(mimeType)) {
+      return res.status(400).json({ 
+        error: "Chỉ chấp nhận file ảnh (jpg, png, webp, gif)" 
+      });
+    }
+
+    // Validate kích thước (base64 ~ 1.37x file gốc, 10MB * 1.37 ≈ 13.7MB)
+    const base64Data = image.split(",")[1];
+    const sizeInBytes = Buffer.byteLength(base64Data, "base64");
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (sizeInBytes > maxSize) {
+      return res.status(400).json({ 
+        error: "File quá lớn (tối đa 10MB)" 
+      });
+    }
+
+    // Upload lên Cloudinary
+    const result = await uploadImage(image, userId);
+
+    // Lưu URL vào User model
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { avatar: result.secure_url },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "Không tìm thấy user" });
+    }
+
+    res.json({
+      success: true,
+      message: "Upload avatar thành công!",
+      avatar: result.secure_url,
+      cloudinary: {
+        public_id: result.public_id,
+        format: result.format,
+        width: result.width,
+        height: result.height,
+      },
+    });
+  } catch (err) {
+    console.error("Error uploading avatar:", err);
+    res.status(500).json({ 
+      error: "Lỗi upload avatar",
+      details: err.message 
+    });
+  }
+};

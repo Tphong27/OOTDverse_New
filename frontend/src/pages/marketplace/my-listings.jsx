@@ -15,12 +15,16 @@ import {
   DollarSign,
   Package,
   Filter,
-  BarChart3
+  BarChart3,
+  SlidersHorizontal,
+  X as XIcon
 } from "lucide-react";
 import MyListingCard from "@/components/marketplace/MyListingCard";
 import EditListingModal from "@/components/marketplace/EditListingModal";
 import CreateListingModal from "@/components/marketplace/CreateListingModal";
 import ListingAnalytics from "@/components/marketplace/ListingAnalytics";
+import QuickStats from "@/components/marketplace/QuickStats";
+import { useSettings } from "@/context/SettingContext";
 
 export default function MyListingsPage() {
   const router = useRouter();
@@ -38,21 +42,68 @@ export default function MyListingsPage() {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [filters, setFilters] = useState({
+    status: null,
+    listing_type: null,
+    condition: null,
+    category_id: null,
+    brand_id: null,
+    min_price: null,
+    max_price: null,
+    sort_by: "newest",
+  });
+
+  const { categories, brands } = useSettings();
 
   useEffect(() => {
     if (!user) {
       router.push("/login");
       return;
     }
-    loadMyListings();
-  }, [user]);
+    loadMyListings(filters);
+  }, [user, filters]);
 
-  // Filter listings by status
+  // Apply filters
   const filteredListings = myListings.filter((listing) => {
-    if (statusFilter === "all") return true;
-    return listing.status === statusFilter;
+    // Status
+    if (filters.status && listing.status !== filters.status) return false;
+    
+    // Listing type
+    if (filters.listing_type && listing.listing_type !== filters.listing_type) return false;
+    
+    // Condition
+    if (filters.condition && listing.condition !== filters.condition) return false;
+    
+    // Category
+    if (filters.category_id && listing.item_id?.category_id?._id !== filters.category_id) return false;
+    
+    // Brand
+    if (filters.brand_id && listing.item_id?.brand_id?._id !== filters.brand_id) return false;
+    
+    // Price range
+    if (filters.min_price && listing.selling_price < parseFloat(filters.min_price)) return false;
+    if (filters.max_price && listing.selling_price > parseFloat(filters.max_price)) return false;
+    
+    return true;
+  });
+
+  // Sort listings
+  const sortedListings = [...filteredListings].sort((a, b) => {
+    switch (filters.sort_by) {
+      case "price_low":
+        return (a.selling_price || 0) - (b.selling_price || 0);
+      case "price_high":
+        return (b.selling_price || 0) - (a.selling_price || 0);
+      case "views":
+        return (b.view_count || 0) - (a.view_count || 0);
+      case "favorites":
+        return (b.favorite_count || 0) - (a.favorite_count || 0);
+      case "newest":
+      default:
+        return new Date(b.listed_at) - new Date(a.listed_at);
+    }
   });
 
   // Calculate stats
@@ -66,6 +117,36 @@ export default function MyListingsPage() {
     totalRevenue: myListings
       .filter((l) => l.status === "sold")
       .reduce((sum, l) => sum + (l.selling_price || 0), 0),
+  };
+
+  // Update filters
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      status: null,
+      listing_type: null,
+      condition: null,
+      category_id: null,
+      brand_id: null,
+      min_price: null,
+      max_price: null,
+      sort_by: "newest",
+    });
+  };
+
+  const hasActiveFilters = () => {
+    return (
+      filters.status ||
+      filters.listing_type ||
+      filters.condition ||
+      filters.category_id ||
+      filters.brand_id ||
+      filters.min_price ||
+      filters.max_price
+    );
   };
 
   // Handle edit
@@ -110,7 +191,7 @@ export default function MyListingsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Gian hàng của tôi</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Listings của tôi</h1>
             <p className="text-gray-600 mt-1">Quản lý các món đồ đang bán</p>
           </div>
 
@@ -134,85 +215,176 @@ export default function MyListingsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Số lượng</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
-              </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Package className="text-blue-600" size={24} />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Đang bán</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{stats.active}</p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <TrendingUp className="text-green-600" size={24} />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Lượt xem</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalViews}</p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Eye className="text-purple-600" size={24} />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Doanh thu</p>
-                <p className="text-2xl font-bold text-pink-600 mt-1">
-                  {new Intl.NumberFormat("vi-VN", {
-                    notation: "compact",
-                    compactDisplay: "short",
-                  }).format(stats.totalRevenue)}đ
-                </p>
-              </div>
-              <div className="p-3 bg-pink-100 rounded-lg">
-                <DollarSign className="text-pink-600" size={24} />
-              </div>
-            </div>
-          </div>
-        </div>
+        <QuickStats stats={stats} />
 
         {/* Filters */}
-        <div className="flex items-center gap-3 overflow-x-auto pb-2">
-          <span className="text-sm font-medium text-gray-700 flex-shrink-0">
-            <Filter size={16} className="inline mr-2" />
-            Trạng thái:
-          </span>
-          {[
-            { value: "all", label: "Tất cả", count: stats.total },
-            { value: "active", label: "Đang bán", count: stats.active },
-            { value: "pending", label: "Chờ xử lý", count: stats.pending },
-            { value: "sold", label: "Đã bán", count: stats.sold },
-          ].map((filter) => (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-4">
             <button
-              key={filter.value}
-              onClick={() => setStatusFilter(filter.value)}
-              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
-                statusFilter === filter.value
-                  ? "bg-pink-500 text-white"
-                  : "bg-white text-gray-700 border border-gray-300 hover:border-pink-500"
-              }`}
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
             >
-              {filter.label} ({filter.count})
+              <SlidersHorizontal size={18} />
+              <span>Bộ lọc</span>
+              {hasActiveFilters() && (
+                <span className="bg-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  !
+                </span>
+              )}
             </button>
-          ))}
+
+            <select
+              value={filters.sort_by}
+              onChange={(e) => handleFilterChange("sort_by", e.target.value)}
+              className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            >
+              <option value="newest">Mới nhất</option>
+              <option value="price_low">Giá thấp → cao</option>
+              <option value="price_high">Giá cao → thấp</option>
+              <option value="views">Lượt xem nhiều nhất</option>
+              <option value="favorites">Yêu thích nhiều nhất</option>
+            </select>
+          </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="space-y-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-900">Lọc nâng cao</h3>
+                {hasActiveFilters() && (
+                  <button
+                    onClick={resetFilters}
+                    className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1"
+                  >
+                    <XIcon size={16} />
+                    Xóa bộ lọc
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Trạng thái
+                  </label>
+                  <select
+                    value={filters.status || ""}
+                    onChange={(e) => handleFilterChange("status", e.target.value || null)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  >
+                    <option value="">Tất cả</option>
+                    <option value="active">Đang bán</option>
+                    <option value="pending">Chờ xử lý</option>
+                    <option value="sold">Đã bán</option>
+                    <option value="inactive">Đã ẩn</option>
+                  </select>
+                </div>
+
+                {/* Listing Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Loại tin
+                  </label>
+                  <select
+                    value={filters.listing_type || ""}
+                    onChange={(e) => handleFilterChange("listing_type", e.target.value || null)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  >
+                    <option value="">Tất cả</option>
+                    <option value="sell">Chỉ bán</option>
+                    <option value="swap">Chỉ swap</option>
+                    <option value="both">Bán & Swap</option>
+                  </select>
+                </div>
+
+                {/* Condition */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tình trạng
+                  </label>
+                  <select
+                    value={filters.condition || ""}
+                    onChange={(e) => handleFilterChange("condition", e.target.value || null)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  >
+                    <option value="">Tất cả</option>
+                    <option value="new">Mới 100%</option>
+                    <option value="like_new">Như mới</option>
+                    <option value="good">Tốt</option>
+                    <option value="fair">Khá</option>
+                    <option value="worn">Đã sử dụng</option>
+                  </select>
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Danh mục
+                  </label>
+                  <select
+                    value={filters.category_id || ""}
+                    onChange={(e) => handleFilterChange("category_id", e.target.value || null)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  >
+                    <option value="">Tất cả</option>
+                    {categories.map((category) => (
+                      <option key={category._id} value={category._id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Brand */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Thương hiệu
+                  </label>
+                  <select
+                    value={filters.brand_id || ""}
+                    onChange={(e) => handleFilterChange("brand_id", e.target.value || null)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  >
+                    <option value="">Tất cả</option>
+                    {brands.map((brand) => (
+                      <option key={brand._id} value={brand._id}>
+                        {brand.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Min Price */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Giá từ
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={filters.min_price || ""}
+                    onChange={(e) => handleFilterChange("min_price", e.target.value || null)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Max Price */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Giá đến
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="10,000,000"
+                    value={filters.max_price || ""}
+                    onChange={(e) => handleFilterChange("max_price", e.target.value || null)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Loading State */}
@@ -224,31 +396,40 @@ export default function MyListingsPage() {
         )}
 
         {/* Empty State */}
-        {!loading && filteredListings.length === 0 && (
+        {!loading && sortedListings.length === 0 && (
           <div className="text-center py-12">
             <Package size={64} className="mx-auto text-gray-400 mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Chưa có món đồ nào
+              Chưa có listing nào
             </h3>
             <p className="text-gray-600 mb-6">
-              {statusFilter === "all"
-                ? "Bạn chưa đăng bán món đồ nào"
-                : `Không có món đồ ${statusFilter}`}
+              {hasActiveFilters()
+                ? "Không tìm thấy listing nào phù hợp với bộ lọc"
+                : "Bạn chưa đăng bán món đồ nào"}
             </p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-pink-500 text-white font-semibold hover:bg-pink-600 transition-colors"
-            >
-              <Plus size={20} />
-              Đăng bán ngay
-            </button>
+            {hasActiveFilters() ? (
+              <button
+                onClick={resetFilters}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-pink-500 text-pink-600 font-semibold hover:bg-pink-50 transition-colors"
+              >
+                Xóa bộ lọc
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-pink-500 text-white font-semibold hover:bg-pink-600 transition-colors"
+              >
+                <Plus size={20} />
+                Đăng bán ngay
+              </button>
+            )}
           </div>
         )}
 
         {/* Listings Grid */}
-        {!loading && filteredListings.length > 0 && (
+        {!loading && sortedListings.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredListings.map((listing) => (
+            {sortedListings.map((listing) => (
               <MyListingCard
                 key={listing._id}
                 listing={listing}
@@ -305,7 +486,7 @@ export default function MyListingsPage() {
                 Xác nhận xóa listing
               </h3>
               <p className="text-gray-600 mb-6">
-                Bạn có chắc chắn muốn xóa món đồ "{deleteConfirm.item_id?.item_name}"?
+                Bạn có chắc chắn muốn xóa listing "{deleteConfirm.item_id?.item_name}"?
                 Hành động này không thể hoàn tác.
               </p>
               <div className="flex gap-3">

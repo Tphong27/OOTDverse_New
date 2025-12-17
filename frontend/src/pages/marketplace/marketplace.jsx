@@ -1,21 +1,14 @@
 //frontend/src/pages/marketplace/marketplace.jsx
 import LayoutUser from "@/components/layout/LayoutUser";
-import { useState } from "react";
-import { Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useMarketplace } from "@/context/MarketplaceContext";
 import ListingGrid from "@/components/marketplace/ListingGrid";
-import CreateListingModal from "@/components/marketplace/CreateListingModal";
+import { useRouter } from "next/router";
 
 export default function Marketplace() {
+  const router = useRouter();
   const { user } = useAuth();
   const { refreshListings } = useMarketplace();
-
-  const [openCreateModal, setOpenCreateModal] = useState(false);
-
-  const handleCreateSuccess = () => {
-    refreshListings(); // load lại danh sách sau khi đăng bán
-  };
 
   return (
     <LayoutUser>
@@ -25,33 +18,23 @@ export default function Marketplace() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Marketplace</h1>
             <p className="text-gray-600 mt-1">
-              Mua bán & trao đổi quần áo từ cộng đồng
+              Khám phá & mua sắm từ cộng đồng
             </p>
           </div>
 
-          {/* Create Listing Button */}
+          {/* My Listings Button (nếu đã login) */}
           {user && (
             <button
-              onClick={() => setOpenCreateModal(true)}
+              onClick={() => router.push("/marketplace/my-listings")}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-pink-500 text-white font-semibold hover:bg-pink-600 transition-colors shadow"
             >
-              <Plus size={20} />
-              Đăng bán
+              Quản lý listings của tôi
             </button>
           )}
         </div>
 
         {/* Marketplace Grid */}
         <ListingGrid />
-
-        {/* Create Listing Modal */}
-        {user && (
-          <CreateListingModal
-            isOpen={openCreateModal}
-            onClose={() => setOpenCreateModal(false)}
-            onSuccess={handleCreateSuccess}
-          />
-        )}
       </div>
     </LayoutUser>
   );

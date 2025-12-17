@@ -6,6 +6,7 @@ const path = require("path");
 const axios = require("axios");
 
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
+// require("dotenv").config(); // Load .env file nếu deploy (Render / Railway)
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -40,17 +41,31 @@ app.use(
   })
 );
 
-// ========================================
 // DATABASE CONNECTION
-// ========================================
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => console.log("✅ Connected to MongoDB"))
-  .catch((err) => console.error("❌ Database connection error:", err));
+mongoose.connect(process.env.MONGODB_URI, {
+  serverSelectionTimeoutMS: 5000,   // Timeout tìm primary
+  socketTimeoutMS: 45000,           // Timeout socket
+  retryWrites: true,                // RẤT QUAN TRỌNG cho Atlas
+})
+.then(() => console.log("✅ Connected to MongoDB"))
+.catch((err) => {
+  console.error("❌ Database connection error:", err);
+  process.exit(1);
+});
 
-// ========================================
+mongoose.connection.on("connected", () => {
+  console.log("🟢 MongoDB connected");
+});
+
+mongoose.connection.on("error", (err) => {
+  console.error("🔴 MongoDB error:", err);
+});
+
+mongoose.connection.on("disconnected", () => {
+  console.log("🟡 MongoDB disconnected");
+});
+
 // ROUTES
-// ========================================
 const wardrobeRoutes = require("./routes/wardrobeRoutes");
 const settingRoutes = require("./routes/settingRoutes");
 const outfitRoutes = require("./routes/outfitRoutes");
@@ -105,9 +120,7 @@ app.use((req, res) => {
   });
 });
 
-// ========================================
 // KEEP-ALIVE MECHANISM
-// ========================================
 const pingAiService = async () => {
   try {
     let aiUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
@@ -129,9 +142,7 @@ const pingAiService = async () => {
 setTimeout(pingAiService, 5000);
 setInterval(pingAiService, 10 * 60 * 1000);
 
-// ========================================
 // ERROR HANDLER
-// ========================================
 app.use((error, req, res, next) => {
   console.error('❌ Server Error:', error);
   res.status(error.status || 500).json({
@@ -140,9 +151,14 @@ app.use((error, req, res, next) => {
   });
 });
 
-// ========================================
 // START SERVER
-// ========================================
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
+});
+
+// Graceful shutdown
+process.on("SIGINT", async () => {
+  console.log("🛑 Server shutting down...");
+  await mongoose.connection.close();
+  process.exit(0);
 });

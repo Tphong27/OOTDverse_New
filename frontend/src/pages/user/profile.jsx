@@ -19,8 +19,10 @@ import {
 } from "lucide-react";
 import axios from "axios"; // Đảm bảo đã cài axios
 import { getUserProfile, updateUserProfile, uploadAvatar } from "@/services/userService";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ProfilePage() {
+  const { updateUser } = useAuth(); // Để sync avatar với navbar
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -294,6 +296,8 @@ export default function ProfilePage() {
           const avatarResult = await uploadAvatar(currentUser._id, avatarBase64);
           // Cập nhật avatar trong profile state
           setProfile((prev) => ({ ...prev, avatar: avatarResult.avatar }));
+          // Sync avatar với AuthContext để navbar hiển thị ngay
+          updateUser({ avatar: avatarResult.avatar });
           setAvatarBase64(null); // Reset sau khi upload thành công
           setAvatarPreview(null);
         } catch (avatarError) {

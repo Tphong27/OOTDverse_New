@@ -67,8 +67,8 @@ export default function Topbar({ setIsSidebarOpen }) {
                   </p>
                 </div>
                 <img
-                  // Tạo avatar tự động theo tên người dùng
-                  src={`https://ui-avatars.com/api/?name=${user.fullName}&background=random&color=fff`}
+                  // Ưu tiên avatar từ profile, fallback về auto-generated
+                  src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || 'User')}&background=random&color=fff&size=100`}
                   alt="Avatar"
                   className="w-10 h-10 rounded-full object-cover border-2 border-purple-200 shadow-sm"
                 />

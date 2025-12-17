@@ -13,6 +13,7 @@ import {
   Settings,
   User,
   LayoutDashboard,
+  Store,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -59,6 +60,13 @@ export default function UserSidebar({ isSidebarOpen, setIsSidebarOpen }) {
       icon: ShoppingBag,
       label: "Chợ",
       path: "/marketplace/marketplace",
+      roles: ["Customer", "Admin"],
+    },
+    {
+      id: "my-listings",
+      icon: Store,
+      label: "Gian hàng của tôi",
+      path: "/marketplace/my-listings",
       roles: ["Customer", "Admin"],
     },
     {

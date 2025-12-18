@@ -1,57 +1,45 @@
 # OOTDverse - Session State Summary
 
-> **Session Date:** 2025-12-17  
+> **Session Date:** 2025-12-18  
 > **Use this prompt to continue work in next session**
 
 ---
 
 ## 1. Những gì đã hoàn thành trong phiên này
 
-### ✅ Style Profile Improvements
+### ✅ Username Feature (Full Implementation)
 
-| Feature                   | Status  | Files         |
-| ------------------------- | ------- | ------------- |
-| Measurement Validation    | ✅ Done | `profile.jsx` |
-| Color Conflict Resolution | ✅ Done | `profile.jsx` |
-| Inline Error Messages     | ✅ Done | `profile.jsx` |
+| Feature                                   | Status  | Files                               |
+| ----------------------------------------- | ------- | ----------------------------------- |
+| User model: `username`, `usernameDisplay` | ✅ Done | `User.js`                           |
+| Username validation + generation          | ✅ Done | `usernameService.js`                |
+| Register: Username input required         | ✅ Done | `register.jsx`, `userController.js` |
+| Login: Email OR Username                  | ✅ Done | `login.jsx`, `userController.js`    |
+| Google: Auto-generate username            | ✅ Done | `userController.js`                 |
+| Display: @username on Topbar/Profile      | ✅ Done | `Topbar.jsx`, `profile.jsx`         |
+| Migration: 8/8 existing users             | ✅ Done | `migrateUsernames.js`               |
 
-- Added `MEASUREMENT_LIMITS` constants (height: 100-250cm, weight: 30-200kg, bust: 60-150cm, waist: 40-150cm, hips: 60-180cm)
-- Auto-remove conflicting colors between favoriteColors/avoidColors with toast notification
-- Red border + inline error for invalid measurements
-- Validation blocks save if measurements out of range
+### ✅ Cross-Auth Validation
 
----
+| Feature                | Status  | Description                                       |
+| ---------------------- | ------- | ------------------------------------------------- |
+| Block duplicate email  | ✅ Done | Google user cannot register local with same email |
+| Link local→Google      | ✅ Done | `authType: "both"` when linking                   |
+| Block login unverified | ✅ Done | Redirect to OTP if not verified                   |
 
-### ✅ Avatar Upload with Cloudinary
+### ✅ Bug Fixes
 
-| Feature                  | Status  | Files                                |
-| ------------------------ | ------- | ------------------------------------ |
-| Cloudinary Config        | ✅ Done | `config/cloudinaryConfig.js`         |
-| Upload Endpoint          | ✅ Done | `userController.js`, `userRoutes.js` |
-| Frontend Service         | ✅ Done | `userService.js`                     |
-| Profile Integration      | ✅ Done | `profile.jsx`                        |
-| Navbar Sync              | ✅ Done | `Topbar.jsx`                         |
-| **Avatar Cropper Modal** | ✅ Done | `AvatarCropperModal.jsx`             |
+| Bug                        | Fix                            | Files                       |
+| -------------------------- | ------------------------------ | --------------------------- |
+| Cloudinary timeout 499     | `timeout: 120000`              | `cloudinaryConfig.js`       |
+| Google avatar not showing  | `referrerPolicy="no-referrer"` | `Topbar.jsx`, `profile.jsx` |
+| Controlled input warning   | `value={x \|\| ""}`            | `profile.jsx`               |
+| Login without verify email | Check `isEmailVerified`        | `userController.js`         |
 
-- Users can upload avatar → stored on Cloudinary
-- Circular crop with zoom slider before upload (react-easy-crop)
-- Avatar syncs to navbar immediately via `AuthContext.updateUser()`
-- Fallback to auto-generated avatar if none uploaded
-- Max file size: 10MB, formats: jpg/png/webp/gif
+### ✅ Documentation Updated
 
----
-
-### 🔄 Migration Plan (PAUSED)
-
-**Goal:** Migrate existing Base64 images in MongoDB to Cloudinary
-
-| Model  | Image Fields                       | Status                      |
-| ------ | ---------------------------------- | --------------------------- |
-| Item   | `image_url`, `additional_images[]` | 📋 Planned                  |
-| Outfit | `thumbnail_url`, `full_image_url`  | 📋 Planned                  |
-| User   | `avatar`                           | ✅ Already using Cloudinary |
-
-**Blocker:** Need to install MongoDB Database Tools for backup before migration
+- `Troubleshooting_Tips.md` - 4 new rules (Rules #4-7)
+- `feature-authentication.md` - Username + Cross-auth docs
 
 ---
 
@@ -61,59 +49,36 @@
 
 ```
 backend/
-├── config/
-│   └── cloudinaryConfig.js     # [NEW] Cloudinary SDK config + uploadImage()
-├── controllers/
-│   └── userController.js       # +uploadAvatar endpoint
-├── routes/
-│   └── userRoutes.js           # +POST /upload-avatar
 ├── models/
-│   ├── Item.js                 # Has image_url (base64) - needs migration
-│   ├── Outfit.js               # Has thumbnail_url (base64) - needs migration
-│   └── User.js                 # Has avatar field (now Cloudinary URL)
-└── .env                        # +CLOUDINARY_CLOUD_NAME, API_KEY, API_SECRET
+│   └── User.js                    # +username, +usernameDisplay, +googleId
+├── controllers/
+│   └── userController.js          # +username validation, +identifier login
+├── services/
+│   └── usernameService.js         # [NEW] validate + generate username
+├── scripts/
+│   └── migrateUsernames.js        # [NEW] one-time migration
+└── config/
+    └── cloudinaryConfig.js        # timeout: 120000
 ```
 
 ### Frontend Changes
 
 ```
 frontend/src/
-├── components/
-│   ├── layout/
-│   │   └── Topbar.jsx          # Uses user.avatar with fallback
-│   └── ui/
-│       └── AvatarCropperModal.jsx  # [NEW] react-easy-crop modal
+├── pages/
+│   ├── login.jsx                  # identifier (email/username)
+│   └── register.jsx               # +username input field
 ├── pages/user/
-│   └── profile.jsx             # +measurement validation, +color conflict, +cropper
-├── services/
-│   └── userService.js          # +uploadAvatar()
-└── context/
-    └── AuthContext.jsx         # Has updateUser() for syncing avatar
-```
-
-### Dependencies Added
-
-```bash
-# Root package.json
-npm install cloudinary
-
-# frontend/package.json
-npm install react-easy-crop --prefix frontend
-```
-
-### Environment Variables (.env)
-
-```env
-CLOUDINARY_CLOUD_NAME=doo2fat5j
-CLOUDINARY_API_KEY=576675189344659
-CLOUDINARY_API_SECRET=<secret>
+│   └── profile.jsx                # @username display, referrerPolicy
+└── components/layout/
+    └── Topbar.jsx                 # @username display, referrerPolicy
 ```
 
 ---
 
 ## 3. Next Steps cần thực hiện
 
-### 🔴 Critical - Continue Migration
+### 🔴 Critical - Continue Migration (← GIỮ NGUYÊN từ session trước)
 
 1. **Install MongoDB Database Tools** on Windows:
 
@@ -137,6 +102,7 @@ CLOUDINARY_API_SECRET=<secret>
 - [ ] Add image cropper for wardrobe items (similar to avatar)
 - [ ] Add bulk delete on Cloudinary when item deleted
 - [ ] Add loading state to Item/Outfit cards during upload
+- [ ] Allow user to change username in profile
 
 ---
 
@@ -144,24 +110,19 @@ CLOUDINARY_API_SECRET=<secret>
 
 ### ✅ Fixed This Session
 
-| Issue                           | Status                                                |
-| ------------------------------- | ----------------------------------------------------- |
-| Controlled/Uncontrolled Warning | ✅ Fixed - Added default empty strings in profile.jsx |
-| Avatar not showing on navbar    | ✅ Fixed - Topbar.jsx now uses user.avatar            |
+| Issue                                 | Status                                     |
+| ------------------------------------- | ------------------------------------------ |
+| Login without email verification      | ✅ Fixed - now blocks with redirect to OTP |
+| Cloudinary upload timeout 499         | ✅ Fixed - increased timeout to 120s       |
+| Google avatar 403 error               | ✅ Fixed - added referrerPolicy            |
+| Controlled/Uncontrolled React warning | ✅ Fixed - added fallback values           |
 
-### ⚠️ Known Issues
+### ⚠️ Known Issues (← GIỮ NGUYÊN)
 
-| Issue                                        | Severity | Notes                                  |
-| -------------------------------------------- | -------- | -------------------------------------- |
-| Avatar requires logout/login on first upload | Minor    | localStorage needs refresh             |
-| mongodump not found                          | Blocker  | Need to install MongoDB Database Tools |
-| Large image upload (>5MB) not tested         | Unknown  | May need timeout adjustment            |
-
-### Not Yet Tested
-
-- Concurrent avatar uploads from multiple tabs
-- Cloudinary quota limits (25 credits/month free tier)
-- Image migration for 100+ items
+| Issue                                | Severity | Notes                                  |
+| ------------------------------------ | -------- | -------------------------------------- |
+| mongodump not found                  | Blocker  | Need to install MongoDB Database Tools |
+| Large image upload (>5MB) not tested | Unknown  | May need timeout adjustment            |
 
 ---
 
@@ -173,9 +134,10 @@ cd d:/PROJECT/EXE/OOTDverse_New
 npm run dev
 
 # Key files to review
-frontend/src/components/ui/AvatarCropperModal.jsx  # Cropper component
-frontend/src/pages/user/profile.jsx                 # Lines 280-320 for upload
-backend/config/cloudinaryConfig.js                  # Cloudinary config
+backend/services/usernameService.js          # Username validation logic
+backend/controllers/userController.js        # Auth endpoints
+frontend/src/pages/register.jsx              # Username input
+frontend/src/pages/login.jsx                 # Email/username login
 ```
 
 ### Resume Prompts
@@ -188,10 +150,10 @@ backend/config/cloudinaryConfig.js                  # Cloudinary config
 
 > "Tạo image cropper cho wardrobe items tương tự avatar cropper"
 
-**To test avatar upload:**
+**To allow username change:**
 
-> "Test avatar upload flow - chọn ảnh, crop, save, verify trên Cloudinary"
+> "Cho phép user thay đổi username trong profile page"
 
 ---
 
-_Updated: 2025-12-17 18:15_
+_Updated: 2025-12-18 18:33_

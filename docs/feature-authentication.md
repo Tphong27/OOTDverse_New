@@ -1,6 +1,6 @@
 # Feature: Authentication (Xác thực người dùng)
 
-> **Last Updated:** 2025-12-16  
+> **Last Updated:** 2025-12-18  
 > **Status:** ✅ Implemented
 
 ## Tổng quan
@@ -12,7 +12,9 @@ Hệ thống xác thực của OOTDverse hỗ trợ 2 phương thức đăng nh�
 
 ### Điểm đặc biệt
 
-- Cùng một email có thể có **2 tài khoản riêng biệt** (1 local, 1 Google)
+- **Cross-Auth Validation**: Một email chỉ có 1 account, có thể login bằng cả 2 phương thức (local hoặc Google)
+- **Username Support**: Đăng nhập bằng username hoặc email
+- **Auto-link Accounts**: Local account có thể link với Google và ngược lại
 - Tất cả tài khoản mới đều yêu cầu **xác thực OTP qua email**
 - Hỗ trợ **quên mật khẩu** cho tài khoản local
 
@@ -25,9 +27,16 @@ Hệ thống xác thực của OOTDverse hỗ trợ 2 phương thức đăng nh�
 ```javascript
 // User.js - Các fields liên quan đến auth
 {
-  email: String,           // Không unique riêng lẻ
-  password: String,        // Chỉ có với authType: "local"
-  authType: "local" | "google",
+  email: String,           // Unique across all authTypes
+  password: String,        // Chỉ có với authType: "local" hoặc "both"
+  authType: "local" | "google" | "both",  // "both" = linked account
+
+  // Username support
+  username: String,        // Unique, lowercase, 3-30 chars
+  usernameDisplay: String, // Original case for display
+
+  // Google linking
+  googleId: String,        // Google unique ID (for linked accounts)
 
   // Email verification (OTP đăng ký)
   isEmailVerified: Boolean,
@@ -43,13 +52,34 @@ Hệ thống xác thực của OOTDverse hỗ trợ 2 phương thức đăng nh�
 }
 ```
 
-### Compound Index
+### Indexes
 
 ```javascript
-UserSchema.index({ email: 1, authType: 1 }, { unique: true });
+// Unique email - 1 email = 1 account
+UserSchema.index({ email: 1 }, { unique: true });
+
+// Unique username - case insensitive
+UserSchema.index({ username: 1 }, { unique: true });
 ```
 
-> Cho phép cùng email nhưng khác authType → 2 tài khoản riêng biệt
+---
+
+## Username Rules
+
+| Rule          | Value                          |
+| ------------- | ------------------------------ |
+| Unique        | ✅ Bắt buộc (case-insensitive) |
+| Length        | 3-30 ký tự                     |
+| Allowed chars | `a-z`, `0-9`, `.`, `_`         |
+| Start/End     | Không được `.` hoặc `_`        |
+| Storage       | Lowercase trong DB             |
+| Display       | Giữ nguyên case gốc            |
+
+### Regex
+
+```javascript
+/^(?![._])(?!.*[._]$)[a-zA-Z0-9._]{3,30}$/;
+```
 
 ---
 
@@ -57,13 +87,13 @@ UserSchema.index({ email: 1, authType: 1 }, { unique: true });
 
 ### Đăng ký / Đăng nhập
 
-| Method | Endpoint                         | Mô tả                   |
-| ------ | -------------------------------- | ----------------------- |
-| POST   | `/api/users/register`            | Đăng ký local → gửi OTP |
-| POST   | `/api/users/verify-email`        | Xác thực OTP            |
-| POST   | `/api/users/resend-verification` | Gửi lại OTP             |
-| POST   | `/api/users/login`               | Đăng nhập local         |
-| POST   | `/api/users/google-login`        | Đăng nhập/ký Google     |
+| Method | Endpoint                         | Mô tả                      |
+| ------ | -------------------------------- | -------------------------- |
+| POST   | `/api/users/register`            | Đăng ký local → gửi OTP    |
+| POST   | `/api/users/verify-email`        | Xác thực OTP               |
+| POST   | `/api/users/resend-verification` | Gửi lại OTP                |
+| POST   | `/api/users/login`               | Đăng nhập (email/username) |
+| POST   | `/api/users/google-login`        | Đăng nhập/ký Google        |
 
 ### Quên mật khẩu
 
@@ -75,17 +105,32 @@ UserSchema.index({ email: 1, authType: 1 }, { unique: true });
 
 ---
 
+## Cross-Auth Validation Logic
+
+### Kịch bản
+
+| Scenario                       | Hành vi                                              |
+| ------------------------------ | ---------------------------------------------------- |
+| Google user → Đăng ký local    | ❌ Block: "Email đã tồn tại. Đăng nhập bằng Google." |
+| Local user → Login Google      | ✅ Link account, `authType = "both"`                 |
+| Google-only user → Login local | ❌ Block: "Tài khoản đăng ký bằng Google."           |
+| Both user → Login local        | ✅ OK (có password)                                  |
+| Local user chưa verify → Login | ❌ Block, redirect OTP                               |
+
+---
+
 ## User Flows
 
-### 1. Đăng ký Local
+### 1. Đăng ký Local (với Username)
 
 ```
-1. User nhập email + password
-2. Backend tạo user (isEmailVerified: false)
-3. Gửi OTP 6 số qua email
-4. User nhập OTP → xác thực thành công
-5. Auto login → redirect /user/profile
-6. Gửi email chào mừng
+1. User nhập fullName + username + email + password
+2. Validate username format + uniqueness
+3. Backend tạo user (isEmailVerified: false)
+4. Gửi OTP 6 số qua email
+5. User nhập OTP → xác thực thành công
+6. Redirect → /login (yêu cầu đăng nhập)
+7. Gửi email chào mừng
 ```
 
 ### 2. Đăng nhập/ký Google
@@ -94,21 +139,21 @@ UserSchema.index({ email: 1, authType: 1 }, { unique: true });
 1. User click "Tiếp tục với Google"
 2. Chọn Google account
 3. Backend check user tồn tại:
-   - CÓ (authType: google) → Login luôn
-   - KHÔNG → Tạo user mới, gửi OTP
+   - CÓ (authType: google/both) → Login luôn
+   - CÓ (authType: local) → Link account (authType="both")
+   - KHÔNG → Tạo user mới, auto-generate username, gửi OTP
 4. Sau OTP → Auto login → redirect /user/profile
 5. Gửi email chào mừng
 ```
 
-### 3. Quên mật khẩu
+### 3. Login với Email hoặc Username
 
 ```
-1. User click "Quên mật khẩu?" trên login
-2. Nhập email
-3. Backend gửi OTP reset password
-4. User nhập OTP
-5. User đặt mật khẩu mới
-6. Redirect → Login
+1. User nhập identifier (email/username) + password
+2. Backend detect type:
+   - Có @ → tìm by email
+   - Không @ → tìm by username (lowercase)
+3. Check password → Check isEmailVerified → Login
 ```
 
 ---
@@ -122,41 +167,36 @@ UserSchema.index({ email: 1, authType: 1 }, { unique: true });
 
 ---
 
-## Email Templates
+## Display Name Logic
 
-Tất cả email templates nằm trong `backend/services/emailService.js`:
-
-1. **sendVerificationEmail** - OTP đăng ký mới
-2. **sendPasswordResetEmail** - OTP quên mật khẩu
-3. **sendLoginSuccessEmail** - Email chào mừng (first login)
-
----
-
-## Frontend Pages
-
-| Page               | Mô tả                                 |
-| ------------------ | ------------------------------------- |
-| `/login`           | Form đăng nhập local + Google button  |
-| `/register`        | Form đăng ký + OTP verification steps |
-| `/forgot-password` | 4-step password recovery flow         |
+| Account Type | Display Name                  | Handle                       |
+| ------------ | ----------------------------- | ---------------------------- |
+| Local        | `fullName` (nhập khi đăng ký) | `@username`                  |
+| Google       | `name` từ Google profile      | `@username` (auto-generated) |
 
 ---
 
-## Quyết định thiết kế (Design Decisions)
+## Files Liên Quan
 
-### Tại sao tách biệt Local và Google accounts?
+### Backend
 
-- **Flexibility cho user**: Một người có thể muốn tài khoản riêng cho mỗi phương thức
-- **Tránh conflict**: Google account không có password, local account cần password
-- **Future-proof**: Dễ dàng thêm các OAuth providers khác (Facebook, Apple...)
+```
+backend/
+├── models/User.js                    # Schema + indexes
+├── controllers/userController.js     # Auth endpoints
+├── services/usernameService.js       # Validate + generate username
+└── scripts/migrateUsernames.js       # Migration cho user cũ
+```
 
-### Tại sao dùng OTP thay vì Magic Link?
+### Frontend
 
-- **Consistency**: Cùng UX với verification flow khi đăng ký
-- **Simple implementation**: Reuse existing email service
-- **Mobile-friendly**: Không cần mở link trong browser khác
+```
+frontend/src/
+├── pages/login.jsx                   # Email/username login
+├── pages/register.jsx                # Register + OTP + username
+└── components/layout/Topbar.jsx      # @username display
+```
 
-### Tại sao auto-login sau OTP?
+---
 
-- **Better UX**: Giảm 1 bước (không cần login lại sau verify)
-- **Security**: Token được generate ngay lập tức từ verified state
+_Updated: 2025-12-18_

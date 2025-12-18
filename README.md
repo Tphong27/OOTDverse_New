@@ -38,9 +38,11 @@ Dự án được phát triển bởi **Nhóm 5 - Lớp SE1869-NJ - Đại học
 
     - Đăng ký/Đăng nhập bằng Email + Password (Local).
     - Đăng ký/Đăng nhập bằng Google (OAuth 2.0).
+    - **Đăng nhập bằng Username hoặc Email**.
     - Xác thực OTP qua email cho tài khoản mới.
     - Quên mật khẩu với OTP recovery.
-    - Tách biệt tài khoản Local và Google (cùng email có thể có 2 tài khoản riêng biệt).
+    - **Cross-auth validation**: Một email = một tài khoản (có thể link cả Local và Google).
+    - Auto-generate username cho Google sign-up.
 
 ---
 

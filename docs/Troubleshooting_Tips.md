@@ -127,6 +127,174 @@ authContext.login(user, token); // Handles ALL storage internally
 
 ---
 
+## Rule #4: The "External Service Timeout" Pattern
+
+**Áp dụng khi:** Upload/API calls tới third-party services (Cloudinary, S3, Stripe...) thất bại
+
+### 🔴 Vấn đề
+
+Third-party services có latency cao hơn local services, mặc định timeout quá ngắn.
+
+### 🔍 Dấu hiệu nhận biết
+
+- Error: `Request Timeout`, `http_code: 499`, `TimeoutError`
+- Upload thành công trên local nhưng fail trên production
+- Lỗi xảy ra với file lớn hoặc network chậm
+
+### ✅ Giải pháp
+
+```javascript
+// ❌ Không có timeout config
+cloudinary.uploader.upload(image, { folder: "avatars" });
+
+// ✅ Thêm timeout phù hợp
+cloudinary.uploader.upload(image, {
+  folder: "avatars",
+  timeout: 120000, // 120 seconds cho upload lớn
+});
+```
+
+### 📋 Checklist
+
+- [ ] Set timeout >= 60s cho upload operations
+- [ ] Thêm retry logic nếu cần
+- [ ] Hiển thị loading indicator trên UI
+- [ ] Consider chunked upload cho file rất lớn
+
+---
+
+## Rule #5: The "External Image Referrer Policy" Bug
+
+**Áp dụng khi:** Ảnh từ external CDN (Google, Facebook, S3...) không hiển thị
+
+### 🔴 Vấn đề
+
+Browser chặn ảnh từ external domain do **referrer policy** - server từ chối request có referrer header khác origin.
+
+### 🔍 Dấu hiệu nhận biết
+
+- Console: `Failed to load resource: 403`
+- Ảnh từ `lh3.googleusercontent.com`, `graph.facebook.com` không load
+- Ảnh hiển thị đúng khi mở direct URL trong tab mới
+
+### ✅ Giải pháp
+
+```jsx
+// ❌ Bị chặn bởi referrer policy
+<img src={user.avatar} alt="Avatar" />
+
+// ✅ Bypass referrer policy
+<img
+  src={user.avatar}
+  alt="Avatar"
+  referrerPolicy="no-referrer"  // ← Magic line
+/>
+```
+
+### 💡 Áp dụng cho
+
+- Google profile pictures
+- Facebook avatars
+- Any CDN với strict referrer checks
+
+---
+
+## Rule #6: The "Controlled vs Uncontrolled Input" React Warning
+
+**Áp dụng khi:** React warning về input changing from controlled to uncontrolled
+
+### 🔴 Vấn đề
+
+Input value chuyển từ **defined → undefined** khi data chưa load xong hoặc field không tồn tại.
+
+### 🔍 Dấu hiệu nhận biết
+
+```
+Warning: A component is changing a controlled input to be uncontrolled.
+```
+
+### ✅ Giải pháp
+
+```jsx
+// ❌ Có thể undefined khi data chưa load
+<input value={profile.phone} />
+
+// ✅ Luôn có fallback value
+<input value={profile.phone || ""} />
+
+// ✅ Cho number inputs
+<input type="number" value={profile.age || ""} />
+```
+
+### 📋 Grep command
+
+```bash
+# Tìm tất cả input không có fallback
+grep -rn "value={" frontend/src/ | grep -v "||"
+```
+
+---
+
+## Rule #7: The "Auth Flow State Verification" Security Bug
+
+**Áp dụng khi:** Auth flow có multiple steps (register → OTP → login)
+
+### 🔴 Vấn đề
+
+User bỏ qua step verification nhưng vẫn có thể login được = **security hole**.
+
+### 🔍 Dấu hiệu nhận biết
+
+- User đăng ký nhưng không verify email → vẫn login được
+- User reset password nhưng không confirm → password vẫn đổi
+- Bất kỳ multi-step flow nào có thể skip step
+
+### ✅ Quy trình audit
+
+```bash
+# 1. Liệt kê tất cả auth endpoints
+grep -rn "exports\." backend/controllers/userController.js | grep -E "(login|register|reset)"
+
+# 2. Với mỗi endpoint, check verification status
+# login: có check isEmailVerified không?
+# resetPassword: có check resetToken validity không?
+```
+
+### ✅ Code pattern
+
+```javascript
+// ❌ Thiếu verification check
+exports.login = async (req, res) => {
+  const user = await User.findOne({ email });
+  // Login thẳng...
+};
+
+// ✅ Có verification check
+exports.login = async (req, res) => {
+  const user = await User.findOne({ email });
+
+  // Check email verified
+  if (!user.isEmailVerified) {
+    return res.status(403).json({
+      error: "Vui lòng xác thực email trước khi đăng nhập.",
+      requireVerification: true,
+      email: user.email,
+    });
+  }
+
+  // Continue login...
+};
+```
+
+### 📋 Checklist cho auth flows
+
+- [ ] Register → có yêu cầu verify email?
+- [ ] Login → có check isEmailVerified?
+- [ ] Reset password → có check token expiry?
+- [ ] Unverified user có thể access protected routes không?
+
+---
+
 ## Quick Reference Card
 
 | Triệu chứng                     | Nghi ngờ                       | Grep command                |
@@ -136,7 +304,11 @@ authContext.login(user, token); // Handles ALL storage internally
 | State bị mất sau refresh        | localStorage key mismatch      | `grep -rn "localStorage"`   |
 | Fix A → Break B                 | Layered bugs                   | Map full flow trước         |
 | Hành vi không nhất quán         | Race condition hoặc wrong user | Add logging ở mỗi step      |
+| Upload timeout 499              | Third-party service timeout    | Add `timeout: 120000`       |
+| External image 403              | Referrer policy                | Add `referrerPolicy`        |
+| Controlled→Uncontrolled warning | Missing fallback value         | Add `\|\| ""`               |
+| Skip verification still works   | Missing auth state check       | Audit all auth endpoints    |
 
 ---
 
-_Cập nhật lần cuối: 2025-12-16_
+_Cập nhật lần cuối: 2025-12-18_

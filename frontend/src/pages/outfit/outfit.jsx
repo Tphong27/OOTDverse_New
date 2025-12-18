@@ -31,13 +31,13 @@ import {
 } from "lucide-react";
 
 // Component Bottom Sheet Filter cho Mobile
-const MobileFilterSheet = ({ 
-  show, 
-  onClose, 
-  selectedFilters, 
-  onFilterChange, 
+const MobileFilterSheet = ({
+  show,
+  onClose,
+  selectedFilters,
+  onFilterChange,
   getSettingsByType,
-  onReset 
+  onReset,
 }) => {
   const [tempFilters, setTempFilters] = useState(selectedFilters);
 
@@ -48,14 +48,14 @@ const MobileFilterSheet = ({
   }, [show, selectedFilters]);
 
   const handleTempChange = (key, value) => {
-    setTempFilters(prev => ({
+    setTempFilters((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
   const handleApply = () => {
-    Object.keys(tempFilters).forEach(key => {
+    Object.keys(tempFilters).forEach((key) => {
       onFilterChange(key, tempFilters[key]);
     });
     onClose();
@@ -74,13 +74,13 @@ const MobileFilterSheet = ({
   };
 
   const hasActiveFilters = Object.entries(tempFilters).some(
-    ([key, value]) => key !== 'sort_by' && value !== ""
+    ([key, value]) => key !== "sort_by" && value !== ""
   );
 
   if (!show) return null;
 
   return (
-          <>
+    <>
       <style jsx>{`
         @keyframes slide-up {
           from {
@@ -90,7 +90,7 @@ const MobileFilterSheet = ({
             transform: translateY(0);
           }
         }
-        
+
         .animate-slide-up {
           animation: slide-up 0.3s ease-out;
         }
@@ -98,7 +98,7 @@ const MobileFilterSheet = ({
         .filter-modal-content select {
           max-width: 100%;
         }
-        
+
         .filter-modal-content {
           contain: layout style paint;
         }
@@ -106,11 +106,11 @@ const MobileFilterSheet = ({
 
       <div className="fixed inset-0 z-50 lg:hidden">
         {/* Overlay với animation */}
-        <div 
+        <div
           className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
           onClick={onClose}
         />
-        
+
         {/* Bottom Sheet */}
         <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col animate-slide-up overflow-hidden">
           {/* Drag indicator */}
@@ -153,9 +153,11 @@ const MobileFilterSheet = ({
                 <div className="relative">
                   <select
                     value={tempFilters.style_id}
-                    onChange={(e) => handleTempChange("style_id", e.target.value)}
+                    onChange={(e) =>
+                      handleTempChange("style_id", e.target.value)
+                    }
                     className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white transition-all truncate"
-                    style={{ appearance: 'none', maxWidth: '100%' }}
+                    style={{ appearance: "none", maxWidth: "100%" }}
                   >
                     <option value="">Tất cả phong cách</option>
                     {getSettingsByType("style").map((style) => (
@@ -180,9 +182,11 @@ const MobileFilterSheet = ({
                 <div className="relative">
                   <select
                     value={tempFilters.occasion_id}
-                    onChange={(e) => handleTempChange("occasion_id", e.target.value)}
+                    onChange={(e) =>
+                      handleTempChange("occasion_id", e.target.value)
+                    }
                     className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white transition-all truncate"
-                    style={{ appearance: 'none', maxWidth: '100%' }}
+                    style={{ appearance: "none", maxWidth: "100%" }}
                   >
                     <option value="">Tất cả dịp</option>
                     {getSettingsByType("occasion").map((occasion) => (
@@ -207,9 +211,11 @@ const MobileFilterSheet = ({
                 <div className="relative">
                   <select
                     value={tempFilters.season_id}
-                    onChange={(e) => handleTempChange("season_id", e.target.value)}
+                    onChange={(e) =>
+                      handleTempChange("season_id", e.target.value)
+                    }
                     className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white transition-all truncate"
-                    style={{ appearance: 'none', maxWidth: '100%' }}
+                    style={{ appearance: "none", maxWidth: "100%" }}
                   >
                     <option value="">Tất cả mùa</option>
                     {getSettingsByType("season").map((season) => (
@@ -234,9 +240,11 @@ const MobileFilterSheet = ({
                 <div className="relative">
                   <select
                     value={tempFilters.weather_id}
-                    onChange={(e) => handleTempChange("weather_id", e.target.value)}
+                    onChange={(e) =>
+                      handleTempChange("weather_id", e.target.value)
+                    }
                     className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white transition-all truncate"
-                    style={{ appearance: 'none', maxWidth: '100%' }}
+                    style={{ appearance: "none", maxWidth: "100%" }}
                   >
                     <option value="">Tất cả thời tiết</option>
                     {getSettingsByType("weather").map((weather) => (
@@ -261,9 +269,11 @@ const MobileFilterSheet = ({
                 <div className="relative">
                   <select
                     value={tempFilters.sort_by}
-                    onChange={(e) => handleTempChange("sort_by", e.target.value)}
+                    onChange={(e) =>
+                      handleTempChange("sort_by", e.target.value)
+                    }
                     className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white transition-all truncate"
-                    style={{ appearance: 'none', maxWidth: '100%' }}
+                    style={{ appearance: "none", maxWidth: "100%" }}
                   >
                     <option value="newest">Mới nhất</option>
                     <option value="popular">Phổ biến nhất</option>
@@ -436,6 +446,14 @@ export default function OutfitPage() {
     router.push("/outfit/form");
   };
 
+  const handleCreateOutfitwithAI = () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    router.push("#");
+  };
+
   const filteredOutfits = outfits.filter((outfit) => {
     const matchSearch =
       outfit.outfit_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -458,7 +476,7 @@ export default function OutfitPage() {
 
   // Tính số lượng filter đang active
   const activeFilterCount = Object.entries(selectedFilters).filter(
-    ([key, value]) => key !== 'sort_by' && value !== ""
+    ([key, value]) => key !== "sort_by" && value !== ""
   ).length;
 
   return (
@@ -466,7 +484,8 @@ export default function OutfitPage() {
       <div className="space-y-6">
         {/* Header with Tabs */}
         <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 rounded-2xl p-8 text-white shadow-xl">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
+            {/* ===== LEFT: TITLE ===== */}
             <div>
               <h1 className="text-3xl md:text-4xl font-bold mb-2 flex items-center gap-3">
                 <Shirt className="w-8 h-8" />
@@ -476,13 +495,29 @@ export default function OutfitPage() {
                 {filteredOutfits.length} trang phục
               </p>
             </div>
-            <button
-              onClick={handleCreateOutfit}
-              className="bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold hover:bg-purple-50 transition-all shadow-lg hover:shadow-xl flex items-center gap-2 group"
-            >
-              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-              Phối đồ
-            </button>
+
+            {/* ===== RIGHT: ACTION BUTTONS ===== */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={handleCreateOutfit}
+                className="bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold
+                   hover:bg-purple-50 transition-all shadow-lg hover:shadow-xl
+                   flex items-center gap-2 group"
+              >
+                <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                Phối đồ thủ công
+              </button>
+
+              <button
+                onClick={handleCreateOutfitwithAI}
+                className="bg-white/90 text-purple-700 px-6 py-3 rounded-xl font-semibold
+                   hover:bg-white transition-all shadow-lg hover:shadow-xl
+                   flex items-center gap-2 group border border-white/30"
+              >
+                <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                Phối đồ AI
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}
@@ -570,7 +605,11 @@ export default function OutfitPage() {
             <div className="mt-4 flex flex-wrap gap-2">
               {selectedFilters.style_id && (
                 <span className="px-3 py-1.5 bg-purple-100 text-purple-700 text-sm rounded-full font-medium flex items-center gap-1">
-                  {getSettingsByType("style").find(s => s._id === selectedFilters.style_id)?.name}
+                  {
+                    getSettingsByType("style").find(
+                      (s) => s._id === selectedFilters.style_id
+                    )?.name
+                  }
                   <button onClick={() => handleFilterChange("style_id", "")}>
                     <X className="w-3 h-3 cursor-pointer hover:text-purple-900" />
                   </button>
@@ -578,7 +617,11 @@ export default function OutfitPage() {
               )}
               {selectedFilters.occasion_id && (
                 <span className="px-3 py-1.5 bg-pink-100 text-pink-700 text-sm rounded-full font-medium flex items-center gap-1">
-                  {getSettingsByType("occasion").find(s => s._id === selectedFilters.occasion_id)?.name}
+                  {
+                    getSettingsByType("occasion").find(
+                      (s) => s._id === selectedFilters.occasion_id
+                    )?.name
+                  }
                   <button onClick={() => handleFilterChange("occasion_id", "")}>
                     <X className="w-3 h-3 cursor-pointer hover:text-pink-900" />
                   </button>
@@ -586,7 +629,11 @@ export default function OutfitPage() {
               )}
               {selectedFilters.season_id && (
                 <span className="px-3 py-1.5 bg-green-100 text-green-700 text-sm rounded-full font-medium flex items-center gap-1">
-                  {getSettingsByType("season").find(s => s._id === selectedFilters.season_id)?.name}
+                  {
+                    getSettingsByType("season").find(
+                      (s) => s._id === selectedFilters.season_id
+                    )?.name
+                  }
                   <button onClick={() => handleFilterChange("season_id", "")}>
                     <X className="w-3 h-3 cursor-pointer hover:text-green-900" />
                   </button>
@@ -594,7 +641,11 @@ export default function OutfitPage() {
               )}
               {selectedFilters.weather_id && (
                 <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm rounded-full font-medium flex items-center gap-1">
-                  {getSettingsByType("weather").find(s => s._id === selectedFilters.weather_id)?.name}
+                  {
+                    getSettingsByType("weather").find(
+                      (s) => s._id === selectedFilters.weather_id
+                    )?.name
+                  }
                   <button onClick={() => handleFilterChange("weather_id", "")}>
                     <X className="w-3 h-3 cursor-pointer hover:text-blue-900" />
                   </button>

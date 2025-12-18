@@ -65,3 +65,18 @@ export const uploadAvatar = async (userId, base64Image) => {
   });
   return response.data;
 };
+
+// Lấy chi tiết seller - Sửa để nhận token và return trực tiếp user object
+export const getSellerDetail = async (sellerId, token) => {
+  const response = await axios.get(`${API_URL}/${sellerId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  // Backend trả { success: true, user }, nên return user
+  if (response.data.success) {
+    return response.data.user;
+  } else {
+    throw new Error("Lấy chi tiết seller thất bại");
+  }
+};

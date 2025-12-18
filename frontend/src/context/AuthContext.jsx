@@ -1,4 +1,4 @@
-// "use client";
+// frontend/src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/router";
 

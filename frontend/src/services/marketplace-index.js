@@ -9,5 +9,8 @@ export * from "./orderService";
 // Export tất cả swap services
 export * from "./swapRequestService";
 
-// Export API instance (nếu cần dùng trực tiếp)
+// Export tất cả payment services
+export * from "./paymentService";
+
+// Export API instance
 export { default as api } from "./api";

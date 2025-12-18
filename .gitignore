@@ -35,7 +35,7 @@ __pycache__/
 out/
 build/
 dist/
-
+uploads/
 # ==============================
 # 4. IDE & SYSTEM FILES (Rác hệ thống)
 # ==============================

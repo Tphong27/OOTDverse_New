@@ -9,14 +9,19 @@ import { Store, ShoppingBag, User, Package } from "lucide-react";
 
 export default function MarketplacePage() {
   const { user } = useAuth();
+  
+  const [activeTab, setActiveTab] = useState("marketplace");
+  const [mounted, setMounted] = useState(false);
 
-  const [activeTab, setActiveTab] = useState(() => {
+  useEffect(() => {
+    setMounted(true);
     if (typeof window !== "undefined") {
       const savedTab = sessionStorage.getItem("marketplaceTab");
-      return savedTab || "marketplace";
+      if (savedTab) {
+        setActiveTab(savedTab);
+      }
     }
-    return "marketplace";
-  });
+  }, []);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -32,6 +37,19 @@ export default function MarketplacePage() {
       }
     };
   }, []);
+
+  if (!mounted) {
+    return (
+      <LayoutUser>
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="animate-pulse">
+            <div className="h-32 bg-gradient-to-r from-purple-200 to-pink-200 rounded-2xl mb-6"></div>
+            <div className="h-64 bg-gray-200 rounded-xl"></div>
+          </div>
+        </div>
+      </LayoutUser>
+    );
+  }
 
   return (
     <LayoutUser>
@@ -97,13 +115,11 @@ function TabPill({ active, children, onClick, icon }) {
   return (
     <button
       onClick={onClick}
-      className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2
-        ${
-          active
-            ? "bg-white text-purple-600 shadow-lg"
-            : "bg-white/20 text-white hover:bg-white/30"
-        }
-      `}
+      className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+        active
+          ? "bg-white text-purple-600 shadow-lg"
+          : "bg-white/20 text-white hover:bg-white/30"
+      }`}
     >
       {icon}
       {children}

@@ -7,6 +7,19 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, required: true }, // Removed unique, use compound index instead
     password: { type: String },
     fullName: { type: String, required: true },
+    
+    // Username cho đăng nhập & hiển thị
+    username: {
+      type: String,
+      required: true,
+      minlength: 3,
+      maxlength: 30,
+      lowercase: true,  // Auto chuyển về lowercase khi save
+    },
+    usernameDisplay: {
+      type: String,     // Lưu username gốc (có hoa thường) để hiển thị
+      maxlength: 30,
+    },
 
     role: {
       type: mongoose.Schema.Types.ObjectId,
@@ -118,5 +131,8 @@ const UserSchema = new mongoose.Schema(
 
 // Unique email - một email chỉ có 1 account (có thể login bằng local hoặc google)
 UserSchema.index({ email: 1 }, { unique: true });
+
+// Unique username - case insensitive (đã lowercase trong schema)
+UserSchema.index({ username: 1 }, { unique: true });
 
 module.exports = mongoose.model("User", UserSchema);

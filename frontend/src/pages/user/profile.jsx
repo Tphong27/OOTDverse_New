@@ -460,7 +460,7 @@ export default function ProfilePage() {
               <h1 className="text-3xl font-bold mb-1">
                 {profile.fullName || profile.name}
               </h1>
-              <p className="text-purple-100">{profile.email ? `@${profile.email.split("@")[0]}` : ""}</p>
+              <p className="text-purple-100">@{profile.usernameDisplay || profile.username || profile.email?.split("@")[0] || 'user'}</p>
             </div>
           </div>
           <button

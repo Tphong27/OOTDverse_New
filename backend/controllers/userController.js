@@ -13,6 +13,8 @@ const {
 } = require("../services/emailService");
 const bcrypt = require("bcryptjs"); // bcrypt hash mật khẩu
 const { validatePassword } = require("../services/validators");
+const { validateUsername, isUsernameAvailable } = require("../services/usernameService");
+
 // Helper function to generate 6-digit OTP
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -21,7 +23,18 @@ const generateOTP = () => {
 // 1. Đăng ký tài khoản mới (Step 1: Send OTP)
 exports.register = async (req, res) => {
   try {
-    const { email, password, fullName } = req.body;
+    const { email, password, fullName, username } = req.body;
+
+    // Validate username
+    const usernameValidation = validateUsername(username);
+    if (!usernameValidation.valid) {
+      return res.status(400).json({ error: usernameValidation.error });
+    }
+
+    // Check username unique
+    if (!(await isUsernameAvailable(username))) {
+      return res.status(400).json({ error: "Username đã tồn tại. Vui lòng chọn username khác." });
+    }
 
     // Validate mật khẩu
     const passwordError = validatePassword(password);
@@ -47,6 +60,8 @@ exports.register = async (req, res) => {
 
         existingUser.password = await bcrypt.hash(password, 10);
         existingUser.fullName = fullName;
+        existingUser.username = username.toLowerCase();
+        existingUser.usernameDisplay = username;
         existingUser.emailVerificationCode = otpCode;
         existingUser.emailVerificationExpires = otpExpires;
         await existingUser.save();
@@ -87,6 +102,8 @@ exports.register = async (req, res) => {
       email,
       password: hashedPassword,
       fullName,
+      username: username.toLowerCase(),
+      usernameDisplay: username,
       role: customerRoleId,
       status: "Active",
       authType: "local",
@@ -183,6 +200,8 @@ exports.verifyEmail = async (req, res) => {
         _id: user._id,
         email: user.email,
         fullName: user.fullName,
+        username: user.username,
+        usernameDisplay: user.usernameDisplay || user.username,
         role: user.role,
         status: user.status,
         authType: user.authType,
@@ -377,29 +396,51 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-// 2. Đăng nhập
+// 2. Đăng nhập (email hoặc username)
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;  // identifier = email OR username
 
-    // Tìm user với email này
-    const user = await User.findOne({ email }).populate("role", "name value");
+    if (!identifier || !password) {
+      return res.status(400).json({ error: "Vui lòng nhập email/username và mật khẩu." });
+    }
+
+    // Xác định identifier là email hay username
+    const isEmail = identifier.includes("@");
+    
+    // Tìm user với email hoặc username
+    let user;
+    if (isEmail) {
+      user = await User.findOne({ email: identifier }).populate("role", "name value");
+    } else {
+      // Username luôn lowercase trong DB
+      user = await User.findOne({ username: identifier.toLowerCase() }).populate("role", "name value");
+    }
 
     if (!user) {
-      return res.status(401).json({ error: "Email hoặc mật khẩu không đúng!" });
+      return res.status(401).json({ error: "Email/Username hoặc mật khẩu không đúng!" });
     }
 
     // Nếu user chỉ có Google (không có password), báo lỗi cụ thể
     if (user.authType === "google") {
       return res.status(401).json({ 
-        error: "Email này đăng ký bằng Google. Vui lòng đăng nhập bằng Google." 
+        error: "Tài khoản này đăng ký bằng Google. Vui lòng đăng nhập bằng Google." 
       });
     }
 
     // User local hoặc both → kiểm tra password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ error: "Email hoặc mật khẩu không đúng!" });
+      return res.status(401).json({ error: "Email/Username hoặc mật khẩu không đúng!" });
+    }
+
+    // Kiểm tra user đã xác thực email chưa (chỉ cho local/both, không phải Google-only)
+    if (!user.isEmailVerified && user.authType !== "google") {
+      return res.status(403).json({
+        error: "Tài khoản chưa được xác thực. Vui lòng kiểm tra email để xác thực.",
+        requireVerification: true,
+        email: user.email,
+      });
     }
 
     // Kiểm tra trạng thái tài khoản
@@ -451,6 +492,8 @@ exports.login = async (req, res) => {
         _id: user._id,
         email: user.email,
         fullName: user.fullName,
+        username: user.username,
+        usernameDisplay: user.usernameDisplay || user.username,
         role: user.role,
         status: user.status,
         authType: user.authType,
@@ -567,6 +610,8 @@ exports.googleLogin = async (req, res) => {
             _id: user._id,
             email: user.email,
             fullName: user.fullName,
+            username: user.username,
+            usernameDisplay: user.usernameDisplay || user.username,
             avatar: user.avatar,
             role: user.role,
             status: user.status,
@@ -609,6 +654,8 @@ exports.googleLogin = async (req, res) => {
             _id: user._id,
             email: user.email,
             fullName: user.fullName,
+            username: user.username,
+            usernameDisplay: user.usernameDisplay || user.username,
             avatar: user.avatar,
             role: user.role,
             status: user.status,
@@ -630,10 +677,16 @@ exports.googleLogin = async (req, res) => {
 
       const hashedRandomPassword = await bcrypt.hash(randomPassword, 10);
 
+      // Auto-generate username từ email
+      const { generateUniqueUsername } = require("../services/usernameService");
+      const generatedUsername = await generateUniqueUsername(email);
+
       // Tạo user mới với trạng thái chưa xác thực
       user = new User({
         email,
         fullName: name,
+        username: generatedUsername,
+        usernameDisplay: generatedUsername,
         password: hashedRandomPassword,
         avatar: picture,
         authType: "google",
@@ -657,6 +710,7 @@ exports.googleLogin = async (req, res) => {
         requireVerification: true,
         email: email,
         fullName: name,
+        username: generatedUsername,
         avatar: picture,
         message: "Mã xác thực đã được gửi đến email của bạn.",
       });

@@ -21,6 +21,7 @@ export default function RegisterPage() {
 
   const [formData, setFormData] = useState({
     fullName: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -36,9 +37,11 @@ export default function RegisterPage() {
     }
   }, [countdown]);
 
-  // Handle redirect from login page for Google OTP verification
+  // Handle redirect from login page for Google OTP verification OR unverified local user
   useEffect(() => {
-    const { email, fromGoogle } = router.query;
+    const { email, fromGoogle, fromLogin } = router.query;
+    
+    // Google user cần xác thực OTP
     if (fromGoogle === "true" && email) {
       setFormData((prev) => ({
         ...prev,
@@ -47,6 +50,20 @@ export default function RegisterPage() {
       setAuthType("google");
       setStep(2); // Jump to OTP step
       setCountdown(60);
+    }
+    
+    // Local user chưa xác thực email, quay lại từ login page
+    if (fromLogin === "true" && email) {
+      setFormData((prev) => ({
+        ...prev,
+        email: decodeURIComponent(email),
+      }));
+      setAuthType("local");
+      setStep(2); // Jump to OTP step
+      setCountdown(60);
+      
+      // Tự động gửi lại OTP
+      resendVerificationCode(decodeURIComponent(email)).catch(console.error);
     }
   }, [router.query]);
 
@@ -104,15 +121,35 @@ export default function RegisterPage() {
     return null;
   };
 
+  // Username validation (frontend)
+  const validateUsername = (username) => {
+    if (!username) return "Username là bắt buộc.";
+    if (username.length < 3) return "Username phải có ít nhất 3 ký tự.";
+    if (username.length > 30) return "Username không được quá 30 ký tự.";
+    const usernameRegex = /^(?![._])(?!.*[._]$)[a-zA-Z0-9._]{3,30}$/;
+    if (!usernameRegex.test(username)) {
+      return "Username chỉ được chứa chữ, số, dấu chấm (.) và gạch dưới (_). Không được bắt đầu hoặc kết thúc bằng . hoặc _";
+    }
+    return null;
+  };
+
   // Step 1: Submit registration form
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!formData.fullName || !formData.email || !formData.password) {
+    if (!formData.fullName || !formData.username || !formData.email || !formData.password) {
       setError("Vui lòng điền đầy đủ thông tin.");
       return;
     }
+
+    // Validate username
+    const usernameError = validateUsername(formData.username);
+    if (usernameError) {
+      setError(usernameError);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError("Mật khẩu xác nhận không khớp.");
       return;
@@ -134,6 +171,7 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         fullName: formData.fullName,
+        username: formData.username,
       });
 
       if (res.requireVerification) {
@@ -393,6 +431,25 @@ export default function RegisterPage() {
                 className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all"
                 placeholder="Họ và tên"
               />
+            </div>
+
+            {/* Username */}
+            <div>
+              <div className="relative">
+                <span className="absolute left-3 top-3.5 text-gray-400 text-sm font-medium">@</span>
+                <input
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  type="text"
+                  className="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                  placeholder="username"
+                  maxLength={30}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1.5">
+                3-30 ký tự, chỉ chữ thường, số, dấu chấm (.) và gạch dưới (_)
+              </p>
             </div>
 
             {/* Email */}

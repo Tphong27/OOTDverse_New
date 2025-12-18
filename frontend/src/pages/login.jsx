@@ -13,27 +13,34 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState(""); // email OR username
   const [password, setPassword] = useState("");
 
-  // Xử lý đăng nhập thường (Email/Password)
+  // Xử lý đăng nhập thường (Email/Username + Password)
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!email || !password) {
-      setError("Vui lòng nhập email và mật khẩu.");
+    if (!identifier || !password) {
+      setError("Vui lòng nhập email/username và mật khẩu.");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const res = await loginUser({ email, password });
+      const res = await loginUser({ identifier, password });
       handleAuthSuccess(res);
     } catch (err) {
       console.error("Login Error:", err);
-      setError(err.response?.data?.error || "Email hoặc mật khẩu không đúng.");
+      
+      // Kiểm tra nếu user chưa xác thực email -> redirect sang OTP
+      if (err.response?.data?.requireVerification && err.response?.data?.email) {
+        router.push(`/register?email=${encodeURIComponent(err.response.data.email)}&fromLogin=true`);
+        return;
+      }
+      
+      setError(err.response?.data?.error || "Email/Username hoặc mật khẩu không đúng.");
     } finally {
       setIsLoading(false);
     }
@@ -109,16 +116,16 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Email Field */}
+            {/* Email/Username Field */}
             <div>
               <div className="relative">
                 <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                 <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  type="text"
                   className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all"
-                  placeholder="Email"
+                  placeholder="Email hoặc Username"
                 />
               </div>
             </div>

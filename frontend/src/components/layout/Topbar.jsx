@@ -63,7 +63,7 @@ export default function Topbar({ setIsSidebarOpen }) {
                     {user.fullName}
                   </p>
                   <p className="text-xs text-purple-600 font-medium">
-                    Fashionista
+                    @{user.usernameDisplay || user.username || 'user'}
                   </p>
                 </div>
                 <img

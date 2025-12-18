@@ -70,6 +70,7 @@ export default function Topbar({ setIsSidebarOpen }) {
                   // Ưu tiên avatar từ profile, fallback về auto-generated
                   src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || 'User')}&background=random&color=fff&size=100`}
                   alt="Avatar"
+                  referrerPolicy="no-referrer"
                   className="w-10 h-10 rounded-full object-cover border-2 border-purple-200 shadow-sm"
                 />
               </button>

@@ -57,8 +57,13 @@ const UserSchema = new mongoose.Schema(
     },
     authType: {
       type: String,
-      enum: ["local", "google"],
+      enum: ["local", "google", "both"],  // "both" = linked account
       default: "local",
+    },
+    // Google account ID (for linked accounts)
+    googleId: {
+      type: String,
+      default: null,
     },
     // Email verification
     isEmailVerified: {
@@ -111,7 +116,7 @@ const UserSchema = new mongoose.Schema(
   }
 );
 
-// Compound unique index: cho phép cùng email với authType khác nhau
-UserSchema.index({ email: 1, authType: 1 }, { unique: true });
+// Unique email - một email chỉ có 1 account (có thể login bằng local hoặc google)
+UserSchema.index({ email: 1 }, { unique: true });
 
 module.exports = mongoose.model("User", UserSchema);

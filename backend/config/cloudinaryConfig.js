@@ -21,6 +21,7 @@ const uploadImage = async (base64Image, userId, options = {}) => {
     public_id: `user_${userId}`,
     overwrite: true,
     resource_type: "image",
+    timeout: 120000, // 120 seconds timeout
     transformation: [
       { width: 400, height: 400, crop: "fill", gravity: "face" },
       { quality: "auto", fetch_format: "auto" },

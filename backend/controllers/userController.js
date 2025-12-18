@@ -29,9 +29,16 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: passwordError });
     }
 
-    // Kiểm tra email trùng - CHỈ check user LOCAL (cho phép cùng email với authType khác)
-    const existingUser = await User.findOne({ email, authType: "local" });
+    // Kiểm tra email trùng - Check ALL authTypes (không cho phép duplicate email)
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
+      // Nếu email đã đăng ký bằng Google → báo user đăng nhập bằng Google
+      if (existingUser.authType === "google") {
+        return res.status(400).json({ 
+          error: "Email đã tồn tại. Vui lòng đăng nhập bằng Google." 
+        });
+      }
+      
       // Nếu user local tồn tại nhưng chưa xác thực email, cho phép gửi lại OTP
       if (!existingUser.isEmailVerified) {
         // Cập nhật thông tin và gửi OTP mới
@@ -54,7 +61,9 @@ exports.register = async (req, res) => {
           email: email,
         });
       }
-      return res.status(400).json({ error: "Email này đã được sử dụng cho tài khoản local!" });
+      
+      // Email đã được xác thực (local hoặc both)
+      return res.status(400).json({ error: "Email này đã được sử dụng!" });
     }
 
     //TÌM ROLE CUSTOMER VÀ GÁN
@@ -373,14 +382,21 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Tìm user LOCAL (password login chỉ dành cho authType="local")
-    const user = await User.findOne({ email, authType: "local" }).populate("role", "name value");
+    // Tìm user với email này
+    const user = await User.findOne({ email }).populate("role", "name value");
 
     if (!user) {
       return res.status(401).json({ error: "Email hoặc mật khẩu không đúng!" });
     }
 
-    // Kiểm tra mật khẩu (so sánh với hash)
+    // Nếu user chỉ có Google (không có password), báo lỗi cụ thể
+    if (user.authType === "google") {
+      return res.status(401).json({ 
+        error: "Email này đăng ký bằng Google. Vui lòng đăng nhập bằng Google." 
+      });
+    }
+
+    // User local hoặc both → kiểm tra password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: "Email hoặc mật khẩu không đúng!" });
@@ -508,66 +524,101 @@ exports.googleLogin = async (req, res) => {
       throw new Error("Lỗi cấu hình: Không tìm thấy Role 'Customer'.");
     }
 
-    // Tìm user Google với email này (tách riêng authType)
-    let user = await User.findOne({ email, authType: "google" }).populate("role", "name value");
+    // Tìm user với email này (bất kỳ authType nào)
+    let user = await User.findOne({ email }).populate("role", "name value");
+    const googleSubId = payload.sub; // Google unique ID
 
     if (user) {
-      // ======== USER GOOGLE ĐÃ TỒN TẠI ========
-
-      if (!user.role) {
-        user.role = customerRoleId;
-        await user.save();
-        await user.populate("role", "name value");
-      }
-
-      if (!user.status) {
-        user.status = "Active";
-        await user.save();
-      }
-
+      // ======== EMAIL ĐÃ TỒN TẠI ========
+      
       // KIỂM TRA STATUS - KHÔNG CHO LOGIN NẾU INACTIVE
       if (user.status === "Inactive") {
         return res.status(403).json({
-          error:
-            "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
+          error: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
         });
       }
 
-      // Cập nhật avatar nếu chưa có
-      if (!user.avatar) {
-        user.avatar = picture;
-        await user.save();
+      // Case 1: User đã là Google hoặc Both → Login thẳng
+      if (user.authType === "google" || user.authType === "both") {
+        // Cập nhật googleId nếu chưa có
+        if (!user.googleId) {
+          user.googleId = googleSubId;
+          await user.save();
+        }
+
+        // Cập nhật avatar nếu chưa có
+        if (!user.avatar) {
+          user.avatar = picture;
+          await user.save();
+        }
+
+        // Tạo JWT token
+        const jwtToken = jwt.sign(
+          { id: user._id, email: user.email, role: user.role?.name },
+          process.env.JWT_SECRET,
+          { expiresIn: "7d" }
+        );
+
+        return res.json({
+          success: true,
+          isNewUser: false,
+          token: jwtToken,
+          user: {
+            _id: user._id,
+            email: user.email,
+            fullName: user.fullName,
+            avatar: user.avatar,
+            role: user.role,
+            status: user.status,
+            authType: user.authType,
+            hasProfile: user.hasProfile || false,
+          },
+        });
       }
 
-      // Tạo JWT token cho user cũ
-      const jwtToken = jwt.sign(
-        {
-          id: user._id,
-          email: user.email,
-          role: user.role?.name,
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
-      );
+      // Case 2: User LOCAL → LINK account (upgrade to "both")
+      if (user.authType === "local") {
+        // Kiểm tra đã xác thực email chưa
+        if (!user.isEmailVerified) {
+          return res.status(400).json({
+            error: "Tài khoản chưa được xác thực. Vui lòng xác thực email trước.",
+          });
+        }
 
-      // Đăng nhập thành công cho user cũ
-      return res.json({
-        success: true,
-        isNewUser: false,
-        token: jwtToken,
-        user: {
-          _id: user._id,
-          email: user.email,
-          fullName: user.fullName,
-          avatar: user.avatar,
-          role: user.role,
-          status: user.status,
-          authType: user.authType,
-          hasProfile: user.hasProfile || false,
-        },
-      });
+        // Link Google vào account local
+        user.authType = "both";
+        user.googleId = googleSubId;
+        // Cập nhật avatar từ Google (nếu chưa có hoặc để dùng ảnh Google)
+        user.avatar = picture || user.avatar;
+        await user.save();
+
+        // Tạo JWT token
+        const jwtToken = jwt.sign(
+          { id: user._id, email: user.email, role: user.role?.name },
+          process.env.JWT_SECRET,
+          { expiresIn: "7d" }
+        );
+
+        return res.json({
+          success: true,
+          isNewUser: false,
+          linked: true,  // Flag để frontend biết là đã link
+          message: "Tài khoản Google đã được liên kết với tài khoản hiện có!",
+          token: jwtToken,
+          user: {
+            _id: user._id,
+            email: user.email,
+            fullName: user.fullName,
+            avatar: user.avatar,
+            role: user.role,
+            status: user.status,
+            authType: user.authType,
+            hasProfile: user.hasProfile || false,
+          },
+        });
+      }
     } else {
-      // ======== USER MỚI - CẦN XÁC THỰC EMAIL ========
+      // ======== USER MỚI HOÀN TOÀN - CẦN XÁC THỰC EMAIL ========
 
       // Generate OTP
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -586,6 +637,7 @@ exports.googleLogin = async (req, res) => {
         password: hashedRandomPassword,
         avatar: picture,
         authType: "google",
+        googleId: googleSubId,
         status: "Active",
         hasProfile: false,
         role: customerRoleId,

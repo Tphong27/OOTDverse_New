@@ -409,6 +409,7 @@ export default function ProfilePage() {
               <img
                 src={avatarPreview || profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || profile.name || 'User')}&background=random&size=200`}
                 alt="Avatar"
+                referrerPolicy="no-referrer"
                 className="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
               />
               {/* Hidden file input */}
@@ -514,7 +515,7 @@ export default function ProfilePage() {
               </label>
               <input
                 type="text"
-                value={profile.phone}
+                value={profile.phone || ""}
                 onChange={(e) => handleChange("phone", e.target.value)}
                 disabled={!isEditing}
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50"
@@ -538,7 +539,7 @@ export default function ProfilePage() {
               </label>
               <input
                 type="date"
-                value={profile.birthday}
+                value={profile.birthday || ""}
                 onChange={(e) => handleChange("birthday", e.target.value)}
                 disabled={!isEditing}
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none disabled:bg-gray-50"
@@ -550,7 +551,7 @@ export default function ProfilePage() {
               </label>
               <input
                 type="number"
-                value={profile.age}
+                value={profile.age || ""}
                 disabled={true} // Read-only, tự tính từ birthday
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 cursor-not-allowed"
               />
@@ -560,7 +561,7 @@ export default function ProfilePage() {
                 Giới thiệu
               </label>
               <textarea
-                value={profile.bio}
+                value={profile.bio || ""}
                 onChange={(e) => handleChange("bio", e.target.value)}
                 disabled={!isEditing}
                 rows="3"
@@ -588,7 +589,7 @@ export default function ProfilePage() {
                 </label>
                 <input
                   type="number"
-                  value={profile[metric]}
+                  value={profile[metric] || ""}
                   onChange={(e) => handleChange(metric, e.target.value)}
                   onBlur={() => handleMeasurementBlur(metric)}
                   disabled={!isEditing}

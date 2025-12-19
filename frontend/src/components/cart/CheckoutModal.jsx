@@ -51,17 +51,17 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
       try {
         const res = await getDefaultAddress();
 
-        if (res?.data) {
-          setAddress(res.data);
+        if (res) {
+          setAddress(res);
           setFormData((f) => ({
             ...f,
-            shipping_address_id: res.data,
+            shipping_address_id: res,
           }));
         } else {
           setAddress(null);
         }
       } catch (err) {
-        console.warn("No default address");
+        console.error("Load address failed", err);
         setAddress(null);
       }
     }

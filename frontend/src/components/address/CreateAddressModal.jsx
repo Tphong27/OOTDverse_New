@@ -26,19 +26,19 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
     try {
       const data = await reverseGeocode(latlng.lat, latlng.lng);
 
-      setForm((f) => ({
-        ...f,
-        street: data.address.road || "",
-        ward: data.address.suburb || "",
-        district: data.address.city_district || "",
-        province: data.address.state || "",
+      setForm((prev) => ({
+        ...prev,
+        full_address: data.display_name || "",
+        ward: data.address?.suburb || "",
+        district: data.address?.city_district || data.address?.city || "",
+        city: data.address?.city || "",
         location: {
           lat: latlng.lat,
           lng: latlng.lng,
         },
       }));
     } catch (err) {
-      console.error("Reverse geocode failed");
+      console.error("Reverse geocode failed", err);
     }
   };
 

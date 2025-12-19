@@ -7,6 +7,7 @@ import { OutfitProvider } from "@/context/OutfitContext";
 import { MarketplaceProvider } from "@/context/MarketplaceContext";
 import { OrderProvider } from "@/context/OrderContext";
 import { SwapProvider } from "@/context/SwapContext";
+import { CartProvider } from "@/context/CartContext";
 
 export default function App({ Component, pageProps }) {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
@@ -18,11 +19,13 @@ export default function App({ Component, pageProps }) {
           <WardrobeProvider>
             <OutfitProvider>
               <MarketplaceProvider>
-                <OrderProvider>
-                  <SwapProvider>
-                    <Component {...pageProps} />
-                  </SwapProvider>
-                </OrderProvider>
+                <CartProvider>
+                  <OrderProvider>
+                    <SwapProvider>
+                      <Component {...pageProps} />
+                    </SwapProvider>
+                  </OrderProvider>
+                </CartProvider>
               </MarketplaceProvider>
             </OutfitProvider>
           </WardrobeProvider>

@@ -2,6 +2,7 @@ const Outfit = require("../models/Outfit");
 const OutfitItem = require("../models/OutfitItem");
 const Item = require("../models/Item");
 const User = require("../models/User");
+const { uploadOutfitImage, isBase64Image } = require("../config/cloudinaryConfig");
 
 // ========================================
 // 1. GET ALL OUTFITS (với filters)
@@ -174,6 +175,32 @@ exports.createOutfit = async (req, res) => {
       });
     }
 
+    // Upload thumbnail URL if base64
+    let finalThumbnailUrl = thumbnail_url;
+    if (isBase64Image(thumbnail_url)) {
+      try {
+        console.log("📤 Uploading outfit thumbnail...");
+        finalThumbnailUrl = await uploadOutfitImage(thumbnail_url, user_id, null, 'thumb');
+      } catch (err) {
+        console.error("❌ Thumbnail upload error:", err.message);
+        // Continue creating outfit even if image upload fails? 
+        // Better to fail and let user retry or handle gracefully.
+        return res.status(500).json({ success: false, error: "Thumbnail upload failed: " + err.message });
+      }
+    }
+
+    // Upload full image URL if base64
+    let finalFullImageUrl = full_image_url;
+    if (isBase64Image(full_image_url)) {
+      try {
+        console.log("📤 Uploading outfit full image...");
+        finalFullImageUrl = await uploadOutfitImage(full_image_url, user_id, null, 'full');
+      } catch (err) {
+        console.error("❌ Full image upload error:", err.message);
+        return res.status(500).json({ success: false, error: "Full image upload failed: " + err.message });
+      }
+    }
+
     // Tạo outfit
     const outfit = new Outfit({
       user_id,
@@ -183,8 +210,8 @@ exports.createOutfit = async (req, res) => {
       season_id,
       weather_id,
       is_public: is_public !== undefined ? is_public : true,
-      thumbnail_url,
-      full_image_url,
+      thumbnail_url: finalThumbnailUrl,
+      full_image_url: finalFullImageUrl,
       tags: tags || [],
       description,
       notes,
@@ -269,8 +296,37 @@ exports.updateOutfit = async (req, res) => {
     if (weather_id !== undefined) outfit.weather_id = weather_id;
     if (is_public !== undefined) outfit.is_public = is_public;
     if (is_featured !== undefined) outfit.is_featured = is_featured;
-    if (thumbnail_url) outfit.thumbnail_url = thumbnail_url;
-    if (full_image_url) outfit.full_image_url = full_image_url;
+    
+    // Upload & update thumbnail
+    if (thumbnail_url) {
+      if (isBase64Image(thumbnail_url)) {
+        try {
+          console.log("📤 Uploading updated outfit thumbnail...");
+          outfit.thumbnail_url = await uploadOutfitImage(thumbnail_url, outfit.user_id, id, 'thumb');
+        } catch (err) {
+          console.error("❌ Thumbnail update error:", err.message);
+          return res.status(500).json({ success: false, error: "Thumbnail upload failed: " + err.message });
+        }
+      } else {
+        outfit.thumbnail_url = thumbnail_url;
+      }
+    }
+
+    // Upload & update full image
+    if (full_image_url) {
+      if (isBase64Image(full_image_url)) {
+        try {
+          console.log("📤 Uploading updated outfit full image...");
+          outfit.full_image_url = await uploadOutfitImage(full_image_url, outfit.user_id, id, 'full');
+        } catch (err) {
+          console.error("❌ Full image update error:", err.message);
+          return res.status(500).json({ success: false, error: "Full image upload failed: " + err.message });
+        }
+      } else {
+        outfit.full_image_url = full_image_url;
+      }
+    }
+
     if (tags) outfit.tags = tags;
     if (description !== undefined) outfit.description = description;
     if (notes !== undefined) outfit.notes = notes;

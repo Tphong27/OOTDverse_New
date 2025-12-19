@@ -3,6 +3,7 @@ const Item = require("../models/Item");
 const mongoose = require("mongoose");
 const axios = require("axios"); // [MỚI] Import axios để gọi AI Service
 const Setting = require("../models/setting"); // [MỚI] Import Setting để map dữ liệu
+const { uploadWardrobeImage, isBase64Image } = require("../config/cloudinaryConfig");
 
 // ===== 1. GET ALL ITEMS (Lấy danh sách món đồ của user) =====
 exports.getItems = async (req, res) => {
@@ -122,10 +123,28 @@ exports.createItem = async (req, res) => {
       });
     }
 
-    // Tạo item mới
+    // Upload image to Cloudinary if it's base64
+    let finalImageUrl = itemData.image_url;
+    if (isBase64Image(itemData.image_url)) {
+      try {
+        console.log("📤 Uploading wardrobe image to Cloudinary...");
+        finalImageUrl = await uploadWardrobeImage(itemData.image_url, userId);
+        console.log("✅ Image uploaded:", finalImageUrl.substring(0, 60) + "...");
+      } catch (uploadError) {
+        console.error("❌ Cloudinary upload error:", uploadError.message);
+        return res.status(500).json({
+          success: false,
+          message: "Lỗi upload ảnh lên Cloudinary",
+          error: uploadError.message,
+        });
+      }
+    }
+
+    // Tạo item mới với Cloudinary URL
     const newItem = new Item({
       user_id: userId,
       ...itemData,
+      image_url: finalImageUrl,
     });
 
     const savedItem = await newItem.save();
@@ -176,6 +195,22 @@ exports.updateItem = async (req, res) => {
         success: false,
         message: "ID không hợp lệ",
       });
+    }
+
+    // Upload new image to Cloudinary if it's base64
+    if (updateData.image_url && isBase64Image(updateData.image_url)) {
+      try {
+        console.log("📤 Uploading updated wardrobe image to Cloudinary...");
+        updateData.image_url = await uploadWardrobeImage(updateData.image_url, userId, id);
+        console.log("✅ Image updated:", updateData.image_url.substring(0, 60) + "...");
+      } catch (uploadError) {
+        console.error("❌ Cloudinary upload error:", uploadError.message);
+        return res.status(500).json({
+          success: false,
+          message: "Lỗi upload ảnh lên Cloudinary",
+          error: uploadError.message,
+        });
+      }
     }
 
     // Tìm và update (chỉ update nếu item thuộc về user)

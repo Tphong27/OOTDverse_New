@@ -235,7 +235,6 @@ export default function BuyModal({ listing, onClose }) {
 
           {/* Step 2: Shipping & Payment Method */}
           <div className="grid grid-cols-2 gap-6">
-            {/* Shipping Method */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
                 <Truck size={20} />
@@ -253,7 +252,6 @@ export default function BuyModal({ listing, onClose }) {
               </select>
             </div>
 
-            {/* Payment Method */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
                 <CreditCard size={20} />

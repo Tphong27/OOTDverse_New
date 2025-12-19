@@ -12,16 +12,18 @@ import {
   AlertCircle
 } from "lucide-react";
 import OrderTimeline from "./OrderTimeline";
+import OrderStatusManager from "./OrderStatusManager";
+import PaymentModal from "./PaymentModal";
 import { useOrder } from "@/context/OrderContext";
 
 export default function OrderDetailModal({ order, role, isOpen, onClose }) {
   const { 
-    changeOrderStatus, 
     cancelOrder, 
     rateSeller, 
     rateBuyer 
   } = useOrder();
 
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showRatingForm, setShowRatingForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [review, setReview] = useState("");
@@ -47,6 +49,20 @@ export default function OrderDetailModal({ order, role, isOpen, onClose }) {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  // Handle status manager actions
+  const handleStatusUpdate = (data) => {
+    if (data.action === "open_payment") {
+      setShowPaymentModal(true);
+    } else if (data.action === "open_cancel") {
+      setShowCancelForm(true);
+    } else if (data.success) {
+      // Reload order data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
   };
 
   // Handle cancel order
@@ -92,17 +108,14 @@ export default function OrderDetailModal({ order, role, isOpen, onClose }) {
   const partnerRating = role === "buyer" ? order.buyer_rating : order.seller_rating;
   const partnerReview = role === "buyer" ? order.buyer_review : order.seller_review;
 
-  // Check if can cancel
-  const canCancel = ["pending_payment", "paid", "preparing"].includes(order.order_status);
-
   // Check if can rate
   const canRate = order.order_status === "completed" && !partnerRating;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Chi tiết đơn hàng</h2>
             <p className="text-sm text-gray-600 mt-1">#{order.order_code}</p>
@@ -116,7 +129,14 @@ export default function OrderDetailModal({ order, role, isOpen, onClose }) {
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6 max-h-[calc(90vh-180px)] overflow-y-auto">
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+          {/* Order Status Manager - NEW */}
+          <OrderStatusManager 
+            order={order} 
+            role={role}
+            onUpdate={handleStatusUpdate}
+          />
+
           {/* Order Timeline */}
           <OrderTimeline order={order} />
 
@@ -250,7 +270,7 @@ export default function OrderDetailModal({ order, role, isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Ratings */}
+          {/* Ratings Display */}
           {(order.buyer_rating || order.seller_rating) && (
             <div className="bg-yellow-50 rounded-lg p-4">
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -389,7 +409,7 @@ export default function OrderDetailModal({ order, role, isOpen, onClose }) {
           )}
 
           {/* Cancel Form */}
-          {canCancel && showCancelForm && (
+          {showCancelForm && (
             <div className="bg-red-50 rounded-lg p-4 border-2 border-red-200">
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <AlertCircle size={20} />
@@ -431,22 +451,13 @@ export default function OrderDetailModal({ order, role, isOpen, onClose }) {
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 border-t border-gray-200 flex gap-3">
+        <div className="p-6 border-t border-gray-200 flex gap-3 flex-shrink-0">
           {canRate && !showRatingForm && (
             <button
               onClick={() => setShowRatingForm(true)}
               className="flex-1 py-3 rounded-lg bg-yellow-500 text-white font-semibold hover:bg-yellow-600 transition-colors"
             >
               Đánh giá
-            </button>
-          )}
-
-          {canCancel && !showCancelForm && (
-            <button
-              onClick={() => setShowCancelForm(true)}
-              className="flex-1 py-3 rounded-lg border-2 border-red-500 text-red-600 font-semibold hover:bg-red-50 transition-colors"
-            >
-              Hủy đơn
             </button>
           )}
 
@@ -458,6 +469,19 @@ export default function OrderDetailModal({ order, role, isOpen, onClose }) {
           </button>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <PaymentModal
+          order={order}
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={() => {
+            setShowPaymentModal(false);
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

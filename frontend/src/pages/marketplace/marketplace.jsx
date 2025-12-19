@@ -5,10 +5,13 @@ import { useAuth } from "@/context/AuthContext";
 import MarketplaceTab from "@/components/marketplace/MarketplaceTab";
 import MyListingsTab from "@/components/marketplace/MyListingsTab";
 import OrdersTab from "@/components/orders/OrdersTab";
-import { Store, ShoppingBag, User, Package } from "lucide-react";
+import CartTab from "@/components/cart/CartTab";
+import { Store, ShoppingBag, User, Package, ShoppingCart } from "lucide-react";
+import { useCart } from "@/context/CartContext";
 
 export default function MarketplacePage() {
   const { user } = useAuth();
+  const { cartCount } = useCart();
   
   const [activeTab, setActiveTab] = useState("marketplace");
   const [mounted, setMounted] = useState(false);
@@ -81,6 +84,15 @@ export default function MarketplacePage() {
             {user && (
               <>
                 <TabPill
+                  active={activeTab === "cart"}
+                  onClick={() => handleTabChange("cart")}
+                  icon={<ShoppingCart className="w-5 h-5" />}
+                  badge={cartCount}
+                >
+                  Giỏ hàng
+                </TabPill>
+
+                <TabPill
                   active={activeTab === "my-listings"}
                   onClick={() => handleTabChange("my-listings")}
                   icon={<User className="w-5 h-5" />}
@@ -103,6 +115,7 @@ export default function MarketplacePage() {
         {/* Content */}
         <div className="min-h-[300px]">
           {activeTab === "marketplace" && <MarketplaceTab />}
+          {activeTab === "cart" && user && <CartTab />}
           {activeTab === "my-listings" && user && <MyListingsTab />}
           {activeTab === "orders" && user && <OrdersTab />}
         </div>
@@ -111,11 +124,11 @@ export default function MarketplacePage() {
   );
 }
 
-function TabPill({ active, children, onClick, icon }) {
+function TabPill({ active, children, onClick, icon, badge }) {
   return (
     <button
       onClick={onClick}
-      className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+      className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 relative ${
         active
           ? "bg-white text-purple-600 shadow-lg"
           : "bg-white/20 text-white hover:bg-white/30"
@@ -123,6 +136,11 @@ function TabPill({ active, children, onClick, icon }) {
     >
       {icon}
       {children}
+      {badge > 0 && (
+        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+          {badge}
+        </span>
+      )}
     </button>
   );
 }

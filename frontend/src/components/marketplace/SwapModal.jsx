@@ -155,7 +155,7 @@ export default function SwapModal({ listing, onClose }) {
                 <div className="text-center py-8">
                   <p className="text-gray-500">Bạn chưa có món đồ nào trong tủ</p>
                   <button
-                    onClick={() => router.push("/wardrobe")}
+                    onClick={() => router.push("/wardrobe/form")}
                     className="mt-4 text-pink-600 hover:text-pink-700 underline"
                   >
                     Thêm món đồ ngay

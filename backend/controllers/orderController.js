@@ -2,110 +2,51 @@ const Order = require("../models/Order");
 const MarketplaceListing = require("../models/Marketplace");
 const User = require("../models/User");
 const Item = require("../models/Item");
+const Address = require("../models/Address");
 
 // ========================================
 // 1. CREATE ORDER (Tạo đơn hàng)
 // ========================================
 exports.createOrder = async (req, res) => {
   try {
-    const {
-      buyer_id,
-      listing_id,
-      shipping_address,
-      shipping_method,
-      payment_method,
-      buyer_note,
-    } = req.body;
+    const userId = req.user.id;
+    const { shipping_address_id, listing_id, payment_method } = req.body;
 
-    // Validation: Listing phải tồn tại và đang active
-    const listing = await MarketplaceListing.findById(listing_id)
-      .populate("seller_id")
-      .populate("item_id");
-
-    if (!listing) {
-      return res.status(404).json({
-        success: false,
-        error: "Listing không tồn tại",
-      });
-    }
-
-    if (listing.status !== "active") {
-      return res.status(400).json({
-        success: false,
-        error: "Listing này không còn available",
-      });
-    }
-
-    if (listing.listing_type === "swap") {
-      return res.status(400).json({
-        success: false,
-        error: "Không thể tạo order cho listing chỉ swap",
-      });
-    }
-
-    // Validation: Buyer không thể mua hàng của chính mình
-    if (listing.seller_id._id.toString() === buyer_id) {
-      return res.status(400).json({
-        success: false,
-        error: "Không thể mua hàng của chính mình",
-      });
-    }
-
-    // Generate order_code
-    const date = new Date();
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
-    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const order_code = `ORD${dateStr}${randomStr}`;
-
-    // Tính toán giá
-    const item_price = listing.selling_price;
-    const shipping_fee = listing.shipping_fee || 0;
-    const platform_fee = item_price * 0.05; // 5% platform fee
-    const total_amount = item_price + shipping_fee + platform_fee;
-
-    // Tạo order
-    const order = new Order({
-      order_code,
-      buyer_id,
-      seller_id: listing.seller_id._id,
-      listing_id,
-      item_id: listing.item_id._id,
-      item_price,
-      shipping_fee,
-      platform_fee,
-      total_amount,
-      shipping_method: shipping_method || listing.shipping_method,
-      shipping_address,
-      payment_method,
-      buyer_note,
+    // 1️⃣ Validate address
+    const address = await Address.findOne({
+      _id: shipping_address_id,
+      user_id: userId,
     });
 
-    await order.save();
-
-    // Update listing status
-    listing.status = "pending";
-    await listing.save();
-
-    // Populate và trả về
-    const populatedOrder = await Order.findById(order._id)
-      .populate("buyer_id", "fullName avatar phone")
-      .populate("seller_id", "fullName avatar phone")
-      .populate({
-        path: "item_id",
-        populate: [
-          { path: "category_id", select: "name value" },
-          { path: "brand_id", select: "name value" },
-        ],
+    if (!address) {
+      return res.status(400).json({
+        message: "Địa chỉ không hợp lệ",
       });
+    }
 
-    res.status(201).json({
-      success: true,
-      message: "Tạo đơn hàng thành công",
-      data: populatedOrder,
+    // 2️⃣ Snapshot address
+    const shippingAddressSnapshot = {
+      full_name: address.full_name,
+      phone: address.phone,
+      province: address.province,
+      district: address.district,
+      ward: address.ward,
+      street: address.street,
+      location: address.location,
+    };
+
+    // 3️⃣ Create order
+    const order = await Order.create({
+      buyer_id: userId,
+      listing_id,
+      payment_method,
+      shipping_address: shippingAddressSnapshot,
+      status: "pending",
     });
-  } catch (error) {
-    console.error("Lỗi khi tạo order:", error);
-    res.status(500).json({ success: false, error: error.message });
+
+    res.status(201).json(order);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -117,6 +58,7 @@ exports.getOrderById = async (req, res) => {
     const { id } = req.params;
 
     const order = await Order.findById(id)
+      .populate("shipping_address_id")
       .populate("buyer_id", "fullName avatar phone email")
       .populate("seller_id", "fullName avatar phone email seller_rating")
       .populate({
@@ -180,6 +122,7 @@ exports.getUserOrders = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const orders = await Order.find(filter)
+      .populate("listing_id")
       .populate("buyer_id", "fullName avatar")
       .populate("seller_id", "fullName avatar")
       .populate({

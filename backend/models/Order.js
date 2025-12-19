@@ -73,20 +73,21 @@ const OrderSchema = new mongoose.Schema(
     },
 
     shipping_address: {
-      recipient_name: {
-        type: String,
-        required: [true, "Tên người nhận là bắt buộc"],
-      },
-      phone: {
-        type: String,
-        required: [true, "Số điện thoại là bắt buộc"],
-      },
+      full_name: String,
+      phone: String,
       province: String,
       district: String,
       ward: String,
-      address: {
-        type: String,
-        required: [true, "Địa chỉ là bắt buộc"],
+      street: String,
+      location: {
+        type: {
+          type: String,
+          enum: ["Point"],
+          default: "Point",
+        },
+        coordinates: {
+          type: [Number], // [lng, lat]
+        },
       },
     },
 

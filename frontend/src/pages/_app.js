@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import "leaflet/dist/leaflet.css";
 import { WardrobeProvider } from "@/context/WardrobeContext";
 import { SettingProvider } from "@/context/SettingContext";
 import { GoogleOAuthProvider } from "@react-oauth/google";

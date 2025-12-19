@@ -75,7 +75,8 @@ const marketplaceRoutes = require("./routes/marketplaceRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const swapRequestRoutes = require("./routes/swapRequestRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
-
+const addressRoutes = require("./routes/addressRoutes");
+app.use("/api/geocode", require("./routes/geocode"));
 // Register routes
 app.use("/api/wardrobe", wardrobeRoutes);
 app.use("/api/setting", settingRoutes);
@@ -86,6 +87,7 @@ app.use("/api/marketplace/listings", marketplaceRoutes);
 app.use("/api/marketplace/orders", orderRoutes);
 app.use("/api/marketplace/swap-requests", swapRequestRoutes);
 app.use("/api/marketplace/payment", paymentRoutes);
+app.use("/api/addresses", addressRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

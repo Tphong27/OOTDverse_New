@@ -26,9 +26,7 @@ const {
 //      buyer_id, listing_id, shipping_address, 
 //      shipping_method, payment_method, buyer_note
 //    }
-//    shipping_address: {
-//      recipient_name, phone, province, district, ward, address
-//    }
+//    shipping_address: addressObjectId
 router.post("/", createOrder);
 
 // 2. GET /api/marketplace/orders/:id - Lấy order chi tiết

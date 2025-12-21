@@ -9,10 +9,8 @@ delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
 function LocationMarker({ onChange }) {
@@ -21,7 +19,10 @@ function LocationMarker({ onChange }) {
   useMapEvents({
     click(e) {
       setPosition(e.latlng);
-      onChange(e.latlng);
+      onChange?.({
+        lat: e.latlng.lat,
+        lng: e.latlng.lng,
+      });
     },
   });
 
@@ -35,9 +36,7 @@ export default function MapPicker({ onChange }) {
       zoom={13}
       className="h-64 w-full rounded-lg"
     >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <LocationMarker onChange={onChange} />
     </MapContainer>
   );

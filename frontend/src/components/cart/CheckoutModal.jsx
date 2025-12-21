@@ -40,6 +40,7 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
     shipping_method: "ghn",
     payment_method: "vnpay",
     buyer_note: "",
+    shipping_address_id: null, // ✅ Store address ID
   });
 
   const [transferProof, setTransferProof] = useState(null);
@@ -50,15 +51,21 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
     async function loadAddress() {
       try {
         const res = await getDefaultAddress();
+        console.log("📍 Default address loaded:", res);
 
-        if (res) {
-          setAddress(res);
-          setFormData((f) => ({
-            ...f,
-            shipping_address_id: res,
+        if (res?.data) {
+          setAddress(res.data);
+          // ✅ Lưu ID của address
+          setFormData((prev) => ({
+            ...prev,
+            shipping_address_id: res.data._id,
           }));
         } else {
           setAddress(null);
+          setFormData((prev) => ({
+            ...prev,
+            shipping_address_id: null,
+          }));
         }
       } catch (err) {
         console.error("Load address failed", err);
@@ -66,8 +73,10 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
       }
     }
 
-    loadAddress();
-  }, []);
+    if (isOpen) {
+      loadAddress();
+    }
+  }, [isOpen]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -99,10 +108,15 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
     setError(null);
 
     try {
-      // Validation
-      if (!address?._id) {
+      // ✅ Validation - Check address ID
+      if (!formData.shipping_address_id) {
         throw new Error("Vui lòng chọn địa chỉ giao hàng");
       }
+
+      console.log(
+        "🛒 Creating orders with address ID:",
+        formData.shipping_address_id
+      );
 
       // Create orders for each item (each item = 1 order since different sellers)
       const createdOrders = [];
@@ -110,9 +124,11 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
       for (const item of items) {
         const orderData = {
           listing_id: item.listing_id,
-          shipping_address_id: formData.shipping_address_id._id,
+          shipping_address_id: formData.shipping_address_id, // ✅ Pass address ID
           payment_method: formData.payment_method,
         };
+
+        console.log("📦 Order data:", orderData);
 
         const order = await placeOrder(orderData);
         createdOrders.push(order);
@@ -139,7 +155,7 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
         setStep(3);
       }
     } catch (err) {
-      console.error("Checkout error:", err);
+      console.error("❌ Checkout error:", err);
       setError(err.message || err.error || "Không thể xử lý thanh toán");
     } finally {
       setLoading(false);
@@ -191,6 +207,20 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
   );
 
   if (!isOpen) return null;
+
+  // ✅ Format địa chỉ hiển thị đúng
+  const formatAddress = (addr) => {
+    if (!addr) return "";
+
+    const parts = [
+      addr.street,
+      addr.ward?.name || addr.ward,
+      addr.district?.name || addr.district,
+      addr.province?.name || addr.province,
+    ].filter(Boolean);
+
+    return parts.join(", ");
+  };
 
   return (
     <>
@@ -268,8 +298,7 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
                         {address.full_name} | {address.phone}
                       </p>
                       <p className="text-sm text-gray-600">
-                        {address.street}, {address.ward}, {address.district},{" "}
-                        {address.province}
+                        {formatAddress(address)}
                       </p>
                     </div>
                   ) : (
@@ -435,7 +464,9 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
             {step < 3 && (
               <button
                 onClick={step === 1 ? () => setStep(2) : handleCheckout}
-                disabled={loading}
+                disabled={
+                  loading || (step === 1 && !formData.shipping_address_id)
+                }
                 className="flex-1 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-600 disabled:opacity-50"
               >
                 {loading ? (
@@ -461,15 +492,19 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
           </div>
         </div>
       </div>
+
       <AddressListModal
         isOpen={showAddressModal}
         onClose={() => setShowAddressModal(false)}
         onSelect={(addr) => {
-          setAddress(addr); // ✅ để UI hiển thị
-          setFormData((f) => ({
-            ...f,
-            shipping_address_id: addr, // ✅ để gửi backend
+          console.log("✅ Address selected:", addr);
+          setAddress(addr);
+          // ✅ Lưu ID của address vào formData
+          setFormData((prev) => ({
+            ...prev,
+            shipping_address_id: addr._id,
           }));
+          setShowAddressModal(false);
         }}
       />
     </>

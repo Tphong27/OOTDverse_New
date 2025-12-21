@@ -11,54 +11,53 @@ const createAddress = async (req, res) => {
       district,
       ward,
       street,
-      location,
+      location, // ✅ Nhận { lat, lng }
       type,
       is_default,
       place_id,
     } = req.body;
 
-    if (
-      !full_name ||
-      !phone ||
-      !province ||
-      !district ||
-      !ward ||
-      !street ||
-      !location?.lat ||
-      !location?.lng
-    ) {
+    // ✅ Validation
+    if (!full_name || !phone || !street || !location?.lat || !location?.lng) {
       return res.status(400).json({
+        success: false,
         message: "Thiếu thông tin địa chỉ bắt buộc",
       });
     }
 
+    // ✅ Nếu set default, bỏ default của các địa chỉ khác
     if (is_default) {
-      await Address.updateMany(
-        { user_id: userId },
-        { is_default: false }
-      );
+      await Address.updateMany({ user_id: userId }, { is_default: false });
     }
 
+    // ✅ Tạo địa chỉ mới
     const address = await Address.create({
       user_id: userId,
       full_name,
       phone,
-      province,
-      district,
-      ward,
+      province: province || { code: "", name: "" },
+      district: district || { code: "", name: "" },
+      ward: ward || { code: "", name: "" },
       street,
       place_id,
-      type,
-      is_default,
+      type: type || "HOME",
+      is_default: is_default || false,
       location: {
         type: "Point",
-        coordinates: [location.lng, location.lat],
+        coordinates: [location.lng, location.lat], // [lng, lat] - GeoJSON format
       },
     });
 
-    res.status(201).json(address);
+    res.status(201).json({
+      success: true,
+      data: address,
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("❌ Create address error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 // Lấy tất cả địa chỉ của user
@@ -92,10 +91,7 @@ const setDefaultAddress = async (req, res) => {
   try {
     const { addressId } = req.params;
 
-    await Address.updateMany(
-      { user_id: req.user.id },
-      { is_default: false }
-    );
+    await Address.updateMany({ user_id: req.user.id }, { is_default: false });
 
     await Address.findOneAndUpdate(
       { _id: addressId, user_id: req.user.id },

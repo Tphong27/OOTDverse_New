@@ -17,7 +17,7 @@ exports.createOrder = async (req, res) => {
     
     const { shipping_address_id, listing_id, payment_method } = req.body;
 
-    // 1️⃣ Validate address
+    // Validate address
     const address = await Address.findOne({
       _id: shipping_address_id,
       user_id: userId,
@@ -30,7 +30,7 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    // 2️⃣ Get listing info
+    // Get listing info
     const listing = await MarketplaceListing.findById(listing_id).populate(
       "item_id"
     );
@@ -42,7 +42,7 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    // ✅ Check if listing is available
+    // Check if listing is available
     if (listing.status !== "active") {
       return res.status(400).json({
         success: false,
@@ -50,7 +50,7 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    // 2️⃣ Snapshot address
+    // Snapshot address
     const shippingAddressSnapshot = {
       recipient_name: address.full_name,
       phone: address.phone,
@@ -61,18 +61,18 @@ exports.createOrder = async (req, res) => {
       location: address.location,
     };
 
-    // 3️⃣ Calculate amounts
+    // Calculate amounts
     const item_price = listing.selling_price;
     const shipping_fee = listing.shipping_fee || 0;
     const platform_fee = item_price * 0.05;
     const total_amount = item_price + shipping_fee + platform_fee;
 
-    // 4️⃣ Generate order_code
+    // Generate order_code
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const randomStr = Math.random().toString(36).slice(2, 6).toUpperCase();
     const order_code = `ORD${dateStr}${randomStr}`;
 
-    // 5️⃣ Create order
+    // Create order
     const order = await Order.create({
       order_code,
       buyer_id: userId,
@@ -90,7 +90,7 @@ exports.createOrder = async (req, res) => {
       payment_status: "pending",
     });
 
-    // 6️⃣ Populate full order info
+    // Populate full order info
     const populatedOrder = await Order.findById(order._id)
       .populate("buyer_id", "fullName avatar phone email")
       .populate("seller_id", "fullName avatar phone email seller_rating")

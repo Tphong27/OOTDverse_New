@@ -30,8 +30,6 @@ router.get("/reverse", async (req, res) => {
       }
     );
 
-    console.log("✅ Nominatim response:", response.data);
-
     // Wrap response giống các API khác
     res.json({
       success: true,

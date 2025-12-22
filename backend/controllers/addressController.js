@@ -104,9 +104,53 @@ const setDefaultAddress = async (req, res) => {
   }
 };
 
+// Xóa địa chỉ
+const deleteAddress = async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const { addressId } = req.params;
+
+    // Tìm địa chỉ
+    const address = await Address.findOne({
+      _id: addressId,
+      user_id: userId,
+    });
+
+    if (!address) {
+      return res.status(404).json({
+        success: false,
+        message: "Địa chỉ không tồn tại",
+      });
+    }
+
+    // Không cho phép xóa địa chỉ mặc định
+    if (address.is_default) {
+      return res.status(400).json({
+        success: false,
+        message: "Không thể xóa địa chỉ mặc định. Vui lòng đặt địa chỉ khác làm mặc định trước.",
+      });
+    }
+
+    // Xóa địa chỉ
+    await Address.findByIdAndDelete(addressId);
+
+    res.json({
+      success: true,
+      message: "Đã xóa địa chỉ thành công",
+    });
+  } catch (err) {
+    console.error("❌ Delete address error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
 module.exports = {
   createAddress,
   getMyAddresses,
   getDefaultAddress,
   setDefaultAddress,
+  deleteAddress,
 };

@@ -10,5 +10,6 @@ router.post("/", addressController.createAddress);
 router.get("/", addressController.getMyAddresses);
 router.get("/default", addressController.getDefaultAddress);
 router.put("/:addressId/default", addressController.setDefaultAddress);
+router.delete("/:addressId", addressController.deleteAddress);
 
 module.exports = router;

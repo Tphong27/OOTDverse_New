@@ -288,7 +288,7 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
                 <div className="space-y-2">
                   <h3 className="font-semibold flex items-center gap-2">
                     <MapPin size={20} />
-                    Địa chỉ giao hàng
+                    Thông tin và địa chỉ giao hàng
                   </h3>
 
                   {address ? (
@@ -311,7 +311,7 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
                       onClick={() => setShowAddressModal(true)}
                       className="border-dashed border-2 border-gray-300 p-4 rounded-lg w-full text-pink-500 hover:border-pink-500 transition-colors"
                     >
-                      + Thêm địa chỉ giao hàng
+                      + Thêm thông tin và địa chỉ giao hàng
                     </button>
                   )}
                 </div>

@@ -15,7 +15,7 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
     province: { code: "", name: "" },
     district: { code: "", name: "" },
     ward: { code: "", name: "" },
-    location: null, // Đổi từ object sang null
+    location: null,
     place_id: "",
     type: "HOME",
     is_default: false,
@@ -23,7 +23,6 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
 
   const [loading, setLoading] = useState(false);
 
-  // ✅ Sửa hàm này để nhận lat, lng từ MapPicker
   const handlePickLocation = async ({ lat, lng }) => {
     try {
       setLoading(true);
@@ -44,7 +43,6 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
 
       const address = data.address;
 
-      // ✅ Parse địa chỉ từ OpenStreetMap
       const newForm = {
         ...form,
         street: address.road || address.suburb || data.name || "Không xác định",
@@ -60,7 +58,7 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
           code: "",
           name: address.suburb || address.village || address.hamlet || "",
         },
-        location: { lat, lng }, // ✅ Lưu đúng format
+        location: { lat, lng },
         place_id: data.place_id?.toString() || "",
       };
 
@@ -75,7 +73,7 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
   };
 
   const handleSubmit = async () => {
-    // ✅ Validation chính xác
+    // Validation
     if (!form.full_name || !form.phone || !form.location) {
       alert("Vui lòng nhập đầy đủ thông tin và chọn vị trí trên bản đồ");
       return;
@@ -87,33 +85,60 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
     }
 
     try {
+      setLoading(true);
       console.log("📤 Submitting address:", form);
 
-      await createAddress({
+      const response = await createAddress({
         full_name: form.full_name,
         phone: form.phone,
         street: form.street,
         province: form.province,
         district: form.district,
         ward: form.ward,
-        location: form.location, // { lat, lng }
+        location: form.location,
         place_id: form.place_id,
         type: form.type,
         is_default: form.is_default,
       });
 
+      console.log("✅ Address created successfully:", response);
+
+      // ✅ Reset form
+      setForm({
+        full_name: "",
+        phone: "",
+        street: "",
+        province: { code: "", name: "" },
+        district: { code: "", name: "" },
+        ward: { code: "", name: "" },
+        location: null,
+        place_id: "",
+        type: "HOME",
+        is_default: false,
+      });
+
       alert("✅ Thêm địa chỉ thành công!");
-      onCreated?.();
+
+      // ✅ CRITICAL: Call onCreated callback
+      if (onCreated) {
+        console.log("🔔 Calling onCreated callback...");
+        onCreated();
+      } else {
+        console.warn("⚠️ onCreated callback is not provided!");
+      }
+
+      // ✅ Close modal after callback
       onClose();
     } catch (error) {
       console.error("❌ Create address error:", error);
       alert("Lỗi khi thêm địa chỉ: " + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   if (!isOpen) return null;
 
-  // ✅ Hiển thị địa chỉ đầy đủ
   const fullAddress = [
     form.street,
     form.ward.name,
@@ -124,16 +149,19 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
     .join(", ");
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between p-4 border-b sticky top-0 bg-white">
+    // z-[110] - Higher than AddressListModal (z-[100])
+    <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between p-4 border-b flex-shrink-0">
           <h2 className="font-bold">Thêm địa chỉ mới</h2>
-          <button onClick={onClose}>
-            <X />
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+            <X size={20} />
           </button>
         </div>
 
-        <div className="p-4 space-y-3">
+        {/* Content */}
+        <div className="p-4 space-y-3 overflow-y-auto flex-1">
           <input
             placeholder="Họ tên"
             value={form.full_name}
@@ -158,7 +186,6 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
             <MapPicker onChange={handlePickLocation} />
           </div>
 
-          {/* ✅ Hiển thị địa chỉ đã chọn */}
           <div className="bg-gray-50 p-3 rounded-lg">
             <p className="text-xs text-gray-500 mb-1">Địa chỉ đã chọn:</p>
             {fullAddress ? (
@@ -170,7 +197,6 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
             )}
           </div>
 
-          {/* ✅ Các trường chi tiết (optional edit) */}
           <details className="text-sm">
             <summary className="cursor-pointer text-blue-600">
               Chỉnh sửa chi tiết (nếu cần)
@@ -230,7 +256,8 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
           </label>
         </div>
 
-        <div className="p-4 border-t flex justify-end gap-2 sticky bottom-0 bg-white">
+        {/* Footer */}
+        <div className="p-4 border-t flex justify-end gap-2 flex-shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg border hover:bg-gray-50"
@@ -239,10 +266,10 @@ export default function CreateAddressModal({ isOpen, onClose, onCreated }) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!form.location}
+            disabled={!form.location || loading}
             className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            Lưu địa chỉ
+            {loading ? "Đang lưu..." : "Lưu địa chỉ"}
           </button>
         </div>
       </div>

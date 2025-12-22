@@ -14,8 +14,6 @@ router.get("/reverse", async (req, res) => {
   }
 
   try {
-    console.log("🌐 Reverse geocoding:", { lat, lng });
-
     const response = await axios.get(
       "https://nominatim.openstreetmap.org/reverse",
       {
@@ -34,7 +32,7 @@ router.get("/reverse", async (req, res) => {
 
     console.log("✅ Nominatim response:", response.data);
 
-    // ✅ Wrap response giống các API khác
+    // Wrap response giống các API khác
     res.json({
       success: true,
       data: response.data, // Wrap vào data

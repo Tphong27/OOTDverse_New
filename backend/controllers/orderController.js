@@ -1,3 +1,4 @@
+// backend/controllers/orderController.js
 const Order = require("../models/Order");
 const MarketplaceListing = require("../models/Marketplace");
 const User = require("../models/User");
@@ -7,10 +8,13 @@ const Address = require("../models/Address");
 // ========================================
 // 1. CREATE ORDER (Tạo đơn hàng)
 // ========================================
-// backend/controllers/orderController.js
 exports.createOrder = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id || req.user.id;
+    
+    console.log("🔍 Debug - req.user:", req.user);
+    console.log("🔍 Debug - userId:", userId);
+    
     const { shipping_address_id, listing_id, payment_method } = req.body;
 
     // 1️⃣ Validate address
@@ -21,6 +25,7 @@ exports.createOrder = async (req, res) => {
 
     if (!address) {
       return res.status(400).json({
+        success: false,
         message: "Địa chỉ không hợp lệ",
       });
     }
@@ -28,10 +33,11 @@ exports.createOrder = async (req, res) => {
     // 2️⃣ Get listing info
     const listing = await MarketplaceListing.findById(listing_id).populate(
       "item_id"
-    ); // ✅ Populate để lấy thông tin item
+    );
 
     if (!listing) {
       return res.status(400).json({
+        success: false,
         message: "Listing không tồn tại",
       });
     }
@@ -39,6 +45,7 @@ exports.createOrder = async (req, res) => {
     // ✅ Check if listing is available
     if (listing.status !== "active") {
       return res.status(400).json({
+        success: false,
         message: "Sản phẩm không còn bán",
       });
     }
@@ -60,10 +67,16 @@ exports.createOrder = async (req, res) => {
     const platform_fee = item_price * 0.05;
     const total_amount = item_price + shipping_fee + platform_fee;
 
-    // 4️⃣ Create order
+    // 4️⃣ Generate order_code
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const randomStr = Math.random().toString(36).slice(2, 6).toUpperCase();
+    const order_code = `ORD${dateStr}${randomStr}`;
+
+    // 5️⃣ Create order
     const order = await Order.create({
+      order_code,
       buyer_id: userId,
-      seller_id: listing.seller_id, // ✅ Từ listing
+      seller_id: listing.seller_id,
       listing_id: listing._id,
       item_id: listing.item_id._id,
       item_price,
@@ -77,7 +90,7 @@ exports.createOrder = async (req, res) => {
       payment_status: "pending",
     });
 
-    // 5️⃣ Populate full order info
+    // 6️⃣ Populate full order info
     const populatedOrder = await Order.findById(order._id)
       .populate("buyer_id", "fullName avatar phone email")
       .populate("seller_id", "fullName avatar phone email seller_rating")

@@ -9,6 +9,15 @@ const api = axios.create({
   timeout: 30000,
 });
 
+// Simple interceptor to add token from localStorage
+api.interceptors.request.use((config) => {
+  const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  if (user.token) {
+    config.headers.Authorization = `Bearer ${user.token}`;
+  }
+  return config;
+});
+
 // REQUEST INTERCEPTOR
 api.interceptors.request.use(
   (config) => {

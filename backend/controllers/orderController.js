@@ -7,6 +7,7 @@ const Address = require("../models/Address");
 // ========================================
 // 1. CREATE ORDER (Tạo đơn hàng)
 // ========================================
+// backend/controllers/orderController.js
 exports.createOrder = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -24,29 +25,90 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    // 2️⃣ Get listing info
+    const listing = await MarketplaceListing.findById(listing_id).populate(
+      "item_id"
+    ); // ✅ Populate để lấy thông tin item
+
+    if (!listing) {
+      return res.status(400).json({
+        message: "Listing không tồn tại",
+      });
+    }
+
+    // ✅ Check if listing is available
+    if (listing.status !== "active") {
+      return res.status(400).json({
+        message: "Sản phẩm không còn bán",
+      });
+    }
+
     // 2️⃣ Snapshot address
     const shippingAddressSnapshot = {
-      full_name: address.full_name,
+      recipient_name: address.full_name,
       phone: address.phone,
-      province: address.province,
-      district: address.district,
-      ward: address.ward,
+      province: address.province?.name || address.province,
+      district: address.district?.name || address.district,
+      ward: address.ward?.name || address.ward,
       street: address.street,
       location: address.location,
     };
 
-    // 3️⃣ Create order
+    // 3️⃣ Calculate amounts
+    const item_price = listing.selling_price;
+    const shipping_fee = listing.shipping_fee || 0;
+    const platform_fee = item_price * 0.05;
+    const total_amount = item_price + shipping_fee + platform_fee;
+
+    // 4️⃣ Create order
     const order = await Order.create({
       buyer_id: userId,
-      listing_id,
-      payment_method,
+      seller_id: listing.seller_id, // ✅ Từ listing
+      listing_id: listing._id,
+      item_id: listing.item_id._id,
+      item_price,
+      shipping_fee,
+      platform_fee,
+      total_amount,
+      shipping_method: listing.shipping_method || "ghn",
       shipping_address: shippingAddressSnapshot,
-      status: "pending",
+      payment_method,
+      order_status: "pending_payment",
+      payment_status: "pending",
     });
 
-    res.status(201).json(order);
+    // 5️⃣ Populate full order info
+    const populatedOrder = await Order.findById(order._id)
+      .populate("buyer_id", "fullName avatar phone email")
+      .populate("seller_id", "fullName avatar phone email seller_rating")
+      .populate({
+        path: "listing_id",
+        populate: {
+          path: "item_id",
+          populate: [
+            { path: "category_id", select: "name value" },
+            { path: "brand_id", select: "name value" },
+          ],
+        },
+      })
+      .populate({
+        path: "item_id",
+        populate: [
+          { path: "category_id", select: "name value" },
+          { path: "brand_id", select: "name value" },
+        ],
+      });
+
+    res.status(201).json({
+      success: true,
+      data: populatedOrder,
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("❌ Create order error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 

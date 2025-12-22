@@ -5,7 +5,15 @@ import { useCart } from "@/context/CartContext";
 import CheckoutModal from "./CheckoutModal";
 
 export default function CartTab() {
-  const { cartItems, cartCount, cartTotal, shippingTotal, platformFeeTotal, grandTotal, removeFromCart } = useCart();
+  const {
+    cartItems,
+    cartCount,
+    cartTotal,
+    shippingTotal,
+    platformFeeTotal,
+    grandTotal,
+    removeFromCart,
+  } = useCart();
   const [showCheckout, setShowCheckout] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
 
@@ -18,16 +26,16 @@ export default function CartTab() {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedItems(cartItems.map(item => item.listing_id));
+      setSelectedItems(cartItems.map((item) => item.listing_id));
     } else {
       setSelectedItems([]);
     }
   };
 
   const handleSelectItem = (listingId) => {
-    setSelectedItems(prev => {
+    setSelectedItems((prev) => {
       if (prev.includes(listingId)) {
-        return prev.filter(id => id !== listingId);
+        return prev.filter((id) => id !== listingId);
       } else {
         return [...prev, listingId];
       }
@@ -37,15 +45,27 @@ export default function CartTab() {
   const handleRemove = (listingId) => {
     if (confirm("Bạn có chắc muốn xóa món đồ này khỏi giỏ hàng?")) {
       removeFromCart(listingId);
-      setSelectedItems(prev => prev.filter(id => id !== listingId));
+      setSelectedItems((prev) => prev.filter((id) => id !== listingId));
     }
   };
 
-  const selectedItemsData = cartItems.filter(item => selectedItems.includes(item.listing_id));
-  const selectedTotal = selectedItemsData.reduce((sum, item) => sum + item.price, 0);
-  const selectedShipping = selectedItemsData.reduce((sum, item) => sum + item.shipping_fee, 0);
-  const selectedPlatformFee = selectedItemsData.reduce((sum, item) => sum + (item.price * 0.05), 0);
-  const selectedGrandTotal = selectedTotal + selectedShipping + selectedPlatformFee;
+  const selectedItemsData = cartItems.filter((item) =>
+    selectedItems.includes(item.listing_id)
+  );
+  const selectedTotal = selectedItemsData.reduce(
+    (sum, item) => sum + item.price,
+    0
+  );
+  const selectedShipping = selectedItemsData.reduce(
+    (sum, item) => sum + item.shipping_fee,
+    0
+  );
+  const selectedPlatformFee = selectedItemsData.reduce(
+    (sum, item) => sum + item.price * 0.05,
+    0
+  );
+  const selectedGrandTotal =
+    selectedTotal + selectedShipping + selectedPlatformFee;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
@@ -71,7 +91,7 @@ export default function CartTab() {
             Hãy thêm món đồ yêu thích vào giỏ hàng!
           </p>
           <button
-            onClick={() => window.location.href = "/marketplace/marketplace"}
+            onClick={() => (window.location.href = "/marketplace/marketplace")}
             className="px-6 py-3 bg-pink-500 text-white rounded-xl font-semibold hover:bg-pink-600 transition-colors"
           >
             Khám phá ngay
@@ -128,11 +148,18 @@ export default function CartTab() {
                     </p>
                     <div className="flex items-center gap-2 mb-2">
                       <img
-                        src={item.seller_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.seller_name)}`}
+                        src={
+                          item.seller_avatar ||
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                            item.seller_name
+                          )}`
+                        }
                         alt={item.seller_name}
                         className="w-6 h-6 rounded-full"
                       />
-                      <span className="text-sm text-gray-600">{item.seller_name}</span>
+                      <span className="text-sm text-gray-600">
+                        {item.seller_name}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between mt-3">
                       <div>
@@ -168,7 +195,10 @@ export default function CartTab() {
               {selectedItems.length === 0 ? (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="text-yellow-600 flex-shrink-0 mt-0.5" size={18} />
+                    <AlertCircle
+                      className="text-yellow-600 flex-shrink-0 mt-0.5"
+                      size={18}
+                    />
                     <p className="text-sm text-yellow-800">
                       Vui lòng chọn ít nhất một món đồ để thanh toán
                     </p>
@@ -179,22 +209,32 @@ export default function CartTab() {
                   <div className="space-y-3 mb-6">
                     <div className="flex justify-between text-gray-700">
                       <span>Số lượng:</span>
-                      <span className="font-semibold">{selectedItems.length} món</span>
+                      <span className="font-semibold">
+                        {selectedItems.length} món
+                      </span>
                     </div>
                     <div className="flex justify-between text-gray-700">
                       <span>Tổng tiền hàng:</span>
-                      <span className="font-semibold">{formatPrice(selectedTotal)}</span>
+                      <span className="font-semibold">
+                        {formatPrice(selectedTotal)}
+                      </span>
                     </div>
                     <div className="flex justify-between text-gray-700">
                       <span>Phí vận chuyển:</span>
-                      <span className="font-semibold">{formatPrice(selectedShipping)}</span>
+                      <span className="font-semibold">
+                        {formatPrice(selectedShipping)}
+                      </span>
                     </div>
                     <div className="flex justify-between text-gray-700">
                       <span>Phí dịch vụ (5%):</span>
-                      <span className="font-semibold">{formatPrice(selectedPlatformFee)}</span>
+                      <span className="font-semibold">
+                        {formatPrice(selectedPlatformFee)}
+                      </span>
                     </div>
                     <div className="border-t border-gray-300 pt-3 flex justify-between">
-                      <span className="text-lg font-bold text-gray-900">Tổng cộng:</span>
+                      <span className="text-lg font-bold text-gray-900">
+                        Tổng cộng:
+                      </span>
                       <span className="text-2xl font-bold text-pink-600">
                         {formatPrice(selectedGrandTotal)}
                       </span>
@@ -215,16 +255,32 @@ export default function CartTab() {
               <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="w-3 h-3 text-green-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <span>Thanh toán an toàn & bảo mật</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="w-3 h-3 text-blue-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <span>Hoàn tiền nếu không nhận được hàng</span>

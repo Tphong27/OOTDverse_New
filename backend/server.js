@@ -30,7 +30,10 @@ app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        origin.endsWith(".vercel.app")
+      ) {
         callback(null, true);
       } else {
         console.log("Blocked by CORS:", origin);
@@ -42,16 +45,17 @@ app.use(
 );
 
 // DATABASE CONNECTION
-mongoose.connect(process.env.MONGODB_URI, {
-  serverSelectionTimeoutMS: 5000,   // Timeout tìm primary
-  socketTimeoutMS: 45000,           // Timeout socket
-  retryWrites: true,                // RẤT QUAN TRỌNG cho Atlas
-})
-.then(() => console.log("✅ Connected to MongoDB"))
-.catch((err) => {
-  console.error("❌ Database connection error:", err);
-  process.exit(1);
-});
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 5000, // Timeout tìm primary
+    socketTimeoutMS: 45000, // Timeout socket
+    retryWrites: true, // RẤT QUAN TRỌNG cho Atlas
+  })
+  .then(() => console.log("✅ Connected to MongoDB"))
+  .catch((err) => {
+    console.error("❌ Database connection error:", err);
+    process.exit(1);
+  });
 
 mongoose.connection.on("connected", () => {
   console.log("🟢 MongoDB connected");
@@ -76,7 +80,8 @@ const orderRoutes = require("./routes/orderRoutes");
 const swapRequestRoutes = require("./routes/swapRequestRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const addressRoutes = require("./routes/addressRoutes");
-app.use("/api/geocode", require("./routes/geocode"));
+const geocodeRoutes = require("./routes/geocode");
+
 // Register routes
 app.use("/api/wardrobe", wardrobeRoutes);
 app.use("/api/setting", settingRoutes);
@@ -88,13 +93,14 @@ app.use("/api/marketplace/orders", orderRoutes);
 app.use("/api/marketplace/swap-requests", swapRequestRoutes);
 app.use("/api/marketplace/payment", paymentRoutes);
 app.use("/api/addresses", addressRoutes);
+app.use("/api/geocode", geocodeRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: "Server is running",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -108,8 +114,8 @@ app.get("/api/test-marketplace", (req, res) => {
       "GET /api/marketplace/listings/:id",
       "POST /api/marketplace/listings",
       "GET /api/marketplace/orders",
-      "GET /api/marketplace/swap-requests"
-    ]
+      "GET /api/marketplace/swap-requests",
+    ],
   });
 });
 
@@ -120,7 +126,7 @@ app.use((req, res) => {
     success: false,
     error: "Route not found",
     path: req.url,
-    method: req.method
+    method: req.method,
   });
 });
 
@@ -134,7 +140,7 @@ const pingAiService = async () => {
     if (aiUrl.endsWith("/")) {
       aiUrl = aiUrl.slice(0, -1);
     }
-    
+
     console.log(`⏰ [Keep-Alive] Pinging AI Service at ${aiUrl}/health ...`);
     await axios.get(`${aiUrl}/health`);
     console.log("✅ [Keep-Alive] AI Service is awake");
@@ -148,10 +154,10 @@ setInterval(pingAiService, 10 * 60 * 1000);
 
 // ERROR HANDLER
 app.use((error, req, res, next) => {
-  console.error('❌ Server Error:', error);
+  console.error("❌ Server Error:", error);
   res.status(error.status || 500).json({
     success: false,
-    error: error.message || 'Internal Server Error'
+    error: error.message || "Internal Server Error",
   });
 });
 

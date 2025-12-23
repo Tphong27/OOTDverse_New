@@ -1,3 +1,4 @@
+// backend/models/Order.js
 const mongoose = require("mongoose");
 
 const OrderSchema = new mongoose.Schema(
@@ -55,7 +56,6 @@ const OrderSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: [0, "Phí platform không được âm"],
-      // VD: 5% của item_price
     },
 
     total_amount: {
@@ -65,36 +65,57 @@ const OrderSchema = new mongoose.Schema(
       // total_amount = item_price + shipping_fee + platform_fee
     },
 
-    // === Shipping Info ===
-    shipping_method: {
-      type: String,
-      enum: ["ghn", "ghtk", "viettel_post", "self_delivery", "meetup"],
-      required: [true, "Phương thức vận chuyển là bắt buộc"],
-    },
+    // ===Shipping Info (Buyer's Choice) ===
+    shipping_info: {
+      // Phương thức do buyer chọn
+      method: {
+        type: String,
+        enum: ["ghn", "ghtk", "viettel_post", "self_delivery", "meetup"],
+        required: [true, "Phương thức vận chuyển là bắt buộc"],
+      },
 
-    shipping_address: {
-      full_name: String,
-      phone: String,
-      province: String,
-      district: String,
-      ward: String,
-      street: String,
-      location: {
-        type: {
-          type: String,
-          enum: ["Point"],
-          default: "Point",
-        },
-        coordinates: {
-          type: [Number], // [lng, lat]
+      // Tên đơn vị vận chuyển
+      provider_name: String,
+
+      // Mã vận đơn
+      tracking_number: String,
+
+      // Thời gian dự kiến
+      estimated_delivery: {
+        min_days: Number,
+        max_days: Number,
+      },
+
+      // Địa chỉ lấy hàng (from seller)
+      pickup_address: {
+        full_name: String,
+        phone: String,
+        province: String,
+        district: String,
+        ward: String,
+        street: String,
+      },
+
+      // Địa chỉ giao hàng (to buyer)
+      delivery_address: {
+        full_name: String,
+        phone: String,
+        province: String,
+        district: String,
+        ward: String,
+        street: String,
+        location: {
+          type: {
+            type: String,
+            enum: ["Point"],
+            default: "Point",
+          },
+          coordinates: [Number], // [lng, lat]
         },
       },
-    },
 
-    tracking_number: {
-      type: String,
-      default: null,
-      // Mã vận đơn từ GHN/GHTK
+      // Ghi chú về giao hàng
+      delivery_note: String,
     },
 
     // === Payment ===
@@ -125,21 +146,20 @@ const OrderSchema = new mongoose.Schema(
     order_status: {
       type: String,
       enum: [
-        "pending_payment", // Chờ thanh toán
-        "paid", // Đã thanh toán
-        "preparing", // Đang chuẩn bị hàng
-        "shipping", // Đang vận chuyển
-        "delivered", // Đã giao hàng
-        "completed", // Hoàn thành (buyer confirm)
-        "cancelled", // Đã hủy
-        "refunded", // Đã hoàn tiền
+        "pending_payment",
+        "paid",
+        "preparing",
+        "shipping",
+        "delivered",
+        "completed",
+        "cancelled",
+        "refunded",
       ],
       default: "pending_payment",
       index: true,
     },
 
     // === Status Timestamps ===
-    paid_at: { type: Date, default: null },
     preparing_at: { type: Date, default: null },
     shipping_at: { type: Date, default: null },
     delivered_at: { type: Date, default: null },
@@ -215,18 +235,16 @@ OrderSchema.index({ seller_id: 1, order_status: 1 });
 OrderSchema.index({ payment_status: 1, order_status: 1 });
 OrderSchema.index({ created_at: -1 });
 
-// === Pre-save: Generate order_code ===
+// === Pre-save ===
 OrderSchema.pre("save", function () {
   if (!this.order_code) {
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const randomStr = Math.random().toString(36).slice(2, 6).toUpperCase();
-
     this.order_code = `ORD${dateStr}${randomStr}`;
   }
 });
 
 // === Methods ===
-// Update order status
 OrderSchema.methods.updateStatus = function (newStatus) {
   this.order_status = newStatus;
 
@@ -246,7 +264,6 @@ OrderSchema.methods.updateStatus = function (newStatus) {
   return this.save();
 };
 
-// Update payment status
 OrderSchema.methods.updatePaymentStatus = function (
   status,
   transactionId = null
@@ -262,7 +279,6 @@ OrderSchema.methods.updatePaymentStatus = function (
   return this.save();
 };
 
-// Cancel order
 OrderSchema.methods.cancelOrder = function (reason, cancelledBy) {
   this.order_status = "cancelled";
   this.cancelled_at = new Date();
@@ -271,7 +287,6 @@ OrderSchema.methods.cancelOrder = function (reason, cancelledBy) {
   return this.save();
 };
 
-// Add buyer rating
 OrderSchema.methods.rateSeller = function (rating, review = null) {
   if (rating < 1 || rating > 5) {
     throw new Error("Rating phải từ 1-5");
@@ -281,7 +296,6 @@ OrderSchema.methods.rateSeller = function (rating, review = null) {
   return this.save();
 };
 
-// Add seller rating
 OrderSchema.methods.rateBuyer = function (rating, review = null) {
   if (rating < 1 || rating > 5) {
     throw new Error("Rating phải từ 1-5");

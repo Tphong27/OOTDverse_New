@@ -89,7 +89,7 @@ export default function UserDashboard() {
             <p className="mt-1 text-gray-500">Dưới đây là tổng hợp tủ đồ và phong cách của bạn hôm nay.</p>
           </div>
           <div className="flex space-x-3">
-            <Link href="/user/wardrobe/add" className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+            <Link href="/wardrobe/form" className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
               <Plus className="w-4 h-4 mr-2" />
               Thêm đồ mới
             </Link>
@@ -138,7 +138,7 @@ export default function UserDashboard() {
                 Hành động nhanh
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Link href="/user/ai-stylist" className="group p-4 bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-xl hover:shadow-md transition-all">
+                <Link href="/outfit/ai-stylist" className="group p-4 bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-xl hover:shadow-md transition-all">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="p-2 bg-indigo-500 rounded-lg text-white">
@@ -152,7 +152,7 @@ export default function UserDashboard() {
                     <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
                   </div>
                 </Link>
-                <Link href="/user/mix-match" className="group p-4 bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-xl hover:shadow-md transition-all">
+                <Link href="/outfit/form" className="group p-4 bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-xl hover:shadow-md transition-all">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="p-2 bg-purple-500 rounded-lg text-white">

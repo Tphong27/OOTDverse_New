@@ -185,7 +185,7 @@ export default function UserDashboard() {
               {recentOutfits.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                   {recentOutfits.map((outfit) => (
-                    <Link key={outfit._id} href={`/user/outfits/${outfit._id}`} className="group relative aspect-[3/4] bg-gray-100 rounded-xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all shadow-sm">
+                    <Link key={outfit._id} href={`/outfit/${outfit._id}`} className="group relative aspect-[3/4] bg-gray-100 rounded-xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all shadow-sm">
                       <img 
                         src={outfit.thumbnail_url || "/images/placeholder-outfit.png"} 
                         alt={outfit.outfit_name}

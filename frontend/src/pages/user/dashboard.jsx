@@ -176,7 +176,7 @@ export default function UserDashboard() {
                   <Clock className="w-5 h-5 mr-2 text-indigo-500" />
                   Bộ phối gần đây
                 </h2>
-                <Link href="/user/outfits" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center group">
+                <Link href="/outfit/outfit" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center group">
                   Xem tất cả
                   <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-all" />
                 </Link>

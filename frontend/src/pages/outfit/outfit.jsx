@@ -451,7 +451,7 @@ export default function OutfitPage() {
       router.push("/login");
       return;
     }
-    router.push("#");
+    router.push("/outfit/ai-stylist");
   };
 
   const filteredOutfits = outfits.filter((outfit) => {

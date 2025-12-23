@@ -138,6 +138,16 @@ export const getOutfitStats = async (userId) => {
   }
 };
 
+export const aiSuggest = async (suggestionData) => {
+  try {
+    const response = await axios.post(`${API_URL}/ai-suggest`, suggestionData);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting AI suggestions:", error);
+    throw error.response?.data || error;
+  }
+};
+
 // ========================================
 // OUTFIT ITEMS MANAGEMENT
 // ========================================

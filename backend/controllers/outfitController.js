@@ -1,8 +1,10 @@
+const mongoose = require("mongoose");
 const Outfit = require("../models/Outfit");
 const OutfitItem = require("../models/OutfitItem");
 const Item = require("../models/Item");
 const User = require("../models/User");
 const { uploadOutfitImage, isBase64Image } = require("../config/cloudinaryConfig");
+const axios = require("axios");
 
 // ========================================
 // 1. GET ALL OUTFITS (với filters)
@@ -645,19 +647,19 @@ exports.getOutfitStats = async (req, res) => {
     const privateOutfits = totalOutfits - publicOutfits;
 
     const totalViews = await Outfit.aggregate([
-      { $match: { user_id: mongoose.Types.ObjectId(userId) } },
+      { $match: { user_id: new mongoose.Types.ObjectId(userId) } },
       { $group: { _id: null, total: { $sum: "$view_count" } } },
     ]);
 
     const totalLikes = await Outfit.aggregate([
-      { $match: { user_id: mongoose.Types.ObjectId(userId) } },
+      { $match: { user_id: new mongoose.Types.ObjectId(userId) } },
       { $group: { _id: null, total: { $sum: "$like_count" } } },
     ]);
 
     const avgRating = await Outfit.aggregate([
       {
         $match: {
-          user_id: mongoose.Types.ObjectId(userId),
+          user_id: new mongoose.Types.ObjectId(userId),
           user_rating: { $ne: null },
         },
       },
@@ -677,6 +679,75 @@ exports.getOutfitStats = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi lấy thống kê outfit:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// ========================================
+// 13. AI SUGGEST OUTFITS
+// ========================================
+exports.aiSuggest = async (req, res) => {
+  try {
+    const { userId, style, occasion, weather, skin_tone } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "userId là bắt buộc" });
+    }
+
+    // 1. Lấy tất cả items của user
+    const items = await Item.find({ user_id: userId, is_active: true })
+      .populate("category_id", "name")
+      .populate("color_id", "name");
+
+    if (items.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Tủ đồ của bạn đang trống. Hãy thêm đồ trước khi sử dụng AI Stylist." 
+      });
+    }
+
+    // 2. Chuyển đổi dữ liệu sang format AI Service cần
+    const wardrobeForAI = items.map(item => ({
+      id: item._id,
+      name: item.item_name,
+      category: item.category_id?.name || "Khác",
+      color: item.color_id.map(c => c.name),
+      tags: item.tags || []
+    }));
+
+    // 3. Gọi AI Service
+    const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
+    const response = await axios.post(`${AI_SERVICE_URL}/suggest`, {
+      style,
+      occasion,
+      weather,
+      skin_tone,
+      wardrobe: wardrobeForAI
+    });
+
+    if (response.data.success) {
+      // 4. Bổ sung thông tin item (hình ảnh, tên) vào kết quả trả về cho frontend
+      const suggestionsWithDetails = await Promise.all(response.data.suggestions.map(async (suggestion) => {
+        const itemDetails = await Item.find({ _id: { $in: suggestion.item_ids } })
+          .select("item_name image_url category_id")
+          .populate("category_id", "name");
+        
+        return {
+          ...suggestion,
+          items: itemDetails
+        };
+      }));
+
+      res.json({
+        success: true,
+        suggestions: suggestionsWithDetails
+      });
+    } else {
+      res.status(500).json({ success: false, error: response.data.error });
+    }
+
+  } catch (error) {
+    console.error("Lỗi AI Stylist:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

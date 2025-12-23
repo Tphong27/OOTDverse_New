@@ -13,6 +13,7 @@ const {
   getUserOutfits,
   getOutfitsByItem,
   getOutfitStats,
+  aiSuggest,
 } = require("../controllers/outfitController");
 
 // ========================================
@@ -34,6 +35,9 @@ router.get("/item/:itemId", getOutfitsByItem);
 
 // 4. GET /api/outfits/stats/:userId - Lấy thống kê outfits của user
 router.get("/stats/:userId", getOutfitStats);
+
+// 4.1 POST /api/outfits/ai-suggest - Gợi ý outfit bằng AI
+router.post("/ai-suggest", aiSuggest);
 
 // 5. GET /api/outfits/:id - Lấy chi tiết 1 outfit
 //    Query params: increment_view (true/false)

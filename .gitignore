@@ -6,6 +6,7 @@ node_modules/
 **/node_modules/
 
 # Python Virtual Env (Nếu làm AI)
+ai-venv/
 venv/
 .venv/
 env/

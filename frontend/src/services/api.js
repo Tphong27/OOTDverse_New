@@ -1,21 +1,16 @@
 // frontend/src/services/api.js
 import axios from "axios";
 
+console.log("🔧 API Service loaded");
+console.log("🌐 NEXT_PUBLIC_API_URL:", process.env.NEXT_PUBLIC_API_URL);
+console.log("🎯 baseURL will be:", process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000");
+
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000",
   headers: {
     "Content-Type": "application/json",
   },
   timeout: 30000,
-});
-
-// Simple interceptor to add token from localStorage
-api.interceptors.request.use((config) => {
-  const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
-  if (user.token) {
-    config.headers.Authorization = `Bearer ${user.token}`;
-  }
-  return config;
 });
 
 // REQUEST INTERCEPTOR
@@ -41,9 +36,10 @@ api.interceptors.request.use(
       console.error("❌ Error in request interceptor:", error);
     }
 
-    console.log(
-      `📤 API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`
-    );
+    // ⭐ LOG FULL URL
+    const fullUrl = `${config.baseURL}${config.url}`;
+    console.log(`📤 API Request: ${config.method.toUpperCase()} ${fullUrl}`);
+    console.log(`📝 Data:`, config.data);
 
     return config;
   },
@@ -78,6 +74,7 @@ api.interceptors.response.use(
       return Promise.reject(data);
     }
     
+    console.error("❌ Network Error:", error.message);
     return Promise.reject({
       success: false,
       error: "Không thể kết nối đến server",

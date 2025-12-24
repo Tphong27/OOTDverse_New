@@ -12,6 +12,7 @@ const {
   getUserListings,
   getMarketplaceStats,
   searchListings,
+  calculateShipping,
 } = require("../controllers/marketplaceController");
 
 const {
@@ -44,7 +45,12 @@ router.get("/search", validatePagination, validatePriceRange, searchListings);
 router.get("/stats", getMarketplaceStats);
 
 // 4. GET /api/marketplace/listings/user/:userId - Lấy listings của user
-router.get("/user/:userId", validateUserId, validatePagination, getUserListings);
+router.get(
+  "/user/:userId",
+  validateUserId,
+  validatePagination,
+  getUserListings
+);
 
 // 5. GET /api/marketplace/listings/:id - Lấy listing chi tiết
 // router.get("/:id", validateMongoId, getListingById);
@@ -86,5 +92,7 @@ router.post(
   checkListingOwnership,
   boostListing
 );
+
+router.post("/shipping/calculate", authenticate, calculateShipping);
 
 module.exports = router;

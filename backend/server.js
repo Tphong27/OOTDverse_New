@@ -96,7 +96,6 @@ app.use("/api/marketplace/payment", paymentRoutes);
 app.use("/api/marketplace/shipping", shippingRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/geocode", geocodeRoutes);
-app.use("/api/shipping", shippingRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

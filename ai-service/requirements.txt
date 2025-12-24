@@ -4,3 +4,6 @@ python-dotenv
 google-generativeai
 pillow
 python-multipart
+rembg
+opencv-python
+onnxruntime

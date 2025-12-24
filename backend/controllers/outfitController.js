@@ -732,9 +732,32 @@ exports.aiSuggest = async (req, res) => {
           .select("item_name image_url category_id")
           .populate("category_id", "name");
         
+        // 4.1 Gọi AI Service để tạo ảnh ghép (Visualization) + Lookbook
+        let visualPreview = null;
+        let lookbookUrl = null;
+        try {
+          const vizResponse = await axios.post(`${AI_SERVICE_URL}/visualize`, {
+            items: itemDetails.map(it => ({
+              image_url: it.image_url,
+              category: it.category_id?.name || "Khác"
+            })),
+            outfit_name: suggestion.outfit_name,
+            description: suggestion.description,
+            rationale: suggestion.rationale
+          });
+          if (vizResponse.data.success) {
+            visualPreview = `data:image/png;base64,${vizResponse.data.image_base64}`;
+            lookbookUrl = vizResponse.data.lookbook_url;
+          }
+        } catch (vizError) {
+          console.error("Lỗi tạo ảnh ghép/lookbook:", vizError.message);
+        }
+
         return {
           ...suggestion,
-          items: itemDetails
+          items: itemDetails,
+          visual_preview: visualPreview,
+          lookbook_url: lookbookUrl
         };
       }));
 

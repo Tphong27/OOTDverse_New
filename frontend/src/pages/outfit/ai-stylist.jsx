@@ -19,8 +19,10 @@ import {
   User,
   ArrowRight,
   Zap,
+  Layout,
+  Image as ImageIcon,
 } from "lucide-react";
-import Image from "next/image";
+import NextImage from "next/image";
 
 export default function AIStylistPage() {
   const router = useRouter();
@@ -33,6 +35,7 @@ export default function AIStylistPage() {
   const [error, setError] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [savedOutfits, setSavedOutfits] = useState([]); // Track which ones are saved
+  const [activeViews, setActiveViews] = useState({}); // { [idx]: 'moodboard' | 'lookbook' }
 
   const [formData, setFormData] = useState({
     style: "",
@@ -247,38 +250,92 @@ export default function AIStylistPage() {
   );
 
   const renderResults = () => (
-    <div className="space-y-8 animate-in fade-in zoom-in-95 duration-700">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-3">
-          <Sparkles className="w-8 h-8 text-yellow-500 fill-yellow-500" />
-          Kết quả từ AI Stylist
-        </h2>
-        <p className="text-gray-500">Dưới đây là 3 gợi ý tốt nhất từ tủ đồ của bạn cho dịp {formData.occasion}.</p>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 py-12">
+        <div className="text-center mb-12 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-full text-purple-600 mb-4">
+             <Sparkles className="w-5 h-5 fill-purple-600" />
+             <span className="text-sm font-bold uppercase tracking-widest">Kết quả từ AI Stylist</span>
+          </div>
+          <h2 className="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">Gợi ý dành riêng cho bạn</h2>
+          <p className="text-gray-500 text-lg max-w-2xl mx-auto">Dưới đây là 3 gợi ý tốt nhất từ tủ đồ của bạn cho dịp {formData.occasion}.</p>
+        </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {suggestions.map((suggestion, idx) => (
           <div key={idx} className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col border border-gray-100/50 hover:shadow-2xl transition-all duration-300 group">
-            {/* Image Preview Area */}
-            <div className="p-4 bg-gray-50 flex-1 min-h-[400px]">
-                <div className="grid grid-cols-2 gap-2 h-full">
-                    {suggestion.items.map((item, i) => (
-                        <div key={item._id} className={`relative rounded-xl overflow-hidden shadow-sm ${
-                            suggestion.items.length === 2 ? 'h-[300px]' : 
-                            suggestion.items.length === 3 && i === 0 ? 'col-span-2 h-[200px]' : 'h-[150px]'
-                        }`}>
-                            <img 
-                                src={item.image_url} 
-                                alt={item.item_name}
-                                className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="absolute bottom-1 right-1 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold">
-                                {item.category_id?.name}
+            
+            {/* View Toggle Tabs */}
+            <div className="flex bg-gray-100 p-1 m-4 mb-0 rounded-xl">
+                <button 
+                    onClick={() => setActiveViews(prev => ({...prev, [idx]: 'moodboard'}))}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${(!activeViews[idx] || activeViews[idx] === 'moodboard') ? 'bg-white shadow-sm text-purple-600' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    <Layout className="w-3.5 h-3.5" />
+                    Moodboard
+                </button>
+                <button 
+                    disabled={!suggestion.lookbook_url}
+                    onClick={() => setActiveViews(prev => ({...prev, [idx]: 'lookbook'}))}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeViews[idx] === 'lookbook' ? 'bg-white shadow-sm text-purple-600' : 'text-gray-500 hover:text-gray-700'} ${!suggestion.lookbook_url ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    AI Lookbook
+                </button>
+            </div>
+
+            {/* Visual Preview Area */}
+            <div className="p-4 bg-gray-50 flex-1 min-h-[420px] relative group">
+                {(!activeViews[idx] || activeViews[idx] === 'moodboard') ? (
+                  // MOODBOARD VIEW
+                  suggestion.visual_preview ? (
+                    <div className="relative w-full h-full flex items-center justify-center bg-white rounded-xl shadow-inner overflow-hidden animate-in fade-in zoom-in duration-300">
+                       <img 
+                          src={suggestion.visual_preview} 
+                          alt="Outfit Moodboard"
+                          className="max-w-full max-h-full object-contain p-2"
+                       />
+                       <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-purple-600" />
+                          <span className="text-[10px] font-bold text-gray-700 uppercase tracking-wider">AI Moodboard</span>
+                       </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 h-full">
+                        {suggestion.items.map((item, i) => (
+                            <div key={item._id} className={`relative rounded-xl overflow-hidden shadow-sm ${
+                                suggestion.items.length === 2 ? 'h-[350px]' : 
+                                suggestion.items.length === 3 && i === 0 ? 'col-span-2 h-[200px]' : 'h-[150px]'
+                            }`}>
+                                <img src={item.image_url} alt={item.item_name} className="w-full h-full object-cover" />
                             </div>
-                        </div>
+                        ))}
+                    </div>
+                  )
+                ) : (
+                  // LOOKBOOK VIEW
+                  <div className="relative w-full h-full rounded-xl shadow-inner overflow-hidden bg-white animate-in fade-in zoom-in duration-300">
+                    <img 
+                        src={suggestion.lookbook_url} 
+                        alt="AI Lookbook"
+                        className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className="absolute bottom-4 left-4 right-4">
+                        <p className="text-[10px] text-white/80 font-medium italic">Ảnh minh họa bởi AI duy nhất cho bạn</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Item Thumbnails overlay when using Moodboard */}
+                {(!activeViews[idx] || activeViews[idx] === 'moodboard') && suggestion.visual_preview && (
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 p-1.5 bg-white/60 backdrop-blur-lg rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-500 scale-90 group-hover:scale-100">
+                    {suggestion.items.map((item) => (
+                      <div key={item._id} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden shadow-sm hover:scale-110 transition-transform cursor-help">
+                        <img src={item.image_url} className="w-full h-full object-cover" title={item.item_name} />
+                      </div>
                     ))}
-                </div>
+                  </div>
+                )}
             </div>
 
             {/* Content Area */}

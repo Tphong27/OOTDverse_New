@@ -19,6 +19,29 @@
 - **Maintenance**: Image cropper for wardrobe upload.
 - **Testing**: End-to-end testing of the "Save AI Outfit" flow on mobile.
 
+### c. AI Service
+
+Mở terminal và di chuyển vào thư mục ai-service:
+
+```bash
+cd ai-service
+# Tạo môi trường ảo (nếu chưa có)
+python -m venv venv
+# Kích hoạt (Windows)
+.\venv\Scripts\activate
+
+# Cài đặt thư viện cũ và mới
+pip install -r requirements.txt
+# Cài đặt thêm cho Visual Preview (Phiên bản mới)
+pip install rembg opencv-python onnxruntime
+```
+
+**File môi trường (.env):** Tạo file `.env` trong thư mục `ai-service`:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+```
+
 ## Environment Checklist
 
 - [ ] `.env` in `backend`

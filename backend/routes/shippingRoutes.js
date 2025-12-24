@@ -18,10 +18,9 @@ router.post("/calculate", authenticate, async (req, res) => {
     console.log("🚚 Shipping calculate request:", {
       listing_id,
       address_id,
-      userId
+      userId,
     });
 
-    // Validate
     if (!listing_id || !address_id) {
       return res.status(400).json({
         success: false,
@@ -29,8 +28,11 @@ router.post("/calculate", authenticate, async (req, res) => {
       });
     }
 
-    // Get listing
-    const listing = await MarketplaceListing.findById(listing_id);
+    // Get listing with populated fields
+    const listing = await MarketplaceListing.findById(listing_id)
+      .populate("seller_id")
+      .populate("item_id");
+
     if (!listing) {
       return res.status(404).json({
         success: false,
@@ -53,21 +55,14 @@ router.post("/calculate", authenticate, async (req, res) => {
 
     console.log("✅ Found listing and address:", {
       listing: listing._id,
-      address: address._id
+      address: address._id,
     });
 
-    // Check if can ship to this region
-    const canShip = shippingService.canShipToRegion(
-      listing,
-      address.province.name || address.province
-    );
+    // Check if can ship - nhưng KHÔNG chặn nếu false
+    const destProvinceName = address.province?.name || address.province;
+    const canShip = shippingService.canShipToRegion(listing, destProvinceName);
 
-    if (!canShip) {
-      return res.status(400).json({
-        success: false,
-        error: "Người bán không giao hàng đến khu vực này",
-      });
-    }
+    console.log("🔍 Can ship to region:", canShip);
 
     // Get available shipping methods
     const shippingOptions = await shippingService.getAvailableShippingMethods(
@@ -75,7 +70,15 @@ router.post("/calculate", authenticate, async (req, res) => {
       address
     );
 
-    console.log("📦 Shipping options:", shippingOptions);
+    console.log("📦 Shipping options returned:", shippingOptions.length);
+
+    //s LUÔN trả về success nếu có ít nhất 1 method
+    if (shippingOptions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Người bán không hỗ trợ giao hàng đến khu vực này",
+      });
+    }
 
     res.json({
       success: true,

@@ -1,9 +1,5 @@
 // backend/services/shippingService.js
 
-/**
- * Shipping Service - Handles shipping calculations and validations
- */
-
 const SHIPPING_METHODS = {
   STANDARD: {
     id: "standard",
@@ -11,7 +7,7 @@ const SHIPPING_METHODS = {
     type: "platform",
     min_days: 3,
     max_days: 5,
-    base_fee: 30000, // VND
+    base_fee: 30000,
     per_km: 5000,
     note: "Giao hàng tiêu chuẩn",
   },
@@ -21,7 +17,7 @@ const SHIPPING_METHODS = {
     type: "platform",
     min_days: 1,
     max_days: 2,
-    base_fee: 50000, // VND
+    base_fee: 50000,
     per_km: 8000,
     note: "Giao hàng nhanh trong 1-2 ngày",
   },
@@ -49,10 +45,9 @@ const SHIPPING_METHODS = {
 
 /**
  * Calculate distance between two coordinates (Haversine formula)
- * Returns distance in km
  */
 function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
@@ -70,32 +65,55 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
  * Get available shipping methods for a listing and destination address
  */
 async function getAvailableShippingMethods(listing, destinationAddress) {
+  console.log("📦 getAvailableShippingMethods called");
+  console.log("📦 Listing shipping_config:", listing.shipping_config);
+  console.log("📍 Destination address:", {
+    province: destinationAddress.province,
+    district: destinationAddress.district,
+    ward: destinationAddress.ward,
+  });
+
   const availableMethods = [];
-
-  // Get listing's shipping configuration
   const shippingConfig = listing.shipping_config || {};
-  const sellerLocation = listing.shipping_from_location || listing.location || {};
+  const sellerLocation = listing.shipping_from_location || {};
 
-  // Check each shipping method
+  console.log("🔧 Shipping config:", shippingConfig);
+
   // 1. Platform Shipping (Standard & Express)
   if (shippingConfig.platform_shipping_enabled !== false) {
-    // Check if can ship to this province
-    const shippingRegions = shippingConfig.shipping_regions || [];
-    const destProvince = destinationAddress.province?.name || destinationAddress.province;
+    console.log("✅ Platform shipping is enabled");
     
-    const canShipToProvince = shippingRegions.length === 0 || 
-      shippingRegions.some(region => 
-        region.toLowerCase() === destProvince.toLowerCase() ||
-        (region === "nationwide")
-      );
+    const shippingRegions = shippingConfig.shipping_regions || [];
+    const destProvinceName = destinationAddress.province?.name || destinationAddress.province;
+    
+    console.log("🗺️ Checking regions:");
+    console.log("  - Shipping regions:", shippingRegions);
+    console.log("  - Destination province:", destProvinceName);
+
+    // ⭐ FIX: Nếu không có shipping_regions hoặc có "nationwide", cho phép giao hàng
+    const canShipToProvince = 
+      shippingRegions.length === 0 || 
+      shippingRegions.includes("nationwide") ||
+      shippingRegions.some(region => {
+        const regionLower = (region || "").toLowerCase().trim();
+        const provinceLower = (destProvinceName || "").toLowerCase().trim();
+        
+        console.log(`  - Comparing: "${regionLower}" vs "${provinceLower}"`);
+        
+        // Check exact match or contains
+        return regionLower === provinceLower || 
+               regionLower.includes(provinceLower) ||
+               provinceLower.includes(regionLower);
+      });
+
+    console.log("✅ Can ship to province:", canShipToProvince);
 
     if (canShipToProvince) {
-      // For now, use fixed fee or base calculation without exact coordinates
-      let standardFee = shippingConfig.fixed_shipping_fee || 30000;
-      let expressFee = shippingConfig.fixed_shipping_fee ? 
-        Math.round(shippingConfig.fixed_shipping_fee * 1.5) : 50000;
+      const standardFee = shippingConfig.fixed_shipping_fee || 30000;
+      const expressFee = shippingConfig.fixed_shipping_fee
+        ? Math.round(shippingConfig.fixed_shipping_fee * 1.5)
+        : 50000;
 
-      // Add Standard method
       availableMethods.push({
         ...SHIPPING_METHODS.STANDARD,
         fee: standardFee,
@@ -105,7 +123,6 @@ async function getAvailableShippingMethods(listing, destinationAddress) {
         },
       });
 
-      // Add Express method
       availableMethods.push({
         ...SHIPPING_METHODS.EXPRESS,
         fee: expressFee,
@@ -114,11 +131,19 @@ async function getAvailableShippingMethods(listing, destinationAddress) {
           max_days: SHIPPING_METHODS.EXPRESS.max_days,
         },
       });
+
+      console.log("✅ Added platform shipping methods");
+    } else {
+      console.log("❌ Cannot ship to this province via platform");
     }
+  } else {
+    console.log("⚠️ Platform shipping is disabled");
   }
 
   // 2. Self Delivery
   if (shippingConfig.self_delivery_enabled !== false) {
+    console.log("✅ Self delivery is enabled");
+    
     availableMethods.push({
       ...SHIPPING_METHODS.SELF_DELIVERY,
       fee: 0,
@@ -129,43 +154,74 @@ async function getAvailableShippingMethods(listing, destinationAddress) {
     });
   }
 
-  // 3. Meetup (if both are in same province)
-  const sameProvince = 
-    destinationAddress.province?.name?.toLowerCase() === sellerLocation.province?.toLowerCase() ||
-    destinationAddress.province?.toLowerCase() === sellerLocation.province?.toLowerCase();
+  // 3. Meetup
+  // ⭐ FIX: Luôn cho phép meetup nếu không có config nào khác
+  const destProvinceName = destinationAddress.province?.name || destinationAddress.province;
+  const sellerProvinceName = sellerLocation.province?.name || sellerLocation.province;
+  
+  const sameProvince =
+    destProvinceName &&
+    sellerProvinceName &&
+    (destProvinceName.toLowerCase().trim() === sellerProvinceName.toLowerCase().trim());
 
-  if (sameProvince && shippingConfig.meetup_enabled !== false) {
+  console.log("🤝 Meetup check:");
+  console.log("  - Same province:", sameProvince);
+  console.log("  - Seller province:", sellerProvinceName);
+  console.log("  - Buyer province:", destProvinceName);
+
+  if (sameProvince || shippingConfig.meetup_enabled !== false) {
     availableMethods.push({
       ...SHIPPING_METHODS.MEETUP,
       fee: 0,
-      eta: {
-        min_days: 0,
-        max_days: 0,
-      },
+      eta: null,
     });
+    console.log("✅ Added meetup method");
   }
 
-  return availableMethods.length > 0 ? availableMethods : [SHIPPING_METHODS.MEETUP];
+  console.log("📦 Total available methods:", availableMethods.length);
+  console.log("📦 Methods:", availableMethods.map(m => m.name));
+
+  // ⭐ FIX: Nếu không có method nào, trả về meetup làm fallback
+  if (availableMethods.length === 0) {
+    console.log("⚠️ No methods available, adding meetup as fallback");
+    return [SHIPPING_METHODS.MEETUP];
+  }
+
+  return availableMethods;
 }
 
 /**
  * Check if seller can ship to a specific region
  */
 function canShipToRegion(listing, provinceName) {
+  console.log("🔍 canShipToRegion called");
+  console.log("  - Province:", provinceName);
+  
   const shippingConfig = listing.shipping_config || {};
   const shippingRegions = shippingConfig.shipping_regions || [];
 
-  // If no regions specified, can ship everywhere
-  if (shippingRegions.length === 0) {
+  console.log("  - Shipping regions:", shippingRegions);
+
+  // ⭐ FIX: Nếu không có regions hoặc có "nationwide", cho phép
+  if (shippingRegions.length === 0 || shippingRegions.includes("nationwide")) {
+    console.log("  ✅ Can ship (no restrictions or nationwide)");
     return true;
   }
 
   // Check if province is in allowed regions
-  return shippingRegions.some(
-    region => 
-      region === provinceName || 
-      region.toLowerCase() === provinceName.toLowerCase()
-  );
+  const canShip = shippingRegions.some((region) => {
+    const regionLower = (region || "").toLowerCase().trim();
+    const provinceLower = (provinceName || "").toLowerCase().trim();
+    
+    return (
+      regionLower === provinceLower ||
+      regionLower.includes(provinceLower) ||
+      provinceLower.includes(regionLower)
+    );
+  });
+
+  console.log("  ✅ Can ship result:", canShip);
+  return canShip;
 }
 
 /**

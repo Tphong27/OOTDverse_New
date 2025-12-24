@@ -4,7 +4,7 @@ from models.request_models import ImageRequest, StylistRequest
 from models.response_models import AnalysisResponse, StylistResponse, VisualizationRequest, VisualizationResponse
 from services.analyzer import analyze_image_with_gemini
 from services.stylist import generate_outfit_suggestions
-from services.visualizer import create_moodboard, pil_to_base64, generate_lookbook_image
+from services.visualizer import create_moodboard, pil_to_base64, generate_lookbook_image_v2
 
 app = FastAPI(title="OOTDverse AI Service")
 
@@ -13,15 +13,15 @@ app = FastAPI(title="OOTDverse AI Service")
 @app.post("/visualize", response_model=VisualizationResponse)
 async def get_outfit_visualization(request: VisualizationRequest):
     try:
-        # 1. Tạo moodboard từ ảnh thật
+        # 1. Tạo moodboard từ ảnh thật (Dùng Grid layout đã ổn định)
         items_data = [item.dict() for item in request.items]
         moodboard_img = create_moodboard(items_data)
         img_b64 = pil_to_base64(moodboard_img)
         
-        # 2. Sinh ảnh Lookbook từ AI (Ảnh minh họa người mẫu)
-        lookbook_url = generate_lookbook_image(
+        # 2. Sinh ảnh Lookbook từ AI (Phiên bản Precision Vision)
+        lookbook_url = generate_lookbook_image_v2(
             outfit_name=request.outfit_name,
-            items_description=request.description,
+            items=items_data,
             rationale=request.rationale
         )
         

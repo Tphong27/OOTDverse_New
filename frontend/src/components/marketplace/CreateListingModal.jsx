@@ -1,6 +1,6 @@
 //frontend/src/components/marketplace/CreateListingModal.jsx
 import { useState, useEffect } from "react";
-import { X, Check, AlertCircle } from "lucide-react";
+import { X, Check, AlertCircle, Truck } from "lucide-react";
 import { useMarketplace } from "@/context/MarketplaceContext";
 import { useWardrobe } from "@/context/WardrobeContext";
 import { useAuth } from "@/context/AuthContext";
@@ -135,7 +135,6 @@ export default function CreateListingModal({ isOpen, onClose, onSuccess }) {
             <X size={24} />
           </button>
         </div>
-
         {/* Content */}
         <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -338,43 +337,238 @@ export default function CreateListingModal({ isOpen, onClose, onSuccess }) {
                   </p>
                 </div>
 
-                {/* Shipping */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phương thức vận chuyển
+                {/* === SHIPPING CONFIGURATION === */}
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 space-y-4">
+                  <h3 className="text-lg font-semibold text-blue-900 flex items-center gap-2">
+                    <Truck size={20} />
+                    Giao hàng
+                  </h3>
+
+                  {/* Platform Shipping */}
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={
+                          formData.shipping_config?.platform_shipping_enabled ??
+                          true
+                        }
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            shipping_config: {
+                              ...prev.shipping_config,
+                              platform_shipping_enabled: e.target.checked,
+                            },
+                          }))
+                        }
+                        className="w-5 h-5 text-pink-600 rounded focus:ring-2 focus:ring-pink-500"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 group-hover:text-pink-600 transition-colors">
+                          Cho phép vận chuyển qua nền tảng
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          GHN, GHTK, Viettel Post (Người mua chọn & thanh toán
+                          phí ship)
+                        </p>
+                      </div>
                     </label>
-                    <select
-                      name="shipping_method"
-                      value={formData.shipping_method}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    >
-                      <option value="ghn">Giao Hàng Nhanh</option>
-                      <option value="ghtk">Giao Hàng Tiết Kiệm</option>
-                      <option value="viettel_post">Viettel Post</option>
-                      <option value="self_delivery">Tự giao hàng</option>
-                    </select>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phí ship (VNĐ)
+                  {/* Self Delivery */}
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={
+                          formData.shipping_config?.self_delivery_enabled ??
+                          false
+                        }
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            shipping_config: {
+                              ...prev.shipping_config,
+                              self_delivery_enabled: e.target.checked,
+                            },
+                          }))
+                        }
+                        className="w-5 h-5 text-pink-600 rounded focus:ring-2 focus:ring-pink-500"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 group-hover:text-pink-600 transition-colors">
+                          Cho phép tự giao hàng / Gặp mặt
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Bạn tự vận chuyển hoặc hẹn gặp người mua
+                        </p>
+                      </div>
+                    </label>
+
+                    {/* Fixed Shipping Fee (if self delivery enabled) */}
+                    {formData.shipping_config?.self_delivery_enabled && (
+                      <div className="ml-8 space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Phí ship cố định (VNĐ) - Tùy chọn
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={
+                            formData.shipping_config?.fixed_shipping_fee || ""
+                          }
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              shipping_config: {
+                                ...prev.shipping_config,
+                                fixed_shipping_fee:
+                                  parseFloat(e.target.value) || 0,
+                              },
+                            }))
+                          }
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500">
+                          Để trống hoặc nhập 0 nếu miễn phí ship
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Shipping Regions */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Khu vực giao hàng *
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.shipping_config?.shipping_regions?.includes(
+                            "hanoi"
+                          )}
+                          onChange={(e) => {
+                            const regions =
+                              formData.shipping_config?.shipping_regions || [];
+                            setFormData((prev) => ({
+                              ...prev,
+                              shipping_config: {
+                                ...prev.shipping_config,
+                                shipping_regions: e.target.checked
+                                  ? [...regions, "hanoi"]
+                                  : regions.filter((r) => r !== "hanoi"),
+                              },
+                            }));
+                          }}
+                          className="w-4 h-4 text-pink-600 rounded"
+                        />
+                        <span className="text-sm text-gray-700">Hà Nội</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.shipping_config?.shipping_regions?.includes(
+                            "hcm"
+                          )}
+                          onChange={(e) => {
+                            const regions =
+                              formData.shipping_config?.shipping_regions || [];
+                            setFormData((prev) => ({
+                              ...prev,
+                              shipping_config: {
+                                ...prev.shipping_config,
+                                shipping_regions: e.target.checked
+                                  ? [...regions, "hcm"]
+                                  : regions.filter((r) => r !== "hcm"),
+                              },
+                            }));
+                          }}
+                          className="w-4 h-4 text-pink-600 rounded"
+                        />
+                        <span className="text-sm text-gray-700">
+                          TP. Hồ Chí Minh
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.shipping_config?.shipping_regions?.includes(
+                            "nationwide"
+                          )}
+                          onChange={(e) => {
+                            const regions =
+                              formData.shipping_config?.shipping_regions || [];
+                            setFormData((prev) => ({
+                              ...prev,
+                              shipping_config: {
+                                ...prev.shipping_config,
+                                shipping_regions: e.target.checked
+                                  ? [...regions, "nationwide"]
+                                  : regions.filter((r) => r !== "nationwide"),
+                              },
+                            }));
+                          }}
+                          className="w-4 h-4 text-pink-600 rounded"
+                        />
+                        <span className="text-sm text-gray-700">Toàn quốc</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Shipping Note */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Ghi chú về giao hàng
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="VD: Chỉ giao trong giờ hành chính, cần hẹn trước..."
+                      value={formData.shipping_config?.shipping_note || ""}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          shipping_config: {
+                            ...prev.shipping_config,
+                            shipping_note: e.target.value,
+                          },
+                        }))
+                      }
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Location for shipping calculation */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Địa điểm lấy hàng (để tính phí ship)
                     </label>
                     <input
-                      type="number"
-                      name="shipping_fee"
-                      value={formData.shipping_fee}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      type="text"
+                      placeholder="Tỉnh/Thành phố"
+                      value={formData.shipping_from_location?.province || ""}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          shipping_from_location: {
+                            ...prev.shipping_from_location,
+                            province: e.target.value,
+                          },
+                        }))
+                      }
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                     />
                   </div>
                 </div>
+                
               </div>
             )}
           </form>
         </div>
-
         {/* Footer */}
         {step === 2 && (
           <div className="p-6 border-t border-gray-200 flex gap-3">

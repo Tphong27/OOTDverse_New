@@ -22,7 +22,6 @@ const MarketplaceListingSchema = new mongoose.Schema(
       type: String,
       enum: ["sell", "swap", "both"],
       default: "sell",
-      // sell: chỉ bán, swap: chỉ đổi, both: cả 2
     },
 
     // === Pricing ===
@@ -30,7 +29,6 @@ const MarketplaceListingSchema = new mongoose.Schema(
       type: Number,
       min: [0, "Giá gốc không được âm"],
       default: null,
-      // Giá mua ban đầu (từ Item model)
     },
 
     selling_price: {
@@ -46,7 +44,6 @@ const MarketplaceListingSchema = new mongoose.Schema(
       type: String,
       enum: ["new", "like_new", "good", "fair", "worn"],
       required: [true, "Tình trạng là bắt buộc"],
-      // new: Mới 100%, like_new: 95-99%, good: 80-94%, fair: 60-79%, worn: <60%
     },
 
     condition_note: {
@@ -61,7 +58,7 @@ const MarketplaceListingSchema = new mongoose.Schema(
       required: [true, "Mô tả là bắt buộc"],
     },
 
-    // === Swap Preferences (nếu listing_type = swap hoặc both) ===
+    // === Swap Preferences ===
     swap_preferences: {
       categories: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -78,19 +75,42 @@ const MarketplaceListingSchema = new mongoose.Schema(
       },
     },
 
-    // === Shipping ===
-    shipping_method: {
-      type: String,
-      enum: ["ghn", "ghtk", "viettel_post", "self_delivery", "meetup"],
-      default: "ghn",
+    // === Shipping Configuration (Seller Settings) ===
+    shipping_config: {
+      // Cho phép vận chuyển qua nền tảng
+      platform_shipping_enabled: {
+        type: Boolean,
+        default: true,
+      },
+      
+      // Cho phép tự giao hàng / meetup
+      self_delivery_enabled: {
+        type: Boolean,
+        default: false,
+      },
+      
+      // Khu vực giao hàng
+      shipping_regions: {
+        type: [String],
+        enum: ["hanoi", "hcm", "nationwide"],
+        default: ["nationwide"],
+      },
+      
+      // Phí ship cố định (nếu seller muốn)
+      fixed_shipping_fee: {
+        type: Number,
+        min: 0,
+        default: 0,
+      },
+      
+      // Ghi chú về shipping
+      shipping_note: {
+        type: String,
+        maxlength: 500,
+      },
     },
 
-    shipping_fee: {
-      type: Number,
-      min: [0, "Phí ship không được âm"],
-      default: 0,
-    },
-
+    // === Location (for shipping calculation) ===
     shipping_from_location: {
       province: String,
       district: String,
@@ -139,7 +159,6 @@ const MarketplaceListingSchema = new mongoose.Schema(
     boost_count: {
       type: Number,
       default: 0,
-      // Số lần boost (đẩy tin lên top)
     },
 
     last_boosted_at: {
@@ -150,7 +169,7 @@ const MarketplaceListingSchema = new mongoose.Schema(
     // === Moderation ===
     is_approved: {
       type: Boolean,
-      default: true, // Auto-approve, admin review later
+      default: true,
     },
 
     rejection_reason: {
@@ -183,12 +202,10 @@ MarketplaceListingSchema.index({ is_featured: 1, last_boosted_at: -1 });
 
 // === Pre-save: Validation ===
 MarketplaceListingSchema.pre("save", async function () {
-  // Nếu listing_type = swap thì selling_price không bắt buộc
   if (this.listing_type === "swap") {
     this.selling_price = undefined;
   }
 
-  // Nếu sold/swapped thì set sold_at
   if (
     (this.status === "sold" || this.status === "swapped") &&
     !this.sold_at
@@ -197,42 +214,35 @@ MarketplaceListingSchema.pre("save", async function () {
   }
 });
 
-
 // === Methods ===
-// Increment view count
 MarketplaceListingSchema.methods.incrementView = function() {
   this.view_count += 1;
   return this.save();
 };
 
-// Increment favorite count
 MarketplaceListingSchema.methods.toggleFavorite = function(increment = true) {
   this.favorite_count += increment ? 1 : -1;
   if (this.favorite_count < 0) this.favorite_count = 0;
   return this.save();
 };
 
-// Increment inquiry count
 MarketplaceListingSchema.methods.incrementInquiry = function() {
   this.inquiry_count += 1;
   return this.save();
 };
 
-// Boost listing (đẩy lên top)
 MarketplaceListingSchema.methods.boost = function() {
   this.boost_count += 1;
   this.last_boosted_at = new Date();
   return this.save();
 };
 
-// Mark as sold
 MarketplaceListingSchema.methods.markAsSold = function() {
   this.status = "sold";
   this.sold_at = new Date();
   return this.save();
 };
 
-// Mark as swapped
 MarketplaceListingSchema.methods.markAsSwapped = function() {
   this.status = "swapped";
   this.sold_at = new Date();

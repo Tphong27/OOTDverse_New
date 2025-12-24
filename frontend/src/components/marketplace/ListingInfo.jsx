@@ -181,40 +181,6 @@ export default function ListingInfo({ listing }) {
         </dl>
       </div>
 
-      {/* Shipping Info */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Truck size={20} />
-          Thông tin vận chuyển
-        </h2>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Phương thức</span>
-            <span className="text-gray-900 font-medium">
-              {getShippingMethodLabel(listing.shipping_method)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Phí vận chuyển</span>
-            <span className="text-gray-900 font-medium">
-              {listing.shipping_fee > 0
-                ? new Intl.NumberFormat("vi-VN").format(listing.shipping_fee) + " đ"
-                : "Miễn phí"}
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
-          <Shield className="text-blue-600 flex-shrink-0 mt-1" size={20} />
-          <div>
-            <p className="text-sm font-medium text-blue-800 mb-1">Bảo vệ người mua</p>
-            <p className="text-xs text-blue-700">
-              Hoàn tiền nếu sản phẩm không đúng mô tả hoặc không nhận được hàng
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Swap Preferences (if applicable) */}
       {listing.listing_type !== "sell" && listing.swap_preferences && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

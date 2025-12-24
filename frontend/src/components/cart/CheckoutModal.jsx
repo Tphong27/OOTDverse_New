@@ -1,26 +1,18 @@
 // frontend/src/components/cart/CheckoutModal.jsx
 import { useState, useEffect } from "react";
-import {
-  X,
-  MapPin,
-  Truck,
-  CreditCard,
-  AlertCircle,
-  CheckCircle,
-  Loader,
-} from "lucide-react";
+import { X, MapPin, CreditCard, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useOrder } from "@/context/OrderContext";
 import { useRouter } from "next/router";
+import { getDefaultAddress } from "@/services/addressService";
+import AddressListModal from "@/components/address/AddressListModal";
+import ShippingSelector from "@/components/orders/ShippingSelector";
 import {
   createVNPayPayment,
   createMoMoPayment,
-  uploadTransferProof,
   confirmCODPayment,
 } from "@/services/paymentService";
-import { getDefaultAddress } from "@/services/addressService";
-import AddressListModal from "@/components/address/AddressListModal";
 
 export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
   const router = useRouter();
@@ -35,47 +27,38 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
   const [address, setAddress] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
 
+  const [selectedShipping, setSelectedShipping] = useState(null);
+  const [shippingFee, setShippingFee] = useState(0);
+
   const [formData, setFormData] = useState({
-    shipping_method: "ghn",
     payment_method: "vnpay",
     buyer_note: "",
-    shipping_address_id: null,
   });
 
-  const [transferProof, setTransferProof] = useState(null);
-  const [transferNote, setTransferNote] = useState("");
-  const [previewUrl, setPreviewUrl] = useState(null);
-
-  // ✅ Load default address when modal opens
+  // Load default address
   useEffect(() => {
     async function loadAddress() {
       if (!isOpen) return;
 
       try {
         const res = await getDefaultAddress();
-        console.log("📍 Default address loaded:", res);
-
         if (res?.data) {
           setAddress(res.data);
-          setFormData((prev) => ({
-            ...prev,
-            shipping_address_id: res.data._id,
-          }));
-        } else {
-          setAddress(null);
-          setFormData((prev) => ({
-            ...prev,
-            shipping_address_id: null,
-          }));
         }
       } catch (err) {
         console.error("Load address failed", err);
-        setAddress(null);
       }
     }
 
     loadAddress();
   }, [isOpen]);
+
+  // Update shipping fee when shipping method changes
+  useEffect(() => {
+    if (selectedShipping) {
+      setShippingFee(selectedShipping.fee || 0);
+    }
+  }, [selectedShipping]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -89,54 +72,47 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError("File không được vượt quá 5MB");
-        return;
-      }
-      setTransferProof(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      setError(null);
-    }
-  };
-
-  // Handle address selection from modal
   const handleSelectAddress = (selectedAddress) => {
-    console.log("✅ Address selected in CheckoutModal:", selectedAddress);
     setAddress(selectedAddress);
-    setFormData((prev) => ({
-      ...prev,
-      shipping_address_id: selectedAddress._id,
-    }));
     setShowAddressModal(false);
   };
 
+  const handleNextStep = () => {
+    if (step === 1 && !address) {
+      setError("Vui lòng chọn địa chỉ giao hàng");
+      return;
+    }
+
+    if (step === 2 && !selectedShipping) {
+      setError("Vui lòng chọn phương thức vận chuyển");
+      return;
+    }
+
+    setError(null);
+    setStep(step + 1);
+  };
+
   const handleCheckout = async () => {
+    if (!selectedShipping) {
+      setError("Vui lòng chọn phương thức vận chuyển");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      if (!formData.shipping_address_id) {
-        throw new Error("Vui lòng chọn địa chỉ giao hàng");
-      }
-
-      console.log(
-        "🛒 Creating orders with address ID:",
-        formData.shipping_address_id
-      );
-
       const createdOrders = [];
 
       for (const item of items) {
         const orderData = {
           listing_id: item.listing_id,
-          shipping_address_id: formData.shipping_address_id,
+          shipping_address_id: address._id,
+          shipping_method: selectedShipping.id,
+          shipping_fee: selectedShipping.fee,
           payment_method: formData.payment_method,
+          buyer_note: formData.buyer_note,
         };
-
-        console.log("📦 Order data:", orderData);
 
         const order = await placeOrder(orderData);
         createdOrders.push(order);
@@ -149,16 +125,14 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
         formData.payment_method === "momo"
       ) {
         await handleOnlinePayment(createdOrders[0]);
-      } else if (formData.payment_method === "bank_transfer") {
-        await handleBankTransfer(createdOrders[0]);
       } else if (formData.payment_method === "cod") {
         for (const order of createdOrders) {
           await confirmCODPayment(order._id);
         }
-        setStep(3);
+        setStep(4);
       }
     } catch (err) {
-      console.error("❌ Checkout error:", err);
+      console.error("Checkout error:", err);
       setError(err.message || err.error || "Không thể xử lý thanh toán");
     } finally {
       setLoading(false);
@@ -193,36 +167,26 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
     }
   };
 
-  const handleBankTransfer = async (order) => {
-    if (!transferProof) {
-      throw new Error("Vui lòng tải lên ảnh xác nhận chuyển khoản");
-    }
-    await uploadTransferProof(order._id, {
-      image: transferProof,
-      note: transferNote,
-    });
-    setStep(3);
-  };
-
-  const totalAmount = items.reduce(
-    (sum, item) => sum + item.price + item.shipping_fee + item.price * 0.05,
-    0
-  );
+  const itemTotal = items.reduce((sum, item) => sum + item.price, 0);
+  const platformFee = items.reduce((sum, item) => sum + item.price * 0.05, 0);
+  const totalAmount = itemTotal + shippingFee + platformFee;
 
   if (!isOpen) return null;
 
   const formatAddress = (addr) => {
     if (!addr) return "";
-
     const parts = [
       addr.street,
       addr.ward?.name || addr.ward,
       addr.district?.name || addr.district,
       addr.province?.name || addr.province,
     ].filter(Boolean);
-
     return parts.join(", ");
   };
+
+  // ⭐ DEBUG: Log items để xem cấu trúc
+  console.log("🛒 CheckoutModal - Items:", items);
+  console.log("🛒 CheckoutModal - First item:", items[0]);
 
   return (
     <>
@@ -230,17 +194,18 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
         <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full my-8">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {step === 1
-                ? "Thông tin giao hàng"
-                : step === 2
-                ? "Phương thức thanh toán"
-                : "Hoàn tất"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full"
-            >
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {step === 1 && "Địa chỉ giao hàng"}
+                {step === 2 && "Phương thức vận chuyển"}
+                {step === 3 && "Thanh toán"}
+                {step === 4 && "Hoàn tất"}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Bước {step}/4
+              </p>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
               <X size={24} />
             </button>
           </div>
@@ -254,6 +219,7 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
               </div>
             )}
 
+            {/* Step 1: Address */}
             {step === 1 && (
               <>
                 {/* Items Summary */}
@@ -263,10 +229,7 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
                   </h3>
                   <div className="space-y-2">
                     {items.map((item) => (
-                      <div
-                        key={item.listing_id}
-                        className="flex items-center gap-3"
-                      >
+                      <div key={item.listing_id} className="flex items-center gap-3">
                         <img
                           src={item.item_image}
                           className="w-12 h-12 rounded object-cover"
@@ -284,11 +247,11 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
                   </div>
                 </div>
 
-                {/* Shipping Address */}
+                {/* Address Selection */}
                 <div className="space-y-2">
                   <h3 className="font-semibold flex items-center gap-2">
                     <MapPin size={20} />
-                    Thông tin và địa chỉ giao hàng
+                    Địa chỉ giao hàng
                   </h3>
 
                   {address ? (
@@ -311,44 +274,44 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
                       onClick={() => setShowAddressModal(true)}
                       className="border-dashed border-2 border-gray-300 p-4 rounded-lg w-full text-pink-500 hover:border-pink-500 transition-colors"
                     >
-                      + Thêm thông tin và địa chỉ giao hàng
+                      + Thêm địa chỉ giao hàng
                     </button>
                   )}
-                </div>
-
-                {/* Shipping Method */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    <Truck size={20} />
-                    Phương thức vận chuyển
-                  </h3>
-                  <select
-                    name="shipping_method"
-                    value={formData.shipping_method}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500"
-                  >
-                    <option value="ghn">Giao Hàng Nhanh</option>
-                    <option value="ghtk">Giao Hàng Tiết Kiệm</option>
-                    <option value="viettel_post">Viettel Post</option>
-                  </select>
                 </div>
               </>
             )}
 
-            {step === 2 && (
+            {/* Step 2: Shipping Method */}
+            {step === 2 && address && (
               <>
-                {/* Payment Methods */}
+                {/* ⭐ DEBUG LOG */}
+                {console.log("🚚 Rendering ShippingSelector with:")}
+                {console.log("  - items[0]:", items[0])}
+                {console.log("  - items[0].listing_id:", items[0]?.listing_id)}
+                {console.log("  - address:", address)}
+                {console.log("  - address._id:", address?._id)}
+                
+                <ShippingSelector
+                  listing={{ _id: items[0].listing_id }}
+                  buyerAddress={address}
+                  onSelect={setSelectedShipping}
+                  selectedMethod={selectedShipping}
+                />
+              </>
+            )}
+
+            {/* Step 3: Payment Method */}
+            {step === 3 && (
+              <>
                 <div className="space-y-4">
                   <h3 className="font-semibold flex items-center gap-2">
                     <CreditCard size={20} />
-                    Chọn phương thức thanh toán
+                    Phương thức thanh toán
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     {[
                       { id: "vnpay", name: "VNPay", icon: "💳" },
                       { id: "momo", name: "MoMo", icon: "👛" },
-                      { id: "bank_transfer", name: "Chuyển khoản", icon: "🏦" },
                       { id: "cod", name: "COD", icon: "💵" },
                     ].map((method) => (
                       <button
@@ -371,94 +334,44 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
                       </button>
                     ))}
                   </div>
-
-                  {formData.payment_method === "bank_transfer" && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <h4 className="font-semibold text-green-900 mb-2">
-                        Thông tin chuyển khoản
-                      </h4>
-                      <div className="space-y-1 text-sm text-green-800">
-                        <p>
-                          <strong>Ngân hàng:</strong> Vietcombank
-                        </p>
-                        <p>
-                          <strong>STK:</strong> 1234567890
-                        </p>
-                        <p>
-                          <strong>Chủ TK:</strong> FASHIONHUB CO., LTD
-                        </p>
-                        <p>
-                          <strong>Số tiền:</strong> {formatPrice(totalAmount)}
-                        </p>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="mt-3 w-full"
-                      />
-                      {previewUrl && (
-                        <img
-                          src={previewUrl}
-                          className="mt-2 max-h-32 rounded"
-                        />
-                      )}
-                    </div>
-                  )}
                 </div>
 
-                {/* Summary */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Tổng tiền hàng:</span>
-                      <span className="font-semibold">
-                        {formatPrice(items.reduce((s, i) => s + i.price, 0))}
-                      </span>
+                      <span className="font-semibold">{formatPrice(itemTotal)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Phí vận chuyển:</span>
-                      <span className="font-semibold">
-                        {formatPrice(
-                          items.reduce((s, i) => s + i.shipping_fee, 0)
-                        )}
-                      </span>
+                      <span className="font-semibold">{formatPrice(shippingFee)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Phí dịch vụ:</span>
-                      <span className="font-semibold">
-                        {formatPrice(
-                          items.reduce((s, i) => s + i.price * 0.05, 0)
-                        )}
-                      </span>
+                      <span className="font-semibold">{formatPrice(platformFee)}</span>
                     </div>
                     <div className="border-t pt-2 flex justify-between font-bold text-lg">
                       <span>Tổng cộng:</span>
-                      <span className="text-pink-600">
-                        {formatPrice(totalAmount)}
-                      </span>
+                      <span className="text-pink-600">{formatPrice(totalAmount)}</span>
                     </div>
                   </div>
                 </div>
               </>
             )}
 
-            {step === 3 && (
+            {/* Step 4: Success */}
+            {step === 4 && (
               <div className="text-center py-8">
                 <CheckCircle className="w-20 h-20 text-green-600 mx-auto mb-4" />
-                <h3 className="text-2xl font-bold mb-2">
-                  Đặt hàng thành công!
-                </h3>
-                <p className="text-gray-600">
-                  Đơn hàng của bạn đang được xử lý
-                </p>
+                <h3 className="text-2xl font-bold mb-2">Đặt hàng thành công!</h3>
+                <p className="text-gray-600">Đơn hàng của bạn đang được xử lý</p>
               </div>
             )}
           </div>
 
           {/* Footer */}
           <div className="p-6 border-t flex gap-3">
-            {step > 1 && step < 3 && (
+            {step > 1 && step < 4 && (
               <button
                 onClick={() => setStep(step - 1)}
                 className="flex-1 py-3 rounded-lg border border-gray-300 font-semibold hover:bg-gray-50"
@@ -468,22 +381,23 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
             )}
             {step < 3 && (
               <button
-                onClick={step === 1 ? () => setStep(2) : handleCheckout}
-                disabled={
-                  loading || (step === 1 && !formData.shipping_address_id)
-                }
-                className="flex-1 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleNextStep}
+                disabled={loading || (step === 1 && !address) || (step === 2 && !selectedShipping)}
+                className="flex-1 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-600 disabled:opacity-50"
               >
-                {loading ? (
-                  <Loader className="animate-spin mx-auto" size={20} />
-                ) : step === 1 ? (
-                  "Tiếp tục"
-                ) : (
-                  "Xác nhận thanh toán"
-                )}
+                Tiếp tục
               </button>
             )}
             {step === 3 && (
+              <button
+                onClick={handleCheckout}
+                disabled={loading}
+                className="flex-1 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-600 disabled:opacity-50"
+              >
+                {loading ? <Loader className="animate-spin mx-auto" size={20} /> : "Xác nhận thanh toán"}
+              </button>
+            )}
+            {step === 4 && (
               <button
                 onClick={() => {
                   onSuccess();
@@ -498,7 +412,6 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
         </div>
       </div>
 
-      {/* Address List Modal with proper callback */}
       <AddressListModal
         isOpen={showAddressModal}
         onClose={() => setShowAddressModal(false)}

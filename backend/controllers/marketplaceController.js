@@ -623,3 +623,33 @@ exports.searchListings = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+exports.calculateShipping = async (req, res) => {
+  try {
+    const { addressId, items } = req.body;
+
+    if (!addressId || !items?.length) {
+      return res.status(400).json({ message: "Invalid shipping data" });
+    }
+
+    // TẠM MOCK (sau này gắn GHN/GHTK)
+    const options = [
+      {
+        id: "standard",
+        name: "Giao hàng tiêu chuẩn",
+        fee: 30000,
+        eta: "3-5 ngày",
+      },
+      {
+        id: "express",
+        name: "Giao hàng nhanh",
+        fee: 50000,
+        eta: "1-2 ngày",
+      },
+    ];
+
+    res.json({ options });
+  } catch (err) {
+    res.status(500).json({ message: "Shipping calculation failed" });
+  }
+};

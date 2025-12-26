@@ -223,6 +223,85 @@ const OrderSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+
+    // === Meet Up Info ===
+    meetup_info: {
+      // Nếu shipping_method = "meetup"
+      status: {
+        type: String,
+        enum: ["pending", "proposed", "confirmed", "completed", "cancelled"],
+        default: "pending",
+      },
+
+      // Địa điểm đề xuất bởi buyer
+      buyer_proposal: {
+        location_name: String,
+        address: String,
+        coordinates: {
+          lat: Number,
+          lng: Number,
+        },
+        proposed_time: Date,
+        note: String,
+      },
+
+      // Phản hồi từ seller
+      seller_response: {
+        accepted: Boolean,
+        counter_proposal: {
+          location_name: String,
+          address: String,
+          coordinates: {
+            lat: Number,
+            lng: Number,
+          },
+          proposed_time: Date,
+          note: String,
+        },
+        responded_at: Date,
+      },
+
+      // Địa điểm cuối cùng (sau khi cả 2 đồng ý)
+      confirmed_location: {
+        location_name: String,
+        address: String,
+        coordinates: {
+          lat: Number,
+          lng: Number,
+        },
+        meeting_time: Date,
+        confirmed_at: Date,
+      },
+
+      // Chat/messages giữa buyer và seller
+      messages: [
+        {
+          sender: {
+            type: String,
+            enum: ["buyer", "seller"],
+          },
+          message: String,
+          created_at: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+
+      // Xác nhận đã gặp
+      met_confirmation: {
+        buyer_confirmed: {
+          type: Boolean,
+          default: false,
+        },
+        buyer_confirmed_at: Date,
+        seller_confirmed: {
+          type: Boolean,
+          default: false,
+        },
+        seller_confirmed_at: Date,
+      },
+    },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

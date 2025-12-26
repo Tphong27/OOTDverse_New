@@ -14,6 +14,7 @@ import {
 import OrderTimeline from "./OrderTimeline";
 import OrderStatusManager from "./OrderStatusManager";
 import PaymentModal from "./PaymentModal";
+import MeetUpManager from "./MeetUpManager";
 import { useOrder } from "@/context/OrderContext";
 
 export default function OrderDetailModal({ order, role, isOpen, onClose }) {
@@ -58,6 +59,15 @@ export default function OrderDetailModal({ order, role, isOpen, onClose }) {
     } else if (data.action === "open_cancel") {
       setShowCancelForm(true);
     } else if (data.success) {
+      // Reload order data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  };
+
+  const handleMeetUpUpdate = (data) => {
+    if (data.success) {
       // Reload order data
       setTimeout(() => {
         window.location.reload();
@@ -165,6 +175,14 @@ export default function OrderDetailModal({ order, role, isOpen, onClose }) {
               </div>
             </div>
           </div>
+
+          {order.shipping_method === "meetup" && order.meetup_info && (
+            <MeetUpManager
+              order={order}
+              role={role}
+              onUpdate={handleMeetUpUpdate}
+            />
+          )}
 
           {/* Partner Info */}
           {partner && (

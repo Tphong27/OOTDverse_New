@@ -1,6 +1,9 @@
 // frontend/src/components/cart/CheckoutModal.jsx
 import { useState, useEffect } from "react";
-import { X, MapPin, CreditCard, AlertCircle, CheckCircle, Loader } from "lucide-react";
+import { 
+  X, MapPin, CreditCard, AlertCircle, CheckCircle, Loader,
+  Calendar, MessageCircle, Clock, Navigation
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useOrder } from "@/context/OrderContext";
@@ -8,6 +11,7 @@ import { useRouter } from "next/router";
 import { getDefaultAddress } from "@/services/addressService";
 import AddressListModal from "@/components/address/AddressListModal";
 import ShippingSelector from "@/components/orders/ShippingSelector";
+import MeetUpSelector from "@/components/orders/MeetUpSelector"; // NEW
 import {
   createVNPayPayment,
   createMoMoPayment,
@@ -29,6 +33,8 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
 
   const [selectedShipping, setSelectedShipping] = useState(null);
   const [shippingFee, setShippingFee] = useState(0);
+  
+  const [meetUpData, setMeetUpData] = useState(null);
 
   const [formData, setFormData] = useState({
     payment_method: "vnpay",
@@ -88,6 +94,12 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
       return;
     }
 
+    // Validate meet up data if method is meetup
+    if (step === 2 && selectedShipping?.id === "meetup" && !meetUpData) {
+      setError("Vui lòng chọn địa điểm và thời gian gặp mặt");
+      return;
+    }
+
     setError(null);
     setStep(step + 1);
   };
@@ -112,6 +124,12 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
           shipping_fee: selectedShipping.fee,
           payment_method: formData.payment_method,
           buyer_note: formData.buyer_note,
+          // Include meetup data if applicable
+          ...(selectedShipping.id === "meetup" && meetUpData && {
+            meetup_info: {
+              buyer_proposal: meetUpData
+            }
+          })
         };
 
         const order = await placeOrder(orderData);
@@ -184,10 +202,6 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
     return parts.join(", ");
   };
 
-  // ⭐ DEBUG: Log items để xem cấu trúc
-  console.log("🛒 CheckoutModal - Items:", items);
-  console.log("🛒 CheckoutModal - First item:", items[0]);
-
   return (
     <>
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -201,9 +215,7 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
                 {step === 3 && "Thanh toán"}
                 {step === 4 && "Hoàn tất"}
               </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Bước {step}/4
-              </p>
+              <p className="text-sm text-gray-600 mt-1">Bước {step}/4</p>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
               <X size={24} />
@@ -283,21 +295,24 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
 
             {/* Step 2: Shipping Method */}
             {step === 2 && address && (
-              <>
-                {/* ⭐ DEBUG LOG */}
-                {console.log("🚚 Rendering ShippingSelector with:")}
-                {console.log("  - items[0]:", items[0])}
-                {console.log("  - items[0].listing_id:", items[0]?.listing_id)}
-                {console.log("  - address:", address)}
-                {console.log("  - address._id:", address?._id)}
-                
+              <div className="space-y-6">
                 <ShippingSelector
                   listing={{ _id: items[0].listing_id }}
                   buyerAddress={address}
                   onSelect={setSelectedShipping}
                   selectedMethod={selectedShipping}
                 />
-              </>
+
+                {/* Meet Up Selector - Show only if meetup is selected */}
+                {selectedShipping?.id === "meetup" && (
+                  <MeetUpSelector
+                    sellerInfo={items[0]} // Pass seller info from cart item
+                    buyerAddress={address}
+                    onSelect={setMeetUpData}
+                    selectedData={meetUpData}
+                  />
+                )}
+              </div>
             )}
 
             {/* Step 3: Payment Method */}
@@ -364,7 +379,11 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
               <div className="text-center py-8">
                 <CheckCircle className="w-20 h-20 text-green-600 mx-auto mb-4" />
                 <h3 className="text-2xl font-bold mb-2">Đặt hàng thành công!</h3>
-                <p className="text-gray-600">Đơn hàng của bạn đang được xử lý</p>
+                <p className="text-gray-600">
+                  {selectedShipping?.id === "meetup"
+                    ? "Người bán sẽ xác nhận địa điểm và thời gian gặp mặt"
+                    : "Đơn hàng của bạn đang được xử lý"}
+                </p>
               </div>
             )}
           </div>
@@ -401,6 +420,7 @@ export default function CheckoutModal({ items, isOpen, onClose, onSuccess }) {
               <button
                 onClick={() => {
                   onSuccess();
+                  // router.push("/user/account");
                   router.push("/marketplace/marketplace");
                 }}
                 className="w-full py-3 rounded-lg bg-pink-500 text-white font-semibold"

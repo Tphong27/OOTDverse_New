@@ -14,6 +14,7 @@ export default function CartTab() {
     grandTotal,
     removeFromCart,
   } = useCart();
+
   const [showCheckout, setShowCheckout] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
 
@@ -64,106 +65,91 @@ export default function CartTab() {
     (sum, item) => sum + item.price * 0.05,
     0
   );
-  const selectedGrandTotal =
-    selectedTotal + selectedShipping + selectedPlatformFee;
+  // const selectedGrandTotal = selectedTotal + selectedShipping + selectedPlatformFee;
 
+  const selectedGrandTotal = selectedTotal + selectedPlatformFee;
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <ShoppingCart size={32} />
-            Giỏ hàng của tôi
-          </h1>
-          <p className="text-gray-600 mt-1">{cartCount} món đồ</p>
-        </div>
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+          <ShoppingCart size={28} />
+          Giỏ hàng của tôi
+        </h1>
+        <p className="text-gray-600 text-sm mt-1">{cartCount} món đồ</p>
       </div>
 
-      {/* Empty Cart */}
       {cartCount === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
-          <ShoppingCart size={64} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Giỏ hàng trống
-          </h3>
-          <p className="text-gray-600 mb-6">
+        <div className="text-center py-14 bg-white rounded-2xl shadow-sm">
+          <ShoppingCart size={56} className="mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-semibold">Giỏ hàng trống</h3>
+          <p className="text-gray-600 mb-6 text-sm">
             Hãy thêm món đồ yêu thích vào giỏ hàng!
           </p>
           <button
             onClick={() => (window.location.href = "/marketplace/marketplace")}
-            className="px-6 py-3 bg-pink-500 text-white rounded-xl font-semibold hover:bg-pink-600 transition-colors"
+            className="px-6 py-3 bg-pink-500 text-white rounded-xl font-semibold"
           >
             Khám phá ngay
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Cart Items */}
+          {/* LEFT */}
           <div className="lg:col-span-2 space-y-4">
             {/* Select All */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-              <label className="flex items-center gap-3 cursor-pointer">
+            <div className="bg-white rounded-xl p-4 border">
+              <label className="flex items-center gap-3">
                 <input
                   type="checkbox"
                   checked={selectedItems.length === cartCount}
                   onChange={handleSelectAll}
-                  className="w-5 h-5 text-pink-600 rounded focus:ring-2 focus:ring-pink-500"
+                  className="w-5 h-5"
                 />
-                <span className="font-semibold text-gray-900">
-                  Chọn tất cả ({cartCount})
-                </span>
+                <span className="font-semibold">Chọn tất cả ({cartCount})</span>
               </label>
             </div>
 
-            {/* Cart Items List */}
+            {/* Items */}
             {cartItems.map((item) => (
               <div
                 key={item.listing_id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+                className="bg-white rounded-xl border p-4 sm:p-6"
               >
-                <div className="flex items-start gap-4">
-                  {/* Checkbox */}
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.includes(item.listing_id)}
-                    onChange={() => handleSelectItem(item.listing_id)}
-                    className="w-5 h-5 text-pink-600 rounded focus:ring-2 focus:ring-pink-500 mt-1"
-                  />
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(item.listing_id)}
+                      onChange={() => handleSelectItem(item.listing_id)}
+                      className="w-5 h-5 mt-1"
+                    />
+                    <img
+                      src={item.item_image}
+                      alt={item.item_name}
+                      className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg"
+                    />
+                  </div>
 
-                  {/* Image */}
-                  <img
-                    src={item.item_image}
-                    alt={item.item_name}
-                    className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
-                  />
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
+                  <div className="flex-1">
+                    <h3 className="font-semibold line-clamp-1">
                       {item.item_name}
                     </h3>
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="text-sm text-gray-600 mb-1">
                       {item.category} {item.brand && `• ${item.brand}`}
                     </p>
-                    <div className="flex items-center gap-2 mb-2">
+
+                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                       <img
-                        src={
-                          item.seller_avatar ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            item.seller_name
-                          )}`
-                        }
-                        alt={item.seller_name}
+                        src={item.seller_avatar}
                         className="w-6 h-6 rounded-full"
                       />
-                      <span className="text-sm text-gray-600">
-                        {item.seller_name}
-                      </span>
+                      {item.seller_name}
                     </div>
-                    <div className="flex items-center justify-between mt-3">
+
+                    <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-lg font-bold text-pink-600">
+                        <p className="font-bold text-pink-600">
                           {formatPrice(item.price)}
                         </p>
                         {item.shipping_fee > 0 && (
@@ -172,11 +158,12 @@ export default function CartTab() {
                           </p>
                         )}
                       </div>
+
                       <button
                         onClick={() => handleRemove(item.listing_id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                       >
-                        <Trash2 size={20} />
+                        <Trash2 size={18} />
                       </button>
                     </div>
                   </div>
@@ -185,57 +172,40 @@ export default function CartTab() {
             ))}
           </div>
 
-          {/* Summary */}
+          {/* RIGHT / SUMMARY */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-20">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">
-                Tóm tắt đơn hàng
-              </h3>
+            <div className="bg-white rounded-xl border p-5 lg:sticky lg:top-20">
+              <h3 className="text-lg font-bold mb-4">Tóm tắt đơn hàng</h3>
 
               {selectedItems.length === 0 ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle
-                      className="text-yellow-600 flex-shrink-0 mt-0.5"
-                      size={18}
-                    />
-                    <p className="text-sm text-yellow-800">
-                      Vui lòng chọn ít nhất một món đồ để thanh toán
-                    </p>
+                <div className="bg-yellow-50 border rounded-lg p-3 text-sm">
+                  <div className="flex gap-2">
+                    <AlertCircle size={16} />
+                    Vui lòng chọn ít nhất một món đồ
                   </div>
                 </div>
               ) : (
                 <>
-                  <div className="space-y-3 mb-6">
-                    <div className="flex justify-between text-gray-700">
-                      <span>Số lượng:</span>
-                      <span className="font-semibold">
-                        {selectedItems.length} món
-                      </span>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Số lượng</span>
+                      <span>{selectedItems.length}</span>
                     </div>
-                    <div className="flex justify-between text-gray-700">
-                      <span>Tổng tiền hàng:</span>
-                      <span className="font-semibold">
-                        {formatPrice(selectedTotal)}
-                      </span>
+                    <div className="flex justify-between">
+                      <span>Tiền hàng</span>
+                      <span>{formatPrice(selectedTotal)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-700">
-                      <span>Phí vận chuyển:</span>
-                      <span className="font-semibold">
-                        {formatPrice(selectedShipping)}
-                      </span>
+                    {/* <div className="flex justify-between">
+                      <span>Phí ship</span>
+                      <span>{formatPrice(selectedShipping)}</span>
+                    </div> */}
+                    <div className="flex justify-between">
+                      <span>Phí dịch vụ (5%)</span>
+                      <span>{formatPrice(selectedPlatformFee)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-700">
-                      <span>Phí dịch vụ (5%):</span>
-                      <span className="font-semibold">
-                        {formatPrice(selectedPlatformFee)}
-                      </span>
-                    </div>
-                    <div className="border-t border-gray-300 pt-3 flex justify-between">
-                      <span className="text-lg font-bold text-gray-900">
-                        Tổng cộng:
-                      </span>
-                      <span className="text-2xl font-bold text-pink-600">
+                    <div className="border-t pt-2 flex justify-between font-bold">
+                      <span>Tổng</span>
+                      <span className="text-pink-600">
                         {formatPrice(selectedGrandTotal)}
                       </span>
                     </div>
@@ -243,10 +213,10 @@ export default function CartTab() {
 
                   <button
                     onClick={() => setShowCheckout(true)}
-                    className="w-full py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-bold hover:from-pink-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                    className="mt-4 w-full py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-bold flex justify-center gap-2"
                   >
-                    <ShoppingBag size={20} />
-                    Thanh toán ({selectedItems.length})
+                    <ShoppingBag size={18} />
+                    Thanh toán
                   </button>
                 </>
               )}
@@ -291,7 +261,6 @@ export default function CartTab() {
         </div>
       )}
 
-      {/* Checkout Modal */}
       {showCheckout && (
         <CheckoutModal
           items={selectedItemsData}

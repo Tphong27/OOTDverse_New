@@ -21,6 +21,8 @@ import {
   Zap,
   Layout,
   Image as ImageIcon,
+  Edit,
+  MessageSquare,
 } from "lucide-react";
 import NextImage from "next/image";
 
@@ -36,12 +38,14 @@ export default function AIStylistPage() {
   const [suggestions, setSuggestions] = useState([]);
   const [savedOutfits, setSavedOutfits] = useState([]); // Track which ones are saved
   const [activeViews, setActiveViews] = useState({}); // { [idx]: 'moodboard' | 'lookbook' }
+  const [retryCountdown, setRetryCountdown] = useState(0); // Countdown for rate limit
 
   const [formData, setFormData] = useState({
     style: "",
     occasion: "",
     weather: "Mát mẻ",
     skinTone: "Tự nhiên",
+    customContext: "", // Optional: Mô tả bổ sung cho AI
   });
 
   // ===== OPTIONS =====
@@ -66,7 +70,19 @@ export default function AIStylistPage() {
   const handleNext = () => setStep((prev) => prev + 1);
   const handleBack = () => setStep((prev) => prev - 1);
 
+  // Countdown effect for rate limit
+  useEffect(() => {
+    if (retryCountdown > 0) {
+      const timer = setTimeout(() => {
+        setRetryCountdown(retryCountdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [retryCountdown]);
+
   const handleSubmit = async () => {
+    if (retryCountdown > 0) return; // Prevent submit while countdown active
+    
     setLoading(true);
     setError(null);
     try {
@@ -76,17 +92,31 @@ export default function AIStylistPage() {
         occasion: formData.occasion,
         weather: formData.weather,
         skin_tone: formData.skinTone,
+        custom_context: formData.customContext,
       });
 
       if (result.success) {
         setSuggestions(result.suggestions);
-        setStep(3); // Result step
+        setStep(3);
       } else {
-        setError(result.error || "Không thể lấy gợi ý từ AI");
+        // Check if rate limited
+        if (result.retry_after) {
+          setRetryCountdown(result.retry_after);
+          setError(`Hệ thống AI đang bận. Vui lòng thử lại sau ${result.retry_after} giây.`);
+        } else {
+          setError(result.error || "Không thể lấy gợi ý từ AI");
+        }
       }
     } catch (err) {
       console.error("AI Stylist Error:", err);
-      setError(err.message || "Đã có lỗi xảy ra");
+      // Check if error response has retry_after
+      if (err.response?.data?.retry_after) {
+        const retryAfter = err.response.data.retry_after;
+        setRetryCountdown(retryAfter);
+        setError(`Hệ thống AI đang bận. Vui lòng thử lại sau ${retryAfter} giây.`);
+      } else {
+        setError(err.response?.data?.error || err.message || "Đã có lỗi xảy ra");
+      }
     } finally {
       setLoading(false);
     }
@@ -120,6 +150,25 @@ export default function AIStylistPage() {
     } catch (err) {
       alert("Lỗi khi lưu outfit: " + err.message);
     }
+  };
+
+  // Handler để chỉnh sửa outfit trước khi lưu
+  const handleEditOutfit = (suggestion) => {
+    // Lưu data vào localStorage để form.jsx đọc
+    const editData = {
+      outfit_name: suggestion.outfit_name,
+      description: suggestion.description,
+      notes: suggestion.rationale,
+      items: suggestion.items.map((item, idx) => ({
+        item_id: item._id,
+        display_order: idx,
+      })),
+      style_id: styles.find(s => s.name === formData.style)?._id,
+      occasion_id: occasions.find(o => o.name === formData.occasion)?._id,
+      ai_suggested: true,
+    };
+    localStorage.setItem('aiStylistEditData', JSON.stringify(editData));
+    router.push('/outfit/form?from=ai-stylist');
   };
 
   // ===== RENDER HELPERS =====
@@ -226,6 +275,24 @@ export default function AIStylistPage() {
         </div>
       </div>
 
+      {/* Optional Context Input */}
+      <div className="space-y-2">
+        <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-green-600" />
+          Mô tả thêm <span className="text-gray-400 font-normal">(không bắt buộc)</span>
+        </label>
+        <textarea
+          value={formData.customContext}
+          onChange={(e) => setFormData({ ...formData, customContext: e.target.value })}
+          placeholder="Ví dụ: Dạo phố ngày mưa, Gặp gỡ đối tác kinh doanh, Picnic cuối tuần với bạn bè..."
+          rows={2}
+          className="w-full p-4 rounded-xl border-2 border-gray-100 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all font-medium text-sm placeholder:text-gray-400 resize-none"
+        />
+        <p className="text-xs text-gray-400">
+          💡 Mô tả chi tiết giúp AI hiểu rõ hơn hoàn cảnh của bạn
+        </p>
+      </div>
+
       <div className="flex justify-between pt-4">
         <button
           onClick={handleBack}
@@ -236,14 +303,26 @@ export default function AIStylistPage() {
         </button>
         <button
           onClick={handleSubmit}
-          className="px-10 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center gap-2 group"
+          disabled={loading || retryCountdown > 0}
+          className={`px-10 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2 group ${
+            retryCountdown > 0
+              ? "bg-gray-400 text-white cursor-not-allowed"
+              : "bg-gradient-to-r from-purple-600 to-pink-500 text-white hover:shadow-xl"
+          }`}
         >
           {loading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
+          ) : retryCountdown > 0 ? (
+            <>
+              <AlertCircle className="w-5 h-5" />
+              Thử lại sau {retryCountdown}s
+            </>
           ) : (
-            <Zap className="w-5 h-5 group-hover:fill-current" />
+            <>
+              <Zap className="w-5 h-5 group-hover:fill-current" />
+              Bắt đầu phối đồ AI
+            </>
           )}
-          Bắt đầu phối đồ AI
         </button>
       </div>
     </div>
@@ -348,27 +427,40 @@ export default function AIStylistPage() {
                  <p className="text-xs text-purple-700 leading-relaxed">{suggestion.rationale}</p>
               </div>
 
-              <button 
-                onClick={() => handleSaveOutfit(suggestion, idx)}
-                disabled={savedOutfits.includes(idx)}
-                className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
-                  savedOutfits.includes(idx)
-                  ? "bg-green-100 text-green-700 cursor-default"
-                  : "bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:-translate-y-1"
-                }`}
-              >
-                {savedOutfits.includes(idx) ? (
-                  <>
-                    <Check className="w-5 h-5" />
-                    Đã lưu vào bộ sưu tập
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-5 h-5" />
-                    Lưu bộ đồ này
-                  </>
-                )}
-              </button>
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                {/* Edit Button */}
+                <button 
+                  onClick={() => handleEditOutfit(suggestion)}
+                  className="flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                >
+                  <Edit className="w-4 h-4" />
+                  Chỉnh sửa
+                </button>
+
+                {/* Save Button */}
+                <button 
+                  onClick={() => handleSaveOutfit(suggestion, idx)}
+                  disabled={savedOutfits.includes(idx)}
+                  className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+                    savedOutfits.includes(idx)
+                    ? "bg-green-100 text-green-700 cursor-default"
+                    : "bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:-translate-y-1"
+                  }`}
+                >
+                  {savedOutfits.includes(idx) ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Đã lưu
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Lưu ngay
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         ))}

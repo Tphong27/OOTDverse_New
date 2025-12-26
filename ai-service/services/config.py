@@ -16,5 +16,5 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 # Model configuration
-MODEL_NAME = 'gemini-2.5-flash' # Using for vision capabilities
+MODEL_NAME = 'gemini-flash-lastest' # Using for vision capabilities
 model = genai.GenerativeModel(MODEL_NAME)

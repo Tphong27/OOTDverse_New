@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 import uvicorn
+import re
 from models.request_models import ImageRequest, StylistRequest
 from models.response_models import AnalysisResponse, StylistResponse, VisualizationRequest, VisualizationResponse
 from services.analyzer import analyze_image_with_gemini
@@ -54,10 +56,33 @@ async def analyze_wardrobe_item(request: ImageRequest):
             "data": result
         }
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        error_msg = str(e)
+        
+        # Check if it's a quota/rate limit error (429)
+        if "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower():
+            retry_after = "60"
+            match = re.search(r'retry in ([\d.]+)s', error_msg)
+            if match:
+                retry_after = str(int(float(match.group(1))))
+            
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "success": False,
+                    "error": "Gemini API quota exceeded. Please try again later.",
+                    "retry_after": int(retry_after)
+                },
+                headers={"Retry-After": retry_after}
+            )
+        
+        # Other errors - return 500
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": error_msg
+            }
+        )
 
 @app.post("/suggest", response_model=StylistResponse)
 async def get_outfit_suggestions(request: StylistRequest):
@@ -67,17 +92,42 @@ async def get_outfit_suggestions(request: StylistRequest):
             occasion=request.occasion,
             weather=request.weather,
             wardrobe=[item.dict() for item in request.wardrobe],
-            skin_tone=request.skin_tone
+            skin_tone=request.skin_tone,
+            custom_context=request.custom_context
         )
         return {
             "success": True,
             "suggestions": suggestions
         }
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        error_msg = str(e)
+        
+        # Check if it's a quota/rate limit error (429)
+        if "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower():
+            # Try to extract retry delay from error message
+            retry_after = "60"  # Default 60 seconds
+            match = re.search(r'retry in ([\d.]+)s', error_msg)
+            if match:
+                retry_after = str(int(float(match.group(1))))
+            
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "success": False,
+                    "error": "Gemini API quota exceeded. Please try again later.",
+                    "retry_after": int(retry_after)
+                },
+                headers={"Retry-After": retry_after}
+            )
+        
+        # Other errors - return 500
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": error_msg
+            }
+        )
 
 if __name__ == "__main__":
     print("[INFO] AI Service is running on port 8000...")

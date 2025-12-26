@@ -688,7 +688,7 @@ exports.getOutfitStats = async (req, res) => {
 // ========================================
 exports.aiSuggest = async (req, res) => {
   try {
-    const { userId, style, occasion, weather, skin_tone } = req.body;
+    const { userId, style, occasion, weather, skin_tone, custom_context } = req.body;
 
     if (!userId) {
       return res.status(400).json({ success: false, message: "userId là bắt buộc" });
@@ -715,26 +715,46 @@ exports.aiSuggest = async (req, res) => {
       tags: item.tags || []
     }));
 
-    // 3. Gọi AI Service
+    // 3. Gọi AI Service (bao gồm custom_context nếu có)
     const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
     const response = await axios.post(`${AI_SERVICE_URL}/suggest`, {
       style,
       occasion,
       weather,
       skin_tone,
+      custom_context, // Truyền context bổ sung từ user
       wardrobe: wardrobeForAI
     });
 
     if (response.data.success) {
       // 4. Bổ sung thông tin item (hình ảnh, tên) vào kết quả trả về cho frontend
       const suggestionsWithDetails = await Promise.all(response.data.suggestions.map(async (suggestion) => {
-        const itemDetails = await Item.find({ _id: { $in: suggestion.item_ids } })
+        // 4.0 Lọc ra các item_ids hợp lệ (24 ký tự hex)
+        const validItemIds = (suggestion.item_ids || []).filter(id => {
+          if (typeof id !== 'string') return false;
+          // MongoDB ObjectId phải là 24 ký tự hex
+          return /^[a-fA-F0-9]{24}$/.test(id);
+        });
+
+        if (validItemIds.length === 0) {
+          console.warn(`[AI Stylist] Outfit "${suggestion.outfit_name}" không có item_ids hợp lệ`);
+          return {
+            ...suggestion,
+            items: [],
+            visual_preview: null,
+            lookbook_url: null
+          };
+        }
+
+        const itemDetails = await Item.find({ _id: { $in: validItemIds } })
           .select("item_name image_url category_id")
           .populate("category_id", "name");
         
-        // 4.1 Gọi AI Service để tạo ảnh ghép (Visualization) + Lookbook
+        // 4.1 TẠM THỜI TẮT: Gọi AI Service để tạo ảnh ghép (Visualization) + Lookbook
+        // Để tiết kiệm quota Gemini API
         let visualPreview = null;
         let lookbookUrl = null;
+        /*
         try {
           const vizResponse = await axios.post(`${AI_SERVICE_URL}/visualize`, {
             items: itemDetails.map(it => ({
@@ -752,6 +772,7 @@ exports.aiSuggest = async (req, res) => {
         } catch (vizError) {
           console.error("Lỗi tạo ảnh ghép/lookbook:", vizError.message);
         }
+        */
 
         return {
           ...suggestion,
@@ -766,11 +787,43 @@ exports.aiSuggest = async (req, res) => {
         suggestions: suggestionsWithDetails
       });
     } else {
-      res.status(500).json({ success: false, error: response.data.error });
+      // AI Service returned error in response body
+      const statusCode = response.status || 500;
+      res.status(statusCode).json({ 
+        success: false, 
+        error: response.data.error,
+        retry_after: response.data.retry_after || null
+      });
     }
 
   } catch (error) {
     console.error("Lỗi AI Stylist:", error);
+    
+    // Check if error is from axios response (AI Service returned non-2xx)
+    if (error.response) {
+      const status = error.response.status;
+      const data = error.response.data || {};
+      
+      // Handle 429 (Rate Limit) specially
+      if (status === 429) {
+        const retryAfter = data.retry_after || 60;
+        return res.status(429).json({
+          success: false,
+          error: "Hệ thống AI đang quá tải. Vui lòng thử lại sau.",
+          retry_after: retryAfter,
+          message: `Thử lại sau ${retryAfter} giây`
+        });
+      }
+      
+      // Other AI Service errors
+      return res.status(status).json({
+        success: false,
+        error: data.error || "Lỗi từ AI Service",
+        retry_after: data.retry_after || null
+      });
+    }
+    
+    // Network or other errors
     res.status(500).json({ success: false, error: error.message });
   }
 };

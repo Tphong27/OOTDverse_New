@@ -13,11 +13,17 @@ async def generate_outfit_suggestions(
     occasion: str, 
     weather: str, 
     wardrobe: List[Dict],
-    skin_tone: str = "tự nhiên"
+    skin_tone: str = "tự nhiên",
+    custom_context: str = None
 ):
     try:
         # --- STEP 1: PREPARE DATA ---
         wardrobe_description = json.dumps(wardrobe, ensure_ascii=False, indent=2)
+        
+        # Build custom context section if provided
+        custom_context_section = ""
+        if custom_context and custom_context.strip():
+            custom_context_section = f"\n        - Mô tả bổ sung từ người dùng: {custom_context}"
 
         # --- STEP 2: PROMPT ---
         prompt = f"""
@@ -28,7 +34,7 @@ async def generate_outfit_suggestions(
         - Phong cách yêu cầu: {style}
         - Dịp mặc: {occasion}
         - Thời tiết: {weather}
-        - Tông da: {skin_tone}
+        - Tông da: {skin_tone}{custom_context_section}
 
         DANH SÁCH TỦ ĐỒ (WARDROBE):
         {wardrobe_description}
@@ -37,7 +43,8 @@ async def generate_outfit_suggestions(
         1. Gợi ý đúng 3 bộ trang phục khác nhau.
         2. Mỗi bộ trang phục phải bao gồm các món đồ có thật trong DANH SÁCH TỦ ĐỒ (sử dụng đúng 'id' của món đồ).
         3. Chọn đồ phối hợp hài hòa về màu sắc, thể loại (ví dụ: áo phối với quần/váy, giày phù hợp).
-        4. Trả về kết quả dưới dạng JSON thuần túy (không dùng markdown ```json) với cấu trúc sau:
+        4. Nếu người dùng có mô tả bổ sung, hãy ưu tiên hiểu đúng ngữ cảnh của họ để gợi ý outfit phù hợp nhất.
+        5. Trả về kết quả dưới dạng JSON thuần túy (không dùng markdown ```json) với cấu trúc sau:
            [
              {{
                "outfit_name": "Tên bộ đồ (ví dụ: Năng động ngày hè)",

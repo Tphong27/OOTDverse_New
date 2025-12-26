@@ -60,6 +60,42 @@ export default function OutfitFormPage() {
     }
   }, [isEditMode, id]);
 
+  // Load data from AI Stylist if coming from there
+  useEffect(() => {
+    if (router.query.from === 'ai-stylist' && !isEditMode) {
+      const aiData = localStorage.getItem('aiStylistEditData');
+      if (aiData) {
+        try {
+          const parsed = JSON.parse(aiData);
+          
+          // Find item_data for each item from wardrobe
+          const itemsWithData = parsed.items.map(item => {
+            const wardrobeItem = wardrobeItems.find(w => w._id === item.item_id);
+            return {
+              ...item,
+              item_data: wardrobeItem || null,
+            };
+          }).filter(item => item.item_data); // Only keep items that exist in wardrobe
+          
+          setFormData(prev => ({
+            ...prev,
+            outfit_name: parsed.outfit_name || '',
+            description: parsed.description || '',
+            notes: parsed.notes || '',
+            style_id: parsed.style_id ? [parsed.style_id] : [],
+            occasion_id: parsed.occasion_id ? [parsed.occasion_id] : [],
+            items: itemsWithData,
+          }));
+          
+          // Clear localStorage after loading
+          localStorage.removeItem('aiStylistEditData');
+        } catch (error) {
+          console.error('Error loading AI Stylist data:', error);
+        }
+      }
+    }
+  }, [router.query.from, isEditMode, wardrobeItems]);
+
   const loadOutfitData = async () => {
     try {
       const outfit = await fetchOutfitById(id);

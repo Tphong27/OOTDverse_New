@@ -16,4 +16,5 @@ class StylistRequest(BaseModel):
     occasion: str
     weather: str
     skin_tone: Optional[str] = "tự nhiên"
+    custom_context: Optional[str] = None  # Mô tả bổ sung từ người dùng
     wardrobe: List[WardrobeItem]

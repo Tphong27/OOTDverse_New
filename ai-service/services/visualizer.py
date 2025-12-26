@@ -39,7 +39,7 @@ def download_image(url, remove_bg=False):
             
         return img.convert("RGBA") if remove_bg else img.convert("RGB")
     except Exception as e:
-        print(f"[ERROR] Process failed for {url}: {str(e)}")
+        # print(f"[ERROR] Process failed for {url}: {str(e)}")
         # Trả về ảnh dummy nếu lỗi
         return Image.new("RGB", (400, 400), (240, 240, 240))
 
@@ -119,9 +119,10 @@ def analyze_item_vision(img, category="món đồ"):
         """
         
         response = model.generate_content([prompt, analysis_img])
+        if not response or not response.text:
+            return f"a high quality {category}"
         return response.text.strip()
     except Exception as e:
-        print(f"[ERROR] Vision analysis failed: {str(e)}")
         return f"a high quality {category}"
 
 def generate_lookbook_prompt_with_vision(outfit_name, analyzed_items, rationale):
@@ -146,9 +147,10 @@ def generate_lookbook_prompt_with_vision(outfit_name, analyzed_items, rationale)
         """
         
         response = model.generate_content(prompt_request)
+        if not response or not response.text:
+            return f"Professional fashion photography of a model wearing {outfit_name}"
         return response.text.strip()
     except Exception as e:
-        print(f"[ERROR] Final prompt generation failed: {str(e)}")
         return f"Professional fashion photography of a model wearing {outfit_name}"
 
 def generate_lookbook_image_v2(outfit_name, items, rationale):
@@ -182,7 +184,7 @@ def generate_lookbook_image_v2(outfit_name, items, rationale):
                     "vision_desc": vision_desc
                 })
             except Exception as item_error:
-                print(f"[WARN] Item analysis failed, using fallback: {str(item_error)}")
+                # print(f"[WARN] Item analysis failed, using fallback: {str(item_error)}")
                 analyzed_items.append({
                     "category": item.get("category", "món đồ"),
                     "vision_desc": f"a stylish {item.get('category', 'item')}"
@@ -204,7 +206,7 @@ def generate_lookbook_image_v2(outfit_name, items, rationale):
         
         return image_url
     except Exception as e:
-        print(f"[ERROR] Precision Lookbook failed: {str(e)}")
+        # print(f"[ERROR] Precision Lookbook failed: {str(e)}")
         # Fallback: Tạo prompt đơn giản
         try:
             simple_prompt = f"Professional fashion photography of a model wearing {outfit_name}, stylish outfit, 8k, cinematic"

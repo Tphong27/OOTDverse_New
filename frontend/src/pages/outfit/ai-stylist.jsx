@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/router";
 import { useSettings } from "@/context/SettingContext";
-import { aiSuggest, createOutfit } from "@/services/outfitService";
+import { aiSuggest, createOutfit, getWeather } from "@/services/outfitService";
 import {
   Sparkles,
   ChevronRight,
@@ -23,6 +23,11 @@ import {
   Image as ImageIcon,
   Edit,
   MessageSquare,
+  Thermometer,
+  Droplets,
+  Wind,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import NextImage from "next/image";
 
@@ -39,6 +44,10 @@ export default function AIStylistPage() {
   const [savedOutfits, setSavedOutfits] = useState([]); // Track which ones are saved
   const [activeViews, setActiveViews] = useState({}); // { [idx]: 'moodboard' | 'lookbook' }
   const [retryCountdown, setRetryCountdown] = useState(0); // Countdown for rate limit
+  const [hoveredItem, setHoveredItem] = useState(null); // { sugIdx, itemIdx }
+  const [fetchingWeather, setFetchingWeather] = useState(false);
+  const [weatherData, setWeatherData] = useState(null); // Full weather info
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const [formData, setFormData] = useState({
     style: "",
@@ -79,6 +88,50 @@ export default function AIStylistPage() {
       return () => clearTimeout(timer);
     }
   }, [retryCountdown]);
+
+  const handleFetchWeather = async (isAuto = false) => {
+    if (!isAuto) setFetchingWeather(true);
+    
+    const fetchAndUpdate = async (params) => {
+      try {
+        const res = await getWeather(params);
+        if (res.success && res.mappedWeather) {
+          setFormData(prev => ({ ...prev, weather: res.mappedWeather }));
+          setWeatherData(res);
+          setLastUpdated(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch weather:", err);
+      }
+    };
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          await fetchAndUpdate({ lat: position.coords.latitude, lon: position.coords.longitude });
+          if (!isAuto) setFetchingWeather(false);
+        },
+        async () => {
+          await fetchAndUpdate({ city: "Ho Chi Minh" });
+          if (!isAuto) setFetchingWeather(false);
+        }
+      );
+    } else {
+      await fetchAndUpdate({ city: "Ho Chi Minh" });
+      if (!isAuto) setFetchingWeather(false);
+    }
+  };
+
+  // Auto-refresh weather every 5 minutes if dashboard is active
+  useEffect(() => {
+    let interval;
+    if (weatherData) {
+      interval = setInterval(() => {
+        handleFetchWeather(true);
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+    return () => clearInterval(interval);
+  }, [weatherData]);
 
   const handleSubmit = async () => {
     if (retryCountdown > 0) return; // Prevent submit while countdown active
@@ -251,13 +304,99 @@ export default function AIStylistPage() {
             <Cloud className="w-4 h-4 text-blue-600" />
             Thời tiết hôm nay
           </label>
-          <select
-            value={formData.weather}
-            onChange={(e) => setFormData({ ...formData, weather: e.target.value })}
-            className="w-full p-4 rounded-xl border-2 border-gray-100 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
-          >
-            {weathers.map(w => <option key={w} value={w}>{w}</option>)}
-          </select>
+          <div className="flex gap-2">
+            <select
+              value={formData.weather}
+              onChange={(e) => setFormData({ ...formData, weather: e.target.value })}
+              className="flex-1 p-4 rounded-xl border-2 border-gray-100 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
+            >
+              {weathers.map(w => <option key={w} value={w}>{w}</option>)}
+            </select>
+            <button
+              onClick={handleFetchWeather}
+              disabled={fetchingWeather}
+              className="px-4 rounded-xl border-2 border-blue-100 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all flex items-center justify-center disabled:opacity-50 group/weather"
+              title="Lấy thời tiết hiện tại từ OpenWeather"
+            >
+              {fetchingWeather ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Zap className="w-5 h-5 group-hover/weather:scale-110 transition-transform" />
+              )}
+            </button>
+          </div>
+
+          {/* Detailed Weather Dashboard */}
+          {weatherData && (
+            <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border border-blue-100/50 animate-in fade-in zoom-in duration-500">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-blue-700">
+                  <MapPin className="w-4 h-4" />
+                  <span className="font-bold text-sm">{weatherData.city}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-white/50 backdrop-blur-md rounded-full border border-blue-100 shadow-sm">
+                  <Clock className="w-3 h-3 text-blue-500" />
+                  <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                    Cập nhật: {lastUpdated}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-orange-500">
+                    <Thermometer className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 font-medium">Nhiệt độ</p>
+                    <p className="text-lg font-bold text-gray-800">{weatherData.temp}°C</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-blue-500">
+                    <Cloud className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 font-medium">Trạng thái</p>
+                    <p className="text-sm font-bold text-gray-800 capitalize leading-tight">
+                      {weatherData.condition}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-cyan-500">
+                    <Droplets className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 font-medium">Độ ẩm</p>
+                    <p className="text-sm font-bold text-gray-800">{weatherData.raw?.main?.humidity}%</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-teal-500">
+                    <Wind className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 font-medium">Tốc độ gió</p>
+                    <p className="text-sm font-bold text-gray-800">{weatherData.raw?.wind?.speed} m/s</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4 pt-4 border-t border-blue-100/50 flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full animate-pulse ${
+                  weatherData.mappedWeather === 'Lạnh' ? 'bg-blue-400' :
+                  weatherData.mappedWeather === 'Nắng nóng' ? 'bg-red-400' : 'bg-green-400'
+                }`} />
+                <p className="text-[11px] text-blue-800 font-semibold">
+                  Hệ thống xác định: <span className="uppercase">{weatherData.mappedWeather}</span>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -339,15 +478,15 @@ export default function AIStylistPage() {
           <p className="text-gray-500 text-lg max-w-2xl mx-auto">Dưới đây là 3 gợi ý tốt nhất từ tủ đồ của bạn cho dịp {formData.occasion}.</p>
         </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {suggestions.map((suggestion, idx) => (
-          <div key={idx} className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col border border-gray-100/50 hover:shadow-2xl transition-all duration-300 group">
+          <div key={idx} className="bg-white rounded-[3rem] shadow-2xl flex flex-col border border-gray-100 hover:shadow-purple-200/50 transition-all duration-700 group/card relative z-10 overflow-visible translate-y-0 hover:-translate-y-2">
             
-            {/* View Toggle Tabs */}
-            <div className="flex bg-gray-100 p-1 m-4 mb-0 rounded-xl">
+            {/* View Toggle Tabs - Ultra Modern Compact Pill */}
+            <div className="flex bg-gray-100/50 p-1.5 m-6 mb-0 rounded-2xl backdrop-blur-xl z-20 border border-gray-100">
                 <button 
                     onClick={() => setActiveViews(prev => ({...prev, [idx]: 'moodboard'}))}
-                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${(!activeViews[idx] || activeViews[idx] === 'moodboard') ? 'bg-white shadow-sm text-purple-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`flex-1 py-1.5 px-3 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 ${(!activeViews[idx] || activeViews[idx] === 'moodboard') ? 'bg-white shadow-lg text-purple-600' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                     <Layout className="w-3.5 h-3.5" />
                     Moodboard
@@ -355,61 +494,146 @@ export default function AIStylistPage() {
                 <button 
                     disabled={!suggestion.lookbook_url}
                     onClick={() => setActiveViews(prev => ({...prev, [idx]: 'lookbook'}))}
-                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeViews[idx] === 'lookbook' ? 'bg-white shadow-sm text-purple-600' : 'text-gray-500 hover:text-gray-700'} ${!suggestion.lookbook_url ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex-1 py-1.5 px-3 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 ${activeViews[idx] === 'lookbook' ? 'bg-white shadow-lg text-purple-600' : 'text-gray-500 hover:text-gray-700'} ${!suggestion.lookbook_url ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     <ImageIcon className="w-3.5 h-3.5" />
-                    AI Lookbook
+                    AI LOOKBOOK
                 </button>
             </div>
 
             {/* Visual Preview Area */}
-            <div className="p-4 bg-gray-50 flex-1 min-h-[420px] relative group">
+            <div className="p-6 bg-gray-50/20 flex-1 min-h-[580px] relative mt-2 group/area overflow-visible">
                 {(!activeViews[idx] || activeViews[idx] === 'moodboard') ? (
                   // MOODBOARD VIEW
                   suggestion.visual_preview ? (
-                    <div className="relative w-full h-full flex items-center justify-center bg-white rounded-xl shadow-inner overflow-hidden animate-in fade-in zoom-in duration-300">
+                    <div className="relative w-full h-full flex items-center justify-center bg-white rounded-[2.5rem] shadow-inner overflow-hidden animate-in fade-in zoom-in duration-700 border border-gray-100">
                        <img 
                           src={suggestion.visual_preview} 
                           alt="Outfit Moodboard"
-                          className="max-w-full max-h-full object-contain p-2"
+                          className="max-w-full max-h-full object-contain p-8"
                        />
-                       <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
-                          <Sparkles className="w-3 h-3 text-purple-600" />
-                          <span className="text-[10px] font-bold text-gray-700 uppercase tracking-wider">AI Moodboard</span>
+                       <div className="absolute top-5 left-5 bg-white/95 backdrop-blur-md px-4 py-2 rounded-full shadow-md flex items-center gap-2.5 border border-purple-50">
+                          <Sparkles className="w-4 h-4 text-purple-600 animate-pulse" />
+                          <span className="text-[10px] font-extrabold text-gray-800 uppercase tracking-widest">AI Moodboard</span>
                        </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2 h-full">
-                        {suggestion.items.map((item, i) => (
-                            <div key={item._id} className={`relative rounded-xl overflow-hidden shadow-sm ${
-                                suggestion.items.length === 2 ? 'h-[350px]' : 
-                                suggestion.items.length === 3 && i === 0 ? 'col-span-2 h-[200px]' : 'h-[150px]'
-                            }`}>
-                                <img src={item.image_url} alt={item.item_name} className="w-full h-full object-cover" />
-                            </div>
-                        ))}
+                    // Fallback: SUPER ARTISTIC COLLAGE
+                    <div className="h-full relative flex flex-col justify-center items-center">
+                      <div className={`relative w-full h-full min-h-[460px] content-center p-4`}>
+                        {suggestion.items.map((item, i) => {
+  const count = suggestion.items.length;
+  
+  // 1. Tính toán kích thước dựa trên số lượng để tránh quá to gây lấn át
+  let sizeClass = "w-[55%] h-[55%]"; // Mặc định cho 3-4 món
+  if (count <= 2) sizeClass = "w-[75%] h-[75%]";
+  if (count >= 5) sizeClass = "w-[42%] h-[42%]";
+
+  // 2. Logic vị trí theo tọa độ phần tư (Quadrants) để tránh chồng tâm
+  let positionClass = "";
+  const rotations = ["rotate-[-3deg]", "rotate-[2deg]", "rotate-[-1deg]", "rotate-[4deg]", "rotate-[-2deg]", "rotate-[1deg]"];
+  const rotate = rotations[i % rotations.length];
+
+  if (count === 1) {
+    positionClass = "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2";
+  } else if (count === 2) {
+    positionClass = i === 0 ? "top-5 left-5" : "bottom-5 right-5";
+  } else {
+    // Sắp xếp theo các góc và cạnh để chừa khoảng trống ở giữa hoặc xen kẽ
+    switch (i) {
+      case 0: positionClass = "top-0 left-0"; break; // Góc trên trái
+      case 1: positionClass = "top-0 right-0"; break; // Góc trên phải
+      case 2: positionClass = "bottom-0 left-0"; break; // Góc dưới trái
+      case 3: positionClass = "bottom-0 right-0"; break; // Góc dưới phải
+      case 4: positionClass = "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20"; break; // Chính giữa (lên trên cùng)
+      case 5: positionClass = "top-[25%] left-[10%] z-10"; break; // Xen kẽ
+      default: positionClass = "top-1/2 left-1/2";
+    }
+  }
+
+  return (
+    <div 
+      key={item._id} 
+      className={`absolute transition-all duration-500 ease-out hover:z-[60] group/item cursor-zoom-in ${sizeClass} ${positionClass} ${rotate}`}
+      onMouseEnter={() => setHoveredItem({ sugIdx: idx, itemIdx: i })}
+      onMouseLeave={() => setHoveredItem(null)}
+    >
+      <div className="w-full h-full rounded-[2rem] overflow-hidden shadow-xl border-[4px] border-white group-hover/item:border-purple-400 group-hover/item:scale-110 group-hover/item:rotate-0 transition-all duration-500 relative bg-white">
+        <img 
+          src={item.image_url} 
+          alt={item.item_name} 
+          className="w-full h-full object-cover" 
+        />
+        {/* Lớp overlay nhẹ để phân biệt các item đè lên nhau */}
+        <div className="absolute inset-0 bg-black/[0.02] group-hover/item:bg-transparent transition-colors" />
+      </div>
+      
+      {/* Badge tên item nhỏ khi hover vào (Tùy chọn) */}
+      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white px-3 py-1 rounded-full shadow-md opacity-0 group-hover/item:opacity-100 transition-opacity z-50 pointer-events-none border border-purple-100">
+        <p className="text-[8px] font-bold text-purple-600 whitespace-nowrap uppercase tracking-tighter">
+          {item.category_id?.name || 'Item'}
+        </p>
+      </div>
+    </div>
+  );
+})}
+
+                        {/* CENTERED Hover Zoom Overlay */}
+                        {hoveredItem?.sugIdx === idx && (
+                          <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none p-4 overflow-visible">
+                              <div className="bg-white rounded-[3rem] shadow-[0_60px_120px_-20px_rgba(0,0,0,0.6)] p-6 border border-purple-100 ring-[24px] ring-purple-600/5 ring-inset animate-in zoom-in fade-in duration-300 w-[360px] pointer-events-none">
+                                <div className="relative aspect-square rounded-[2rem] overflow-hidden mb-6 bg-gray-50 border border-gray-100 shadow-inner">
+                                  <img 
+                                    src={suggestion.items[hoveredItem.itemIdx].image_url} 
+                                    alt="Zoomed"
+                                    className="w-full h-full object-contain p-4"
+                                  />
+                                </div>
+                                <div className="px-2 pb-2 text-center">
+                                  <h4 className="text-xl font-black text-gray-900 leading-tight mb-3 line-clamp-2">
+                                    {suggestion.items[hoveredItem.itemIdx].item_name}
+                                  </h4>
+                                  <div className="inline-flex px-6 py-2.5 bg-purple-600 text-white rounded-full text-[11px] font-black uppercase tracking-widest shadow-xl shadow-purple-200">
+                                    {suggestion.items[hoveredItem.itemIdx].category_id?.name || 'Item'}
+                                  </div>
+                                </div>
+                              </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="mt-6 flex items-center gap-4 px-6 py-2.5 bg-white/80 backdrop-blur-md rounded-full shadow-lg border border-white/50">
+                        <div className="flex -space-x-2">
+                             {[1,2,3].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-purple-600 shadow-sm" style={{opacity: 1 - i*0.25}} />)}
+                        </div>
+                        <p className="text-[10px] text-gray-700 font-extrabold uppercase tracking-widest">
+                           Di chuột để soi đồ cực nét
+                        </p>
+                      </div>
                     </div>
                   )
                 ) : (
                   // LOOKBOOK VIEW
-                  <div className="relative w-full h-full rounded-xl shadow-inner overflow-hidden bg-white animate-in fade-in zoom-in duration-300">
+                  <div className="relative w-full h-full rounded-[3rem] shadow-inner overflow-hidden bg-white animate-in fade-in zoom-in duration-700 border border-gray-100">
                     <img 
                         src={suggestion.lookbook_url} 
                         alt="AI Lookbook"
                         className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                    <div className="absolute bottom-4 left-4 right-4">
-                        <p className="text-[10px] text-white/80 font-medium italic">Ảnh minh họa bởi AI duy nhất cho bạn</p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+                    <div className="absolute bottom-10 left-0 right-0 text-center">
+                        <div className="inline-block px-8 py-2.5 bg-white/20 backdrop-blur-xl rounded-full border border-white/30 shadow-2xl">
+                             <p className="text-[11px] text-white font-black italic tracking-[0.5em] uppercase">AI VIRTUAL LOOKBOOK</p>
+                        </div>
                     </div>
                   </div>
                 )}
                 
-                {/* Item Thumbnails overlay when using Moodboard */}
+                {/* Floating Item Thumbnails (visual_preview only) */}
                 {(!activeViews[idx] || activeViews[idx] === 'moodboard') && suggestion.visual_preview && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 p-1.5 bg-white/60 backdrop-blur-lg rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-500 scale-90 group-hover:scale-100">
+                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex -space-x-5 p-2.5 bg-white/70 backdrop-blur-2xl rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.15)] opacity-0 group-hover/card:opacity-100 transition-all duration-700 translate-y-8 group-hover/card:translate-y-0 z-30 ring-2 ring-white/50">
                     {suggestion.items.map((item) => (
-                      <div key={item._id} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden shadow-sm hover:scale-110 transition-transform cursor-help">
+                      <div key={item._id} className="w-16 h-16 rounded-full border-[6px] border-white overflow-hidden shadow-2xl hover:z-10 hover:scale-125 transition-all duration-500 cursor-zoom-in">
                         <img src={item.image_url} className="w-full h-full object-cover" title={item.item_name} />
                       </div>
                     ))}
@@ -418,46 +642,49 @@ export default function AIStylistPage() {
             </div>
 
             {/* Content Area */}
-            <div className="p-6 space-y-4">
-              <h3 className="text-xl font-bold text-gray-900">{suggestion.outfit_name}</h3>
-              <p className="text-sm text-gray-600 line-clamp-2 italic">"{suggestion.description}"</p>
+            <div className="p-8 space-y-6">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900 mb-2 leading-tight">{suggestion.outfit_name}</h3>
+                <p className="text-gray-500 text-sm italic font-medium leading-relaxed">
+                  <MessageSquare className="w-4 h-4 inline-block mr-2 opacity-50" />
+                  "{suggestion.description}"
+                </p>
+              </div>
               
-              <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
-                 <p className="text-xs font-semibold text-purple-800 uppercase tracking-wider mb-1">Tại sao nên mặc:</p>
-                 <p className="text-xs text-purple-700 leading-relaxed">{suggestion.rationale}</p>
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border border-purple-100 relative overflow-hidden group/rationale">
+                 <div className="absolute top-0 right-0 p-2 opacity-20 group-hover/rationale:scale-125 transition-transform duration-500">
+                    <Sparkles className="w-8 h-8 text-purple-600" />
+                 </div>
+                 <p className="text-[10px] font-black text-purple-800 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <Star className="w-3 h-3 fill-purple-600" />
+                    Lời khuyên phong cách
+                 </p>
+                 <p className="text-xs text-purple-900 leading-relaxed font-medium">{suggestion.rationale}</p>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2">
-                {/* Edit Button */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
                 <button 
                   onClick={() => handleEditOutfit(suggestion)}
-                  className="flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                  className="py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-2 border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-purple-200 hover:text-purple-600"
                 >
                   <Edit className="w-4 h-4" />
-                  Chỉnh sửa
+                  Tùy chỉnh
                 </button>
 
-                {/* Save Button */}
                 <button 
                   onClick={() => handleSaveOutfit(suggestion, idx)}
                   disabled={savedOutfits.includes(idx)}
-                  className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+                  className={`py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg ${
                     savedOutfits.includes(idx)
-                    ? "bg-green-100 text-green-700 cursor-default"
-                    : "bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:-translate-y-1"
+                    ? "bg-green-100 text-green-700 cursor-default shadow-none"
+                    : "bg-gray-900 text-white hover:bg-black hover:-translate-y-1 active:translate-y-0"
                   }`}
                 >
                   {savedOutfits.includes(idx) ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Đã lưu
-                    </>
+                    <><Check className="w-4 h-4" /> Đã lưu</>
                   ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Lưu ngay
-                    </>
+                    <><Save className="w-4 h-4" /> Lưu bộ đồ</>
                   )}
                 </button>
               </div>

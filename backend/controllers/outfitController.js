@@ -5,6 +5,7 @@ const Item = require("../models/Item");
 const User = require("../models/User");
 const { uploadOutfitImage, isBase64Image } = require("../config/cloudinaryConfig");
 const axios = require("axios");
+const weatherService = require("../services/weatherService");
 
 // ========================================
 // 1. GET ALL OUTFITS (với filters)
@@ -694,12 +695,18 @@ exports.aiSuggest = async (req, res) => {
       return res.status(400).json({ success: false, message: "userId là bắt buộc" });
     }
 
-    // 1. Lấy tất cả items của user
-    const items = await Item.find({ user_id: userId, is_active: true })
-      .populate("category_id", "name")
-      .populate("color_id", "name");
+    // 1. Lấy tất cả items của user và Thông tin Profile của user (để xét sở thích)
+    const [items, userData] = await Promise.all([
+      Item.find({ user_id: userId, is_active: true })
+        .populate("category_id", "name")
+        .populate("color_id", "name"),
+      User.findById(userId)
+        .populate("favoriteStyles", "name")
+        .populate("favoriteColors", "name")
+        .populate("avoidColors", "name")
+    ]);
 
-    if (items.length === 0) {
+    if (!items || items.length === 0) {
       return res.status(400).json({ 
         success: false, 
         message: "Tủ đồ của bạn đang trống. Hãy thêm đồ trước khi sử dụng AI Stylist." 
@@ -715,14 +722,23 @@ exports.aiSuggest = async (req, res) => {
       tags: item.tags || []
     }));
 
-    // 3. Gọi AI Service (bao gồm custom_context nếu có)
+    // 2.1 Chuẩn bị dữ liệu profile sở thích
+    const preferences = {
+      favorite_styles: userData?.favoriteStyles.map(s => s.name) || [],
+      favorite_colors: userData?.favoriteColors.map(c => c.name) || [],
+      avoid_colors: userData?.avoidColors.map(c => c.name) || [],
+      bio: userData?.bio || ""
+    };
+
+    // 3. Gọi AI Service (bao gồm profile và custom_context nếu có)
     const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
     const response = await axios.post(`${AI_SERVICE_URL}/suggest`, {
       style,
       occasion,
       weather,
       skin_tone,
-      custom_context, // Truyền context bổ sung từ user
+      custom_context,
+      preferences, // Gửi thêm sở thích cá nhân từ profile
       wardrobe: wardrobeForAI
     });
 
@@ -824,6 +840,29 @@ exports.aiSuggest = async (req, res) => {
     }
     
     // Network or other errors
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+// ========================================
+// 14. GET CURRENT WEATHER
+// ========================================
+exports.getWeather = async (req, res) => {
+  try {
+    const { city, lat, lon } = req.query;
+    let result;
+
+    if (lat && lon) {
+      result = await weatherService.getWeatherByCoords(lat, lon);
+    } else {
+      result = await weatherService.getWeatherByCity(city || "Ho Chi Minh");
+    }
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };

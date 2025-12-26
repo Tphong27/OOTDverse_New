@@ -14,6 +14,7 @@ const {
   getOutfitsByItem,
   getOutfitStats,
   aiSuggest,
+  getWeather,
 } = require("../controllers/outfitController");
 
 // ========================================
@@ -38,6 +39,9 @@ router.get("/stats/:userId", getOutfitStats);
 
 // 4.1 POST /api/outfits/ai-suggest - Gợi ý outfit bằng AI
 router.post("/ai-suggest", aiSuggest);
+
+// 4.2 GET /api/outfits/weather - Lấy thời tiết thực tế
+router.get("/weather", getWeather);
 
 // 5. GET /api/outfits/:id - Lấy chi tiết 1 outfit
 //    Query params: increment_view (true/false)

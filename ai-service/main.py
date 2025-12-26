@@ -93,7 +93,8 @@ async def get_outfit_suggestions(request: StylistRequest):
             weather=request.weather,
             wardrobe=[item.dict() for item in request.wardrobe],
             skin_tone=request.skin_tone,
-            custom_context=request.custom_context
+            custom_context=request.custom_context,
+            preferences=request.preferences.dict() if request.preferences else None
         )
         return {
             "success": True,

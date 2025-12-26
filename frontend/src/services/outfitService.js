@@ -148,6 +148,16 @@ export const aiSuggest = async (suggestionData) => {
   }
 };
 
+export const getWeather = async (params = {}) => {
+  try {
+    const response = await axios.get(`${API_URL}/weather`, { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching weather:", error);
+    throw error.response?.data || error;
+  }
+};
+
 // ========================================
 // OUTFIT ITEMS MANAGEMENT
 // ========================================

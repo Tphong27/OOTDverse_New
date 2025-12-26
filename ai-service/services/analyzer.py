@@ -46,19 +46,33 @@ async def analyze_image_with_gemini(image_base64: str):
         response = model.generate_content([prompt, image])
         
         # --- STEP 4: PROCESS RESULTS ---
+        if not response or not response.text:
+            raise ValueError("Gemini API returned an empty response")
+
         raw_text = response.text
         cleaned_text = raw_text.strip()
         
-        # Clean markdown if present
-        if cleaned_text.startswith("```json"):
-            cleaned_text = cleaned_text[7:]
-        elif cleaned_text.startswith("```"):
-            cleaned_text = cleaned_text[3:]
+        # Find the first '{' and last '}' to extract JSON if there's surrounding text
+        start_idx = cleaned_text.find('{')
+        end_idx = cleaned_text.rfind('}')
         
-        if cleaned_text.endswith("```"):
-            cleaned_text = cleaned_text[:-3]
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            cleaned_text = cleaned_text[start_idx:end_idx + 1]
+        else:
+            # Fallback to markdown cleaning if brackets not found
+            if cleaned_text.startswith("```json"):
+                cleaned_text = cleaned_text[7:]
+            elif cleaned_text.startswith("```"):
+                cleaned_text = cleaned_text[3:]
+            
+            if cleaned_text.endswith("```"):
+                cleaned_text = cleaned_text[:-3]
         
-        result_json = json.loads(cleaned_text.strip())
+        cleaned_text = cleaned_text.strip()
+        if not cleaned_text:
+            raise ValueError("Cleaned response text is empty")
+
+        result_json = json.loads(cleaned_text)
 
         # Ensure color and season are always lists
         if isinstance(result_json.get("color"), str):
@@ -70,5 +84,5 @@ async def analyze_image_with_gemini(image_base64: str):
         return result_json
 
     except Exception as e:
-        print(f"[ERROR] Service Analysis Error: {str(e)}")
+        # print(f"[ERROR] Service Analysis Error: {str(e)}") # Removed due to encoding issues on Windows
         raise e

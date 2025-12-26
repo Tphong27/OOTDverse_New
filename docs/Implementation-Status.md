@@ -9,8 +9,8 @@
 
 | Thống kê      | Số lượng |
 | ------------- | -------- |
-| ✅ Hoàn thành | 13       |
-| ⏳ Đang chờ   | 11       |
+| ✅ Hoàn thành | 14       |
+| ⏳ Đang chờ   | 10       |
 | **Tổng**      | 24       |
 
 ---
@@ -45,12 +45,13 @@
 
 ### 👔 Outfit Management
 
-| Tính năng            | Mô tả                           | Vị trí code             |
-| -------------------- | ------------------------------- | ----------------------- |
-| ✅ CRUD Outfits      | Tạo/Sửa/Xóa bộ outfit           | `outfitController.js`   |
-| ✅ AI Stylist        | Gợi ý 3 outfit dựa trên context | `ai-service/stylist.py` |
-| ✅ Like/Save Outfit  | Tương tác với outfit            | `outfitController.js`   |
-| ✅ Outfit Statistics | Thống kê outfit                 | `outfitController.js`   |
+| Tính năng              | Mô tả                           | Vị trí code             |
+| ---------------------- | ------------------------------- | ----------------------- |
+| ✅ CRUD Outfits        | Tạo/Sửa/Xóa bộ outfit           | `outfitController.js`   |
+| ✅ AI Stylist          | Gợi ý 3 outfit dựa trên context | `ai-service/stylist.py` |
+| ✅ Weather Integration | Tự động lấy thời tiết real-time | `weatherService.js`     |
+| ✅ Like/Save Outfit    | Tương tác với outfit            | `outfitController.js`   |
+| ✅ Outfit Statistics   | Thống kê outfit                 | `outfitController.js`   |
 
 ---
 
@@ -138,7 +139,7 @@
 | Tính năng           | Mô tả                    | Ưu tiên   |
 | ------------------- | ------------------------ | --------- |
 | ⏳ Facebook OAuth   | Đăng nhập Facebook       | 🟡 Medium |
-| ⏳ OpenWeather API  | Thời tiết cho AI Stylist | 🟢 Low    |
+| ✅ OpenWeather API  | Thời tiết cho AI Stylist | 🟢 Low    |
 | ⏳ TikTok/Instagram | Xu hướng thời trang      | 🟢 Low    |
 
 ---

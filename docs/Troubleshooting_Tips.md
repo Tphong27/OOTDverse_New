@@ -311,4 +311,45 @@ exports.login = async (req, res) => {
 
 ---
 
-_Cập nhật lần cuối: 2025-12-18_
+## Rule #8: The "AI Service JSON/Encoding" Pattern
+
+**Áp dụng khi:** Phản hồi từ AI Service (Python) bị rỗng, sai định dạng JSON, hoặc gây crash terminal trên Windows.
+
+### 🔴 Vấn đề
+
+1. **Encoding (Windows)**: Terminal Windows mặc định (cp1252) không hỗ trợ tốt tiếng Việt/Unicode, dẫn đến `UnicodeEncodeError` khi `print()` các chuỗi có dấu.
+2. **Malformed JSON**: AI thỉnh thoảng trả về text kèm theo markdown (```json ...) hoặc nội dung rác ở đầu/cuối, làm `json.loads()` thất bại.
+3. **Empty Response**: AI bị chặn (safety filters) hoặc lỗi quota dẫn đến trả về chuỗi rỗng.
+
+### 🔍 Dấu hiệu nhận biết
+
+- Console: `Expecting value: line 1 column 1 (char 0)`
+- Terminal: `UnicodeEncodeError: 'charmap' codec can't encode character...`
+- Frontend nhận lỗi `500 Internal Server Error` từ backend mà không có chi tiết.
+
+### ✅ Giải pháp
+
+```python
+# 1. Tránh print() Unicode trực tiếp trên Windows
+# ❌ print(f"Kết quả: {text_vietnamese}")
+# ✅ Dùng logging config hoặc bypass print nếu không cần thiết
+
+# 2. Extract JSON "xịn" bằng regex hoặc tìm ngoặc
+def safe_extract_json(text):
+    start = text.find('[') # Hoặc '{'
+    end = text.rfind(']') # Hoặc '}'
+    if start != -1 and end != -1:
+        return text[start:end+1]
+    return text
+```
+
+### 📋 Checklist
+
+- [x] Đã loại bỏ các câu lệnh `print()` chứa tiếng Việt trong Python?
+- [x] Đã thêm logic tìm kiếm ngoặc `[]` hoặc `{}` trước khi `json.loads`?
+- [x] Đã check `if not response.text` để xử lý trường hợp AI bị chặn?
+- [x] Đã có fallback value (outfit mặc định hoặc prompt mặc định)?
+
+---
+
+_Cập nhật lần cuối: 2025-12-26_
